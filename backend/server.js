@@ -22,6 +22,7 @@ app.use(cors({
     origin: [
         'http://localhost:3000',
         'http://localhost:5173',
+        'https://lovoh-1.onrender.com', // Your Render frontend URL
     ],
     credentials: true
 }));
