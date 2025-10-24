@@ -94,34 +94,39 @@ const Header = () => {
         {/* Mobile Navigation Menu */}
         <div className={`${isMenuOpen ? 'block' : 'hidden'} md:hidden`}>
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white border-t border-gray-200">
-            <Link
-              to="/"
+            <button
+              
               className="text-gray-700 hover:text-blue-600 block px-3 py-2 text-base font-medium transition-colors duration-200"
-              onClick={() => setIsMenuOpen(false)}
+              onClick={() => {setIsMenuOpen(false); 
+                scrollToSection("home");
+              }}
             >
               Welcome
-            </Link>
-            <Link
-              to="/services"
+            </button>
+            <button
               className="text-gray-700 hover:text-blue-600 block px-3 py-2 text-base font-medium transition-colors duration-200"
-              onClick={() => setIsMenuOpen(false)}
+              onClick={() => {setIsMenuOpen(false); 
+                scrollToSection("services");
+              }}
             >
               Services
-            </Link>
-            <Link
-              to="/work"
+            </button>
+            <button
               className="text-gray-700 hover:text-blue-600 block px-3 py-2 text-base font-medium transition-colors duration-200"
-              onClick={() => setIsMenuOpen(false)}
+              onClick={() => {setIsMenuOpen(false); 
+                scrollToSection("ourWork");
+              }}
             >
               Our Work
-            </Link>
-            <Link
-              to="/contact"
+            </button>
+            <button
               className="bg-blue-600 text-white hover:bg-blue-700 block px-3 py-2 rounded-md text-base font-medium text-center transition-colors duration-200"
-              onClick={() => setIsMenuOpen(false)}
+              onClick={() => {setIsMenuOpen(false); 
+                scrollToSection("contact");
+              }}
             >
               Contact
-            </Link>
+            </button>
           </div>
         </div>
       </nav>

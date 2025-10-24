@@ -9,7 +9,7 @@ router.get('/messages/:id', protectAdmin, getOneMessage);
 router.put('/messages/:id/read', protectAdmin, markMessageAsRead);
 router.delete('/messages/:id', protectAdmin, deleteUserMessage);
 router.post('/login', authAdmin);
-router.post('/register', protectAdmin, registerAdmin);
+router.post('/register', registerAdmin);
 router.post('/logout', logoutAdmin);
 
 export default router;

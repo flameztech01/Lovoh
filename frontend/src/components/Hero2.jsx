@@ -2,7 +2,6 @@ import React from 'react';
 
 const Hero2 = () => {
 
-  
   const scrollToSection = (id) => {
     const section = document.getElementById(id);
     if (section) {
@@ -11,24 +10,24 @@ const Hero2 = () => {
   };
 
   return (
-    <section className="relative z-20 min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4 sm:px-6 lg:px-8">
+    <section className="relative z-20 min-h-screen bg-gradient-to-br from-[#37acf7]/20 to-[#79ffff]/20 flex items-center justify-center px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           {/* Text Content */}
           <div className="text-center lg:text-left space-y-8">
             <div className="space-y-6">
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-[#3c3c4e] leading-tight">
                 Ideas that{' '}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#004aff] to-[#2f7dcb]">
                   Work
                 </span>{' '}
                 are{' '}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-blue-600">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#2f7dcb] to-[#004aff]">
                   Worked
                 </span>
               </h1>
               
-              <p className="text-xl text-gray-600 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
+              <p className="text-xl text-[#3c3c4e] max-w-2xl mx-auto lg:mx-0 leading-relaxed">
                 Transforming visionary concepts into tangible solutions through 
                 dedicated execution and strategic implementation.
               </p>
@@ -36,13 +35,13 @@ const Hero2 = () => {
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-              <button className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+              <button className="bg-[#004aff] hover:bg-[#054889] text-white px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
               onClick={() => scrollToSection("contact")} >
                 Start Your Project
               </button>
               <button 
               onClick={() => scrollToSection("ourWork")} 
-              className="cursor-pointer border-2 border-gray-300 hover:border-blue-600 text-gray-700 hover:text-blue-600 px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-300">
+              className="cursor-pointer border-2 border-[#3c3c4e]/30 hover:border-[#004aff] text-[#3c3c4e] hover:text-[#004aff] px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-300">
                 View Our Work
               </button>
             </div>
@@ -50,16 +49,16 @@ const Hero2 = () => {
             {/* Stats */}
             <div className="grid grid-cols-3 gap-8 pt-8 max-w-md mx-auto lg:mx-0">
               <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">150+</div>
-                <div className="text-gray-600 text-sm">Projects Completed</div>
+                <div className="text-2xl font-bold text-[#004aff]">150+</div>
+                <div className="text-[#3c3c4e] text-sm">Projects Completed</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-purple-600">98%</div>
-                <div className="text-gray-600 text-sm">Success Rate</div>
+                <div className="text-2xl font-bold text-[#2f7dcb]">98%</div>
+                <div className="text-[#3c3c4e] text-sm">Success Rate</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-indigo-600">5+</div>
-                <div className="text-gray-600 text-sm">Years Experience</div>
+                <div className="text-2xl font-bold text-[#054889]">5+</div>
+                <div className="text-[#3c3c4e] text-sm">Years Experience</div>
               </div>
             </div>
           </div>
@@ -73,13 +72,13 @@ const Hero2 = () => {
                 {/* Brain Outline */}
                 <div className="relative w-64 h-56">
                   {/* Left Hemisphere */}
-                  <div className="absolute left-0 top-0 w-32 h-56 bg-gradient-to-br from-blue-100 to-blue-200 rounded-l-full rounded-r-3xl border-2 border-blue-200"></div>
+                  <div className="absolute left-0 top-0 w-32 h-56 bg-gradient-to-br from-[#37acf7]/20 to-[#2f7dcb]/30 rounded-l-full rounded-r-3xl border-2 border-[#37acf7]/30"></div>
                   
                   {/* Right Hemisphere */}
-                  <div className="absolute right-0 top-0 w-32 h-56 bg-gradient-to-br from-purple-100 to-purple-200 rounded-r-full rounded-l-3xl border-2 border-purple-200"></div>
+                  <div className="absolute right-0 top-0 w-32 h-56 bg-gradient-to-br from-[#79ffff]/20 to-[#004aff]/30 rounded-r-full rounded-l-3xl border-2 border-[#79ffff]/30"></div>
                   
                   {/* Corpus Callosum */}
-                  <div className="absolute left-1/2 transform -translate-x-1/2 top-4 w-6 h-48 bg-gradient-to-b from-blue-300 to-purple-300 rounded-full"></div>
+                  <div className="absolute left-1/2 transform -translate-x-1/2 top-4 w-6 h-48 bg-gradient-to-b from-[#37acf7] to-[#004aff] rounded-full"></div>
                   
                   {/* Synapses/Connections */}
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
@@ -87,7 +86,7 @@ const Hero2 = () => {
                       {[1, 2, 3, 4, 5].map((item) => (
                         <div
                           key={item}
-                          className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"
+                          className="w-2 h-2 bg-[#ebed47] rounded-full animate-pulse"
                           style={{ animationDelay: `${item * 0.2}s` }}
                         ></div>
                       ))}
@@ -97,38 +96,38 @@ const Hero2 = () => {
               </div>
 
               {/* Floating Elements */}
-              <div className="absolute -top-4 -right-4 w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center shadow-lg">
-                <div className="w-12 h-12 bg-yellow-400 rounded-full flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">💡</span>
+              <div className="absolute -top-4 -right-4 w-20 h-20 bg-[#ebed47]/20 rounded-full flex items-center justify-center shadow-lg">
+                <div className="w-12 h-12 bg-[#ebed47] rounded-full flex items-center justify-center">
+                  <span className="text-[#3c3c4e] font-bold text-sm">💡</span>
                 </div>
               </div>
 
-              <div className="absolute -bottom-4 -left-4 w-16 h-16 bg-green-100 rounded-full flex items-center justify-center shadow-lg">
-                <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">⚡</span>
+              <div className="absolute -bottom-4 -left-4 w-16 h-16 bg-[#79ffff]/30 rounded-full flex items-center justify-center shadow-lg">
+                <div className="w-10 h-10 bg-[#79ffff] rounded-full flex items-center justify-center">
+                  <span className="text-[#3c3c4e] font-bold text-sm">⚡</span>
                 </div>
               </div>
 
-              <div className="absolute top-1/2 -right-8 w-12 h-12 bg-red-100 rounded-full flex items-center justify-center shadow-lg">
-                <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
+              <div className="absolute top-1/2 -right-8 w-12 h-12 bg-[#004aff]/20 rounded-full flex items-center justify-center shadow-lg">
+                <div className="w-8 h-8 bg-[#004aff] rounded-full flex items-center justify-center">
                   <span className="text-white font-bold text-xs">🚀</span>
                 </div>
               </div>
             </div>
 
             {/* Background Decorative Elements */}
-            <div className="absolute -z-10 top-20 -left-10 w-40 h-40 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob"></div>
-            <div className="absolute -z-10 top-40 -right-10 w-40 h-40 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-2000"></div>
-            <div className="absolute -z-10 -bottom-8 left-20 w-40 h-40 bg-indigo-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-4000"></div>
+            <div className="absolute -z-10 top-20 -left-10 w-40 h-40 bg-[#37acf7]/20 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob"></div>
+            <div className="absolute -z-10 top-40 -right-10 w-40 h-40 bg-[#2f7dcb]/20 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-2000"></div>
+            <div className="absolute -z-10 -bottom-8 left-20 w-40 h-40 bg-[#054889]/20 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-4000"></div>
           </div>
         </div>
 
         {/* Scroll Indicator */}
         <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
           <div className="flex flex-col items-center space-y-2">
-            <span className="text-gray-500 text-sm">Scroll to explore</span>
-            <div className="w-6 h-10 border-2 border-gray-400 rounded-full flex justify-center">
-              <div className="w-1 h-3 bg-gray-400 rounded-full mt-2 animate-bounce"></div>
+            <span className="text-[#3c3c4e] text-sm">Scroll to explore</span>
+            <div className="w-6 h-10 border-2 border-[#3c3c4e]/40 rounded-full flex justify-center">
+              <div className="w-1 h-3 bg-[#3c3c4e]/60 rounded-full mt-2 animate-bounce"></div>
             </div>
           </div>
         </div>

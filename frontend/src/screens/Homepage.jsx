@@ -10,6 +10,7 @@ import Clients from '../components/Clients.jsx'
 import Getintouch from '../components/Getintouch.jsx';
 import Win from '../components/Win.jsx';
 import Team from '../components/Team.jsx';
+import Footer from '../components/Footer.jsx'
 
 const Homepage = () => {
   return (
@@ -41,6 +42,8 @@ const Homepage = () => {
         <section id='contact'>
           <Getintouch />
         </section>
+
+        <Footer />
     </div>
   )
 }

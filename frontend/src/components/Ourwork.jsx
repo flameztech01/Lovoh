@@ -29,10 +29,12 @@ const Ourwork = () => {
     };
 
     return (
-        <div className=" min-h-screen bg-gray-900 text-white py-20 px-4 sm:px-6 lg:px-8">
+        <div className="min-h-screen bg-gradient-to-br from-[#054889] via-[#3c3c4e] to-[#054889] text-white py-20 px-4 sm:px-6 lg:px-8">
             {/* Header Section */}
             <div className="max-w-4xl mx-auto text-center mb-16">
-                <h1 className="text-5xl lg:text-7xl font-bold mb-8">Our Work</h1>
+                <h1 className="text-5xl lg:text-7xl font-bold mb-8">
+                    Our <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#37acf7] to-[#79ffff]">Work</span>
+                </h1>
                 <p className="text-lg lg:text-xl text-gray-300 leading-relaxed">
                     Businesses play a major role in your day to day experience, as these establishments provide the products and services we all use in our daily lives.
 
@@ -42,10 +44,10 @@ const Ourwork = () => {
 
             {/* Binary Section */}
             <div className="text-center mb-16">
-                <h5 className="text-xl lg:text-2xl font-semibold mb-4">
+                <h5 className="text-xl lg:text-2xl font-semibold mb-4 text-[#79ffff]">
                     We've cracked the hard codes, to give you seamless results.
                 </h5>
-                <h5 className="text-blue-400 font-mono text-lg opacity-80">
+                <h5 className="text-[#37acf7] font-mono text-lg opacity-80">
                     1010101010101010101010 1010101010101010101010
                 </h5>
             </div>
@@ -54,7 +56,7 @@ const Ourwork = () => {
             <div className="max-w-6xl mx-auto">
                 <div className="relative">
                     {/* Main Image */}
-                    <div className="relative h-96 lg:h-[600px] rounded-2xl overflow-hidden">
+                    <div className="relative h-96 lg:h-[600px] rounded-2xl overflow-hidden border-2 border-[#37acf7]/30">
                         <img 
                             src={works[currentIndex].image} 
                             alt={`Project ${currentIndex + 1}`}
@@ -64,7 +66,7 @@ const Ourwork = () => {
                         {/* Navigation Buttons */}
                         <button 
                             onClick={prevSlide}
-                            className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 backdrop-blur-sm"
+                            className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-[#3c3c4e]/80 hover:bg-[#004aff]/80 text-white w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 backdrop-blur-sm border border-[#37acf7]/30"
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -73,7 +75,7 @@ const Ourwork = () => {
                         
                         <button 
                             onClick={nextSlide}
-                            className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 backdrop-blur-sm"
+                            className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-[#3c3c4e]/80 hover:bg-[#004aff]/80 text-white w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 backdrop-blur-sm border border-[#37acf7]/30"
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -88,8 +90,8 @@ const Ourwork = () => {
                                     onClick={() => setCurrentIndex(index)}
                                     className={`w-3 h-3 rounded-full transition-all duration-300 ${
                                         index === currentIndex 
-                                            ? 'bg-white' 
-                                            : 'bg-white/50 hover:bg-white/70'
+                                            ? 'bg-[#79ffff]' 
+                                            : 'bg-[#37acf7]/50 hover:bg-[#37acf7]/70'
                                     }`}
                                 />
                             ))}
@@ -104,8 +106,8 @@ const Ourwork = () => {
                                 onClick={() => setCurrentIndex(index)}
                                 className={`w-20 h-20 lg:w-24 lg:h-24 rounded-lg overflow-hidden border-2 transition-all duration-300 ${
                                     index === currentIndex 
-                                        ? 'border-white scale-110' 
-                                        : 'border-gray-600 hover:border-gray-400'
+                                        ? 'border-[#79ffff] scale-110 shadow-lg shadow-[#79ffff]/20' 
+                                        : 'border-[#3c3c4e] hover:border-[#37acf7]'
                                 }`}
                             >
                                 <img 
@@ -118,6 +120,11 @@ const Ourwork = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Background Decorative Elements */}
+            <div className="absolute top-20 left-10 w-4 h-4 bg-[#37acf7] rounded-full opacity-60 animate-pulse"></div>
+            <div className="absolute top-40 right-20 w-6 h-6 bg-[#79ffff] rounded-full opacity-40 animate-bounce"></div>
+            <div className="absolute bottom-40 left-20 w-3 h-3 bg-[#ebed47] rounded-full opacity-60 animate-pulse"></div>
         </div>
     );
 };

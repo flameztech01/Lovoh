@@ -15,9 +15,9 @@ const Team = () => {
         { id: 2, name: 'Kayode Olayiwola', title: 'Digital Strategist', image: 'team2.png' },
         { id: 3, name: 'Edidiong Sunday', title: 'Lead Designer', image: 'team3.png' },
         { id: 4, name: 'Uduak Daniel', title: 'Brand Development Manager', image: 'team4.png' },
-        { id: 5, name: 'Emmanuel "Kembit" Nkem', title: 'Lead Software Developer', image: 'team5.png' },
-        { id: 6, name: 'Daniel "Brilla" Joseph', title: 'Marketing & PR Specialist', image: 'team6.png' },
-        { id: 7, name: 'Anwuli Victory Ogbogu', title: 'Project Manager', image: 'team7.png' },
+        { id: 5, name: 'Emmanuel "Kembit" Nkem', title: 'Lead Software Developer', image: 'team6.png' },
+        { id: 6, name: 'Daniel "Brilla" Joseph', title: 'Marketing & PR Specialist', image: 'team7.png' },
+        { id: 7, name: 'Anwuli Victory Ogbogu', title: 'Project Manager', image: 'team8.png' },
     ];
 
     return (

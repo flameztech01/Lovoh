@@ -6,7 +6,9 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
+    host: true,
     port: 3000,
+    allowedHosts: ['entrepreneurs-morgan-alliance-rarely.trycloudflare.com'],
     proxy: {
       '/api': {
         target: 'http://localhost:5000',
@@ -14,4 +16,7 @@ export default defineConfig({
       }
     }
   },
+  
 })
+
+
