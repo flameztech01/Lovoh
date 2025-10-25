@@ -40,19 +40,19 @@ app.use(logger);
 app.use('/api/admin', adminRoutes);
 app.use('/api/app', userRoutes);
 
-if(process.env.NODE_ENV === 'production') {
-    const __dirname = path.resolve();
+// if(process.env.NODE_ENV === 'production') {
+//     const __dirname = path.resolve();
     
-    // Serve static files
-    app.use(express.static(path.join(__dirname, '../frontend/dist')));
+//     // Serve static files
+//     app.use(express.static(path.join(__dirname, '../frontend/dist')));
     
-    // Simple catch-all - NO * symbol
-    app.use((req, res) => {
-        res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
-    });
-} else {
-    app.get('/', (req, res) => res.send('Server is Ready'));
-}
+//     // Simple catch-all - NO * symbol
+//     app.use((req, res) => {
+//         res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+//     });
+// } else {
+//     app.get('/', (req, res) => res.send('Server is Ready'));
+// }
 
 // Middleware
 app.use(notFound);
