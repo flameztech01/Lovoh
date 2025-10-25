@@ -1,4 +1,3 @@
-import { Query } from "mongoose";
 import { apiSlice } from "./apiSlice";
 
 const APP_URL = '/app';

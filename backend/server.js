@@ -12,7 +12,6 @@ import userRoutes from './routes/userRoutes.js'
 
 dotenv.config();
 
-
 const app = express();
 const PORT = process.env.PORT || 5000;
 const MONGO_URL = process.env.MONGO_URL;
@@ -22,7 +21,7 @@ app.use(cors({
     origin: [
         'http://localhost:3000',
         'http://localhost:5173',
-        'https://lovoh-1.onrender.com', // Your Render frontend URL
+        'https://lovoh-1.onrender.com',
     ],
     credentials: true
 }));
@@ -32,24 +31,29 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(logger);
 
-//Routes
+// Routes
 app.use('/api/admin', adminRoutes);
 app.use('/api/app', userRoutes);
 
 if(process.env.NODE_ENV === 'production') {
     const __dirname = path.resolve();
-    app.use(express.static(path.join(__dirname, 'frontend/dist')));
-
-    app.use( (req, res) => res.sendFile(path.resolve(__dirname, 'frontend', 'dist', 'index.html')));
+    
+    // Serve static files
+    app.use(express.static(path.join(__dirname, '../frontend/dist')));
+    
+    // Simple catch-all - NO * symbol
+    app.use((req, res) => {
+        res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+    });
 } else {
     app.get('/', (req, res) => res.send('Server is Ready'));
-};
+}
 
-//Middleware
-app.use(errorHandler);
+// Middleware
 app.use(notFound);
+app.use(errorHandler);
 
-//Connect to MongoDB and start server
+// Connect to MongoDB and start server
 mongoose
 .connect(MONGO_URL)
 .then(()=> {
@@ -59,4 +63,3 @@ mongoose
         console.log(`Server is running on port ${PORT}`);
     });
 });
-

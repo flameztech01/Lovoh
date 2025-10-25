@@ -4,7 +4,7 @@ import { ToastContainer } from 'react-toastify'
 
 const App = () => {
   return (
-    <div>
+    <div className='App'>
       <ToastContainer position='bottom-right' />
       <Outlet />
     </div>
