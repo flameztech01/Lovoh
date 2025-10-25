@@ -39,7 +39,8 @@ const Team = () => {
         {teamMembers.map((member) => (
           <div 
             key={member.id} 
-            className="bg-blue-600 rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden text-center"
+            className="rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden text-center"
+            style={{ backgroundColor: '#254899' }}
           >
             {/* Image Container - no padding, full width */}
             <div className="w-full">
@@ -67,7 +68,8 @@ const Team = () => {
       <div className="text-center">
         <button
           onClick={() => scrollToSection("contact")}
-          className="inline-flex items-center px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors duration-300 shadow-md hover:shadow-lg"
+          className="inline-flex items-center px-8 py-3 text-white font-semibold rounded-lg transition-colors duration-300 shadow-md hover:shadow-lg"
+          style={{ backgroundColor: '#254899' }}
         >
           Join Our Team
         </button>

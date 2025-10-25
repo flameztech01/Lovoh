@@ -11,7 +11,7 @@ const Hero2 = () => {
 
   return (
     <section className="relative z-20 min-h-screen bg-gradient-to-br from-[#37acf7]/20 to-[#79ffff]/20 flex items-center justify-center px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           {/* Text Content */}
           <div className="text-center lg:text-left space-y-8">
@@ -123,14 +123,6 @@ const Hero2 = () => {
         </div>
 
         {/* Scroll Indicator */}
-        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
-          <div className="flex flex-col items-center space-y-2">
-            <span className="text-[#3c3c4e] text-sm">Scroll to explore</span>
-            <div className="w-6 h-10 border-2 border-[#3c3c4e]/40 rounded-full flex justify-center">
-              <div className="w-1 h-3 bg-[#3c3c4e]/60 rounded-full mt-2 animate-bounce"></div>
-            </div>
-          </div>
-        </div>
       </div>
     </section>
   );
