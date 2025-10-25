@@ -23,7 +23,7 @@ const Hero2 = () => {
                 </span>{' '}
                 are{' '}
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#2f7dcb] to-[#004aff]">
-                  Worked
+                  Worked.
                 </span>
               </h1>
               

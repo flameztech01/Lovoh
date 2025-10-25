@@ -21,14 +21,16 @@ const Win = () => {
         {/* Description */}
         <div className="space-y-6 mb-12 max-w-3xl mx-auto">
           <p className="text-xl lg:text-2xl text-white leading-relaxed">
-            In today's fierce competition and ever-evolving business landscape, to be ahead in the game, your vision needs a team that works.
+            In today's fierce competition and ever-evolving business landscape, to be ahead in the game, <span
+            style={{color: '#EBECF0', fontWeight: 'bold', fontStyle: 'italic'}}
+            >your vision needs a team that works.</span>
           </p>
           <p className="text-2xl lg:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#37acf7] to-[#79ffff]">
             We are your Brand-Aid Partner
           </p>
         </div>
 
-        {/* CTA Button */}
+        {/* CTA Button */} 
         <button 
           onClick={() => scrollToSection("services")}
           className="inline-block bg-gradient-to-r from-[#ebed47] to-[#79ffff] hover:from-[#f0f269] hover:to-[#8fffff] text-[#3c3c4e] font-bold text-lg px-8 py-4 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
