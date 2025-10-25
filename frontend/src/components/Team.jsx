@@ -39,22 +39,26 @@ const Team = () => {
         {teamMembers.map((member) => (
           <div 
             key={member.id} 
-            className="bg-white rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 p-4 text-center"
+            className="bg-blue-600 rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden text-center"
           >
-            {/* Image Container with padding */}
-            <div className="p-3 mb-4"> {/* 12px padding (close to your 10-15px range) */}
+            {/* Image Container - no padding, full width */}
+            <div className="w-full">
               <img 
                 src={member.image} 
                 alt={`Portrait of ${member.name}, ${member.title}`}
-                className="w-full aspect-square object-cover rounded-lg"
+                className="w-full aspect-square object-cover"
               />
             </div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">
-              {member.name}
-            </h2>
-            <p className="text-gray-600 text-sm font-medium">
-              {member.title}
-            </p>
+            
+            {/* Text Container with white text */}
+            <div className="p-4">
+              <h2 className="text-lg font-semibold text-white mb-2">
+                {member.name}
+              </h2>
+              <p className="text-white text-sm font-medium opacity-90">
+                {member.title}
+              </p>
+            </div>
           </div>
         ))}
       </div>
