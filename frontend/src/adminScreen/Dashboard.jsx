@@ -8,6 +8,8 @@ const Dashboard = () => {
     const { data: messages, isLoading, isError, refetch } = useGetAllMessagesQuery();
     const [markAsRead] = useMarkAsReadMutation();
     const { adminInfo } = useSelector((state) => state.auth);
+
+    console.log('Admin Info:', adminInfo);
     const navigate = useNavigate();
 
     const handleViewMessage = async (messageId) => {
