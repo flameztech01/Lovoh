@@ -13,13 +13,20 @@ const Experience = () => {
     <div className="relative z-20 min-h-screen bg-gradient-to-br from-[#37acf7]/10 to-[#79ffff]/10 py-20 px-4 sm:px-6 lg:px-8">
       {/* Header Section */}
       <div className="max-w-6xl mx-auto mb-16">
-        <div className="flex -col lg:flex-row lg:justify-between lg:items-center lg:space-x-24 space-y-8 lg:space-y-0 mb-8">
-          <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold text-[#3c3c4e]">
-            Industries <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#004aff] to-[#2f7dcb]">Xperience</span>
-          </h1>
-          <p className="text-lg lg:text-xl text-[#3c3c4e] leading-relaxed max-w-md lg:text-left text-center">
-            In our 5 years in business, we've gained results and experience crafting and executing ideas and solutions for both personal and corporate brands in these industries.
-          </p>
+        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center lg:space-x-24 space-y-8 lg:space-y-0 mb-8">
+          {/* Header now comes first on mobile */}
+          <div className="order-1 lg:order-1">
+            <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold text-[#3c3c4e] text-center lg:text-left">
+              Industries <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#004aff] to-[#2f7dcb]">Xperience</span>
+            </h1>
+          </div>
+          
+          {/* Description comes after header on mobile */}
+          <div className="order-2 lg:order-2">
+            <p className="text-lg lg:text-xl text-[#3c3c4e] leading-relaxed max-w-md lg:text-left text-center">
+              In our 5 years in business, we've gained results and experience crafting and executing ideas and solutions for both personal and corporate brands in these industries.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -59,6 +66,9 @@ const Experience = () => {
           Slide in Our Dm
         </Link>
       </div>
+
+      {/* Background Decorative Elements */}
+      
     </div>
   )
 }

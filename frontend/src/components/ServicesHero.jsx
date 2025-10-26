@@ -123,9 +123,7 @@ const ServicesHero = () => {
               </svg>
             </button>
             
-            <button className="border-2 border-white/30 hover:border-[#79ffff] text-white hover:bg-white/10 px-8 py-4 rounded-full font-semibold text-lg transition-all duration-300 backdrop-blur-sm">
-              View Case Studies
-            </button>
+        
           </div>
         </div>
 
