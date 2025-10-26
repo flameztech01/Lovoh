@@ -1,7 +1,6 @@
 import React from 'react';
 
 const Hero2 = () => {
-
   const scrollToSection = (id) => {
     const section = document.getElementById(id);
     if (section) {
@@ -79,19 +78,6 @@ const Hero2 = () => {
                   
                   {/* Corpus Callosum */}
                   <div className="absolute left-1/2 transform -translate-x-1/2 top-4 w-6 h-48 bg-gradient-to-b from-[#37acf7] to-[#004aff] rounded-full"></div>
-                  
-                  {/* Synapses/Connections */}
-                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <div className="flex space-x-2">
-                      {[1, 2, 3, 4, 5].map((item) => (
-                        <div
-                          key={item}
-                          className="w-2 h-2 bg-[#ebed47] rounded-full animate-pulse"
-                          style={{ animationDelay: `${item * 0.2}s` }}
-                        ></div>
-                      ))}
-                    </div>
-                  </div>
                 </div>
               </div>
 
@@ -114,15 +100,8 @@ const Hero2 = () => {
                 </div>
               </div>
             </div>
-
-            {/* Background Decorative Elements */}
-            <div className="absolute -z-10 top-20 -left-10 w-40 h-40 bg-[#37acf7]/20 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob"></div>
-            <div className="absolute -z-10 top-40 -right-10 w-40 h-40 bg-[#2f7dcb]/20 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-2000"></div>
-            <div className="absolute -z-10 -bottom-8 left-20 w-40 h-40 bg-[#054889]/20 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-4000"></div>
           </div>
         </div>
-
-        {/* Scroll Indicator */}
       </div>
     </section>
   );

@@ -148,9 +148,7 @@ const Footer = () => {
       </div>
 
       {/* Background Decorative Elements */}
-      <div className="absolute bottom-20 left-10 w-3 h-3 bg-[#37acf7] rounded-full opacity-40 animate-pulse"></div>
-      <div className="absolute bottom-40 right-20 w-2 h-2 bg-[#79ffff] rounded-full opacity-60 animate-bounce"></div>
-      <div className="absolute bottom-10 right-1/4 w-1 h-1 bg-[#ebed47] rounded-full opacity-80 animate-pulse"></div>
+      
     </footer>
   )
 }

@@ -59,11 +59,6 @@ const Experience = () => {
           Slide in Our Dm
         </Link>
       </div>
-
-      {/* Background Decorative Elements */}
-      <div className="absolute top-20 left-10 w-4 h-4 bg-[#37acf7] rounded-full opacity-60 animate-pulse"></div>
-      <div className="absolute top-40 right-20 w-6 h-6 bg-[#79ffff] rounded-full opacity-40 animate-bounce"></div>
-      <div className="absolute bottom-40 left-20 w-3 h-3 bg-[#ebed47] rounded-full opacity-60 animate-pulse"></div>
     </div>
   )
 }

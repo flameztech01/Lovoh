@@ -39,9 +39,7 @@ const Win = () => {
         </button>
 
         {/* Background Decorative Elements */}
-        <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-[#2f7dcb]/20 rounded-full blur-xl animate-pulse"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-40 h-40 bg-[#004aff]/20 rounded-full blur-xl animate-pulse animation-delay-2000"></div>
-        <div className="absolute top-1/3 right-1/3 w-24 h-24 bg-[#79ffff]/20 rounded-full blur-xl animate-pulse animation-delay-4000"></div>
+
       </div>
     </div>
   )
