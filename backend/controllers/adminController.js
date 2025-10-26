@@ -62,7 +62,8 @@ const authAdmin  = asyncHandler (async (req, res, next) => {
         res.status(200).json({
             id: admin._id,
             username: admin.username,
-            email: admin.email
+            email: admin.email,
+            token: generateToken(admin._id),
         })
     } else{
         res.status(400)
