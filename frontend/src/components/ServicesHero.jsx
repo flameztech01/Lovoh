@@ -25,10 +25,7 @@ const ServicesHero = () => {
       <div className="max-w-7xl mx-auto">
         {/* Header Section */}
         <div className="text-center mb-16 lg:mb-24">
-          <div className="inline-flex items-center gap-2 bg-[#004aff]/20 border border-[#37acf7]/30 rounded-full px-4 py-2 mb-8">
-            <div className="w-2 h-2 bg-[#37acf7] rounded-full animate-pulse"></div>
-            <span className="text-[#79ffff] text-sm font-medium">Lovoh Create</span>
-          </div>
+          
           
           <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold mb-8 leading-tight">
             Explore Our

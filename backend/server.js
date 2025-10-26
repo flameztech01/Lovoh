@@ -16,11 +16,9 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const MONGO_URL = process.env.MONGO_URL;
 
-app.use(bodyParser.json());
 app.use(cors({
     origin: [
         'http://localhost:3000',
-        'http://localhost:5173',
         'https://lovoh-1.onrender.com',
     ],
     credentials: true,

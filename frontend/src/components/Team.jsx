@@ -28,7 +28,7 @@ const Team = () => {
           Our Team
         </h1>
         <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-          Meet our exceptional team of professionals who bring innovative ideas, 
+          Meet our exceptional A-team of professionals who bring innovative ideas, 
           strategic thinking, and flawless execution to deliver outstanding results. 
           We specialize in brand marketing and technology solutions.
         </p>

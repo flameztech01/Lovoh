@@ -129,7 +129,7 @@ const Getintouch = () => {
                   Sending...
                 </div>
               ) : (
-                'Send Message'
+                'Send a Message'
               )}
             </button>
           </form>

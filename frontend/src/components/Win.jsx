@@ -20,13 +20,13 @@ const Win = () => {
         
         {/* Description */}
         <div className="space-y-6 mb-12 max-w-3xl mx-auto">
-          <p className="text-xl lg:text-2xl text-white leading-relaxed">
-            In today's fierce competition and ever-evolving business landscape, to be ahead in the game, <span
+          <p className="text-xl lg:text-2xl text-gray-300 leading-relaxed">
+            In today's fierce competition and ever-evolving business landscape, to be ahead in the game, <span className='t'
             style={{color: '#EBECF0', fontWeight: 'bold', fontStyle: 'italic'}}
             >your vision needs a team that works.</span>
           </p>
           <p className="text-2xl lg:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#37acf7] to-[#79ffff]">
-            We are your Brand-Aid Partner
+            We are your Brand-Aid Partner.
           </p>
         </div>
 

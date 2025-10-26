@@ -13,7 +13,7 @@ const Experience = () => {
     <div className="relative z-20 min-h-screen bg-gradient-to-br from-[#37acf7]/10 to-[#79ffff]/10 py-20 px-4 sm:px-6 lg:px-8">
       {/* Header Section */}
       <div className="max-w-6xl mx-auto mb-16">
-        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center lg:space-x-24 space-y-8 lg:space-y-0 mb-8">
+        <div className="flex -col lg:flex-row lg:justify-between lg:items-center lg:space-x-24 space-y-8 lg:space-y-0 mb-8">
           <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold text-[#3c3c4e]">
             Industries <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#004aff] to-[#2f7dcb]">Xperience</span>
           </h1>
@@ -47,7 +47,7 @@ const Experience = () => {
       {/* CTA Section */}
       <div className="max-w-4xl mx-auto bg-gradient-to-r from-[#004aff] to-[#054889] rounded-2xl p-8 lg:p-12 text-center text-white shadow-2xl border border-[#37acf7]/30">
         <h2 className="text-2xl lg:text-3xl font-semibold mb-4 text-[#79ffff]">
-          We have helped over 50 SMEs
+          We have helped over 50 SMEs transcend.
         </h2>
         <h1 className="text-4xl lg:text-5xl font-bold mb-8">
           It's Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ebed47] to-[#79ffff]">Turn</span>

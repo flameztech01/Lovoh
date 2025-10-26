@@ -18,7 +18,6 @@ const getOneMessage = async (req, res, next) => {
     if(!Omessage) {
         res.status(404);
         throw new Error('Blog not found');
-        return;
     }
 
     res.status(200).json(Omessage);
