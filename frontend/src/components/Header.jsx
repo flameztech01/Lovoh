@@ -122,12 +122,12 @@ const Header = () => {
                 Events
               </Link>
 
-              <button 
-                onClick={() => scrollToSection("contact")} 
+              <Link 
+                to='/contact'
                 className="bg-[#254899] text-white hover:bg-[#1a3480] px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200"
               >
                 Contact
-              </button>
+              </Link>
             </div>
           </div>
 
@@ -232,7 +232,6 @@ const Header = () => {
             <Link
               to='/bizzzed'
               className="text-gray-700 hover:text-[#254899] block px-3 py-3 text-base font-medium transition-colors duration-200 border-b border-gray-100"
-              onClick={handleMobileLinkClick}
             >
               Bizzzed (Magazine)
             </Link>
@@ -240,7 +239,6 @@ const Header = () => {
             <Link
               to='/events'
               className="text-gray-700 hover:text-[#254899] block px-3 py-3 text-base font-medium transition-colors duration-200 border-b border-gray-100"
-              onClick={handleMobileLinkClick}
             >
               Events
             </Link>
@@ -248,7 +246,6 @@ const Header = () => {
             <Link
               to='/contact'
               className="bg-[#254899] text-white hover:bg-[#1a3480] block px-3 py-3 rounded-md text-base font-medium text-center transition-colors duration-200 mx-2 mt-4"
-              onClick={handleMobileLinkClick}
             >
               Contact
             </Link>

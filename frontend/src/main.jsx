@@ -21,6 +21,7 @@ import TheFruiitScreen from './screens/TheFruiitScreen.jsx';
 import PrivateRoute from './adminComponents/Privateroute.jsx';
 import BizzzedScreen from './screens/BizzzedScreen.jsx';
 import EventsScreen from './screens/EventScreen.jsx';
+import ContactUsScreen from './screens/ContactUsScreen.jsx'
 
 const router = createBrowserRouter([
   {
@@ -36,6 +37,7 @@ const router = createBrowserRouter([
       {path: '/thefruiit', element: <TheFruiitScreen />},
       {path: '/bizzzed', element: <BizzzedScreen />},
       {path: '/events', element: <EventsScreen />},
+      {path: '/contact', element: <ContactUsScreen />},
 
       
       { 
