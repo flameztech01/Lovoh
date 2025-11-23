@@ -71,15 +71,15 @@ const PuulsScreen = () => {
     <div className="min-h-screen bg-white">
       <Header />
       {/* Hero Section */}
-      <section className="mt-10 relative min-h-screen flex items-center justify-center bg-gradient-to-br from-[#004BFF] via-[#0033CC] to-[#002699] px-4 sm:px-6 lg:px-8 overflow-hidden">
+      <section className="mt-15 relative min-h-screen flex items-center justify-center bg-gradient-to-br from-[#004BFF] via-[#0033CC] to-[#002699] px-4 sm:px-6 lg:px-8 overflow-hidden">
         <div className="max-w-6xl mx-auto text-center relative z-10">
           <div className="space-y-8">
             {/* Sub-brand Logo */}
             <div className="flex justify-center mb-4">
               <img 
-                src="/2copy2.png" 
+                src="/2copy.png" 
                 alt="Puuls" 
-                className="h-16 w-auto"
+                className="h-16 w-auto rounded-md border border-white"
               />
             </div>
 
@@ -119,7 +119,7 @@ const PuulsScreen = () => {
 
             {/* Stats */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 pt-12 max-w-2xl mx-auto">
-              <div className="text-center">
+              {/* <div className="text-center">
                 <div className="text-2xl font-bold text-white mb-2">500+</div>
                 <div className="text-gray-200 text-sm">Expert Associates</div>
               </div>
@@ -134,7 +134,7 @@ const PuulsScreen = () => {
               <div className="text-center">
                 <div className="text-2xl font-bold text-white mb-2">98%</div>
                 <div className="text-gray-200 text-sm">Client Satisfaction</div>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>

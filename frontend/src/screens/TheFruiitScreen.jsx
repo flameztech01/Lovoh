@@ -81,13 +81,13 @@ const TheFruiitScreen = () => {
     <div className="min-h-screen bg-white">
       <Header />
       {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center justify-center bg-[#193564] px-4 sm:px-6 lg:px-8 overflow-hidden mt-10">
+      <section className="relative min-h-screen flex items-center justify-center bg-[#193564] px-4 sm:px-6 lg:px-8 overflow-hidden mt-15">
         <div className="max-w-6xl mx-auto text-center relative z-10">
           <div className="space-y-8">
             {/* Sub-brand Logo */}
             <div className="flex justify-center mb-4">
               <img 
-                src="/thefruiit.png" 
+                src="/10copy.png" 
                 alt="theFruiit" 
                 className="h-16 w-auto"
               />
@@ -129,7 +129,7 @@ const TheFruiitScreen = () => {
 
             {/* Community Stats */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 pt-12 max-w-2xl mx-auto">
-              <div className="text-center">
+              {/* <div className="text-center">
                 <div className="text-2xl font-bold text-[#7EF949] mb-2">1K+</div>
                 <div className="text-[#FFFCFF] text-sm">Members</div>
               </div>
@@ -144,7 +144,7 @@ const TheFruiitScreen = () => {
               <div className="text-center">
                 <div className="text-2xl font-bold text-[#7EF949] mb-2">360°</div>
                 <div className="text-[#FFFCFF] text-sm">Development</div>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>
