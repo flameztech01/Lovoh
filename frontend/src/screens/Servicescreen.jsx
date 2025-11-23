@@ -6,6 +6,7 @@ import Serviceprocess from '../components/Serviceprocess.jsx'
 import Casestudies from '../components/Casestudies.jsx'
 import ServiceFAQ from '../components/ServiceFAQ.jsx'
 import ServiceCTA from '../components/ServiceCTA.jsx'
+import Footer from '../components/Footer.jsx'
 
 const Servicescreen = () => {
   return (
@@ -17,6 +18,7 @@ const Servicescreen = () => {
         <Casestudies />
         <ServiceFAQ />
         <ServiceCTA />
+        <Footer />
     </div>
   )
 }

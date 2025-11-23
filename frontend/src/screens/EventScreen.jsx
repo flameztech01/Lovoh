@@ -1,6 +1,7 @@
 // screens/EventsScreen.jsx
 import React, { useState } from 'react';
 import Header from '../components/Header.jsx';
+import Footer from '../components/Footer.jsx'
 
 const EventsScreen = () => {
   const [activeFilter, setActiveFilter] = useState('All');
@@ -388,6 +389,7 @@ const EventsScreen = () => {
           </div>
         </div>
       </section>
+      <Footer />
     </div>
   );
 };

@@ -1,6 +1,7 @@
 // screens/ContactUsScreen.jsx
 import React, { useState } from 'react';
 import Header from '../components/Header.jsx';
+import Footer from '../components/Footer.jsx';
 
 const ContactUsScreen = () => {
   const [formData, setFormData] = useState({
@@ -272,6 +273,7 @@ const ContactUsScreen = () => {
           </div>
         </div>
       </section>
+      <Footer />
     </div>
   );
 };

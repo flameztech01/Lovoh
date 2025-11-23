@@ -13,6 +13,7 @@ import {
   FaNewspaper,
   FaBook
 } from 'react-icons/fa';
+import Footer from '../components/Footer.jsx'
 
 const BizzzedScreen = () => {
   const [activeCategory, setActiveCategory] = useState('All');
@@ -378,7 +379,9 @@ const BizzzedScreen = () => {
             ))}
           </div>
         </div>
+        
       </section>
+      <Footer />
     </div>
   );
 };
