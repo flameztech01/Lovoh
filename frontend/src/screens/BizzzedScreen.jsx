@@ -123,9 +123,9 @@ const BizzzedScreen = () => {
             {/* Sub-brand Logo */}
             <div className="flex justify-center mb-4">
               <img 
-                src="/bizzed.png" 
+                src="/8copy.png" 
                 alt="Bizzzed" 
-                className="h-16 w-auto"
+                className="h-16 w-auto rounded-md"
               />
             </div>
 
