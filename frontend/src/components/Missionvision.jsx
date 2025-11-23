@@ -1,5 +1,6 @@
 // components/about/MissionVision.jsx
 import React from 'react';
+import { FaBullseye, FaBinoculars } from 'react-icons/fa';
 
 const Missionvision = () => {
   return (
@@ -10,7 +11,7 @@ const Missionvision = () => {
           <div className="bg-white rounded-2xl p-8 shadow-xl hover:shadow-2xl transition-shadow duration-300">
             <div className="text-center mb-8">
               <div className="w-16 h-16 bg-[#254899] rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-white text-2xl">🎯</span>
+                <FaBullseye className="text-white text-2xl" />
               </div>
               <h3 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-4">Our Mission</h3>
             </div>
@@ -40,7 +41,7 @@ const Missionvision = () => {
           <div className="bg-white rounded-2xl p-8 shadow-xl hover:shadow-2xl transition-shadow duration-300">
             <div className="text-center mb-8">
               <div className="w-16 h-16 bg-[#ebed17] rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-[#254899] text-2xl">🔭</span>
+                <FaBinoculars className="text-[#254899] text-2xl" />
               </div>
               <h3 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-4">Our Vision</h3>
             </div>

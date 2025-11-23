@@ -1,5 +1,13 @@
 // components/services/ServiceProcess.jsx
 import React from 'react';
+import { 
+  FaSearch, 
+  FaClipboardList, 
+  FaPalette, 
+  FaCheck, 
+  FaRocket, 
+  FaChartLine 
+} from 'react-icons/fa';
 
 const Serviceprocess = () => {
   const process = [
@@ -7,42 +15,42 @@ const Serviceprocess = () => {
       step: "01",
       title: "Discovery & Analysis",
       description: "We dive deep into your business, market, and goals to understand your unique challenges and opportunities.",
-      icon: "🔍",
+      icon: <FaSearch />,
       color: "from-[#254899] to-[#1a3480]"
     },
     {
       step: "02",
       title: "Strategy & Planning",
       description: "We develop a comprehensive strategy tailored to your objectives with clear milestones and KPIs.",
-      icon: "📋",
+      icon: <FaClipboardList />,
       color: "from-[#ebed17] to-[#f0f269]"
     },
     {
       step: "03",
       title: "Design & Development",
       description: "Our team brings the strategy to life with creative design and robust technical implementation.",
-      icon: "🎨",
+      icon: <FaPalette />,
       color: "from-[#254899] to-[#1a3480]"
     },
     {
       step: "04",
       title: "Testing & Quality",
       description: "Rigorous testing ensures everything works perfectly and meets the highest quality standards.",
-      icon: "✅",
+      icon: <FaCheck />,
       color: "from-[#ebed17] to-[#f0f269]"
     },
     {
       step: "05",
       title: "Launch & Deploy",
       description: "We manage the launch process smoothly and ensure everything goes live without issues.",
-      icon: "🚀",
+      icon: <FaRocket />,
       color: "from-[#254899] to-[#1a3480]"
     },
     {
       step: "06",
       title: "Optimize & Scale",
       description: "Continuous monitoring and optimization to ensure long-term success and scalability.",
-      icon: "📈",
+      icon: <FaChartLine />,
       color: "from-[#ebed17] to-[#f0f269]"
     }
   ];

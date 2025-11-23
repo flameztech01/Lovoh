@@ -10,7 +10,7 @@ const Casestudies = () => {
       category: "Brand Development",
       results: "245% revenue growth in 6 months",
       description: "Complete brand overhaul including strategy, identity, and digital transformation",
-      image: "case-study-1.jpg",
+      image: "/now1.jpg",
       services: ["Brand Strategy", "UI/UX Design", "Web Development", "Digital Marketing"],
       color: "from-[#254899] to-[#1a3480]"
     },
@@ -21,7 +21,7 @@ const Casestudies = () => {
       category: "Web Development",
       results: "15,000+ users in first quarter",
       description: "End-to-end development of a scalable SaaS platform with advanced features",
-      image: "case-study-2.jpg",
+      image: "/now2.jpg",
       services: ["Web Development", "UI/UX Design", "API Integration", "Cloud Deployment"],
       color: "from-[#ebed17] to-[#f0f269]"
     },
@@ -32,7 +32,7 @@ const Casestudies = () => {
       category: "Digital Marketing",
       results: "300% lead generation increase",
       description: "Comprehensive digital marketing strategy driving qualified leads and conversions",
-      image: "case-study-3.jpg",
+      image: "/now3.jpg",
       services: ["SEO", "Content Marketing", "Social Media", "PPC Campaigns"],
       color: "from-[#254899] to-[#1a3480]"
     },
@@ -43,7 +43,7 @@ const Casestudies = () => {
       category: "App Development",
       results: "4.8★ rating with 50K+ downloads",
       description: "Feature-rich mobile application with seamless user experience and security",
-      image: "case-study-4.jpg",
+      image: "/now4.jpg",
       services: ["Mobile Development", "UI/UX Design", "Security", "App Store Optimization"],
       color: "from-[#ebed17] to-[#f0f269]"
     }
@@ -81,12 +81,12 @@ const Casestudies = () => {
             >
               {/* Image Container */}
               <div className="relative h-64 overflow-hidden">
-                <div className={`absolute inset-0 bg-gradient-to-br ${study.color} opacity-90`}></div>
-                <div className="absolute inset-0 flex items-center justify-center text-white text-6xl opacity-20">
-                  {study.category.includes('Brand') ? '🎨' : 
-                   study.category.includes('Web') ? '💻' : 
-                   study.category.includes('Marketing') ? '📱' : '📲'}
-                </div>
+                <img 
+                  src={study.image} 
+                  alt={study.title}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
                 <div className="absolute bottom-6 left-6 right-6">
                   <div className="flex items-center gap-3 mb-3">
                     <div className={`w-3 h-3 rounded-full ${

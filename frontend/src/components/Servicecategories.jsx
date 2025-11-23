@@ -1,5 +1,13 @@
 // components/services/ServiceCategories.jsx
 import React, { useState } from 'react';
+import { 
+  FaPalette, 
+  FaMobileAlt, 
+  FaLaptopCode, 
+  FaCrosshairs, 
+  FaChartBar, 
+  FaPenAlt 
+} from 'react-icons/fa';
 
 const Servicecategories = () => {
   const [activeCategory, setActiveCategory] = useState(0);
@@ -8,7 +16,7 @@ const Servicecategories = () => {
     {
       id: 0,
       title: "Brand Development",
-      icon: "🎨",
+      icon: <FaPalette />,
       description: "Comprehensive brand strategy and identity development",
       services: [
         "Brand Strategy & Positioning",
@@ -22,7 +30,7 @@ const Servicecategories = () => {
     {
       id: 1,
       title: "Digital Marketing",
-      icon: "📱",
+      icon: <FaMobileAlt />,
       description: "Data-driven marketing strategies for digital growth",
       services: [
         "Social Media Marketing",
@@ -36,7 +44,7 @@ const Servicecategories = () => {
     {
       id: 2,
       title: "Web & App Development",
-      icon: "💻",
+      icon: <FaLaptopCode />,
       description: "Custom digital solutions built for performance",
       services: [
         "Website Development",
@@ -50,7 +58,7 @@ const Servicecategories = () => {
     {
       id: 3,
       title: "UI/UX Design",
-      icon: "🎯",
+      icon: <FaCrosshairs />,
       description: "User-centered design for exceptional digital experiences",
       services: [
         "User Research & Testing",
@@ -64,7 +72,7 @@ const Servicecategories = () => {
     {
       id: 4,
       title: "Strategy & Consulting",
-      icon: "📊",
+      icon: <FaChartBar />,
       description: "Strategic guidance for business growth and innovation",
       services: [
         "Digital Transformation",
@@ -78,7 +86,7 @@ const Servicecategories = () => {
     {
       id: 5,
       title: "Content & Communications",
-      icon: "✍️",
+      icon: <FaPenAlt />,
       description: "Compelling content that connects and converts",
       services: [
         "Content Creation",

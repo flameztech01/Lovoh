@@ -1,5 +1,6 @@
 // components/about/OurStory.jsx
 import React from 'react';
+import { FaLightbulb } from 'react-icons/fa';
 
 const Ourstory = () => {
   return (
@@ -65,7 +66,7 @@ const Ourstory = () => {
 
               <div className="relative z-10 space-y-6">
                 <div className="w-12 h-12 bg-[#ebed17] rounded-full flex items-center justify-center">
-                  <span className="text-[#254899] font-bold text-lg">💡</span>
+                  <FaLightbulb className="text-[#254899] text-xl" />
                 </div>
                 
                 <blockquote className="text-2xl lg:text-3xl font-bold leading-tight">

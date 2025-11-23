@@ -1,40 +1,48 @@
 // components/about/Values.jsx
 import React from 'react';
+import { 
+  FaLightbulb, 
+  FaBullseye, 
+  FaHandshake, 
+  FaRocket, 
+  FaGem, 
+  FaSyncAlt 
+} from 'react-icons/fa';
 
 const Values = () => {
   const values = [
     {
-      icon: '⚡',
+      icon: <FaLightbulb />,
       title: 'Innovation First',
       description: 'We constantly push boundaries and explore new technologies to deliver cutting-edge solutions that keep our clients ahead of the curve.',
       color: 'from-[#ebed17] to-[#f0f269]'
     },
     {
-      icon: '🎯',
+      icon: <FaBullseye />,
       title: 'Strategic Excellence',
       description: 'Every project is backed by thorough research, data-driven insights, and strategic planning to ensure maximum impact and ROI.',
       color: 'from-[#254899] to-[#1a3480]'
     },
     {
-      icon: '🤝',
+      icon: <FaHandshake />,
       title: 'Partnership Mindset',
       description: 'We work as an extension of your team, building long-term relationships based on trust, transparency, and shared success.',
       color: 'from-[#ebed17] to-[#f0f269]'
     },
     {
-      icon: '🚀',
+      icon: <FaRocket />,
       title: 'Results-Driven',
       description: 'We measure our success by your success. Every strategy is designed to deliver tangible business results and measurable growth.',
       color: 'from-[#254899] to-[#1a3480]'
     },
     {
-      icon: '💎',
+      icon: <FaGem />,
       title: 'Quality Obsessed',
       description: 'From concept to execution, we maintain the highest standards of quality, attention to detail, and craftsmanship in everything we deliver.',
       color: 'from-[#ebed17] to-[#f0f269]'
     },
     {
-      icon: '🔄',
+      icon: <FaSyncAlt />,
       title: 'Agile Approach',
       description: 'We adapt quickly to changing market dynamics and client needs, ensuring our solutions remain relevant and effective in a fast-paced world.',
       color: 'from-[#254899] to-[#1a3480]'

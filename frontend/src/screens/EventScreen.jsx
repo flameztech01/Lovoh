@@ -15,7 +15,7 @@ const EventsScreen = () => {
       type: "Conference",
       category: "Marketing",
       description: "Join industry leaders for a day of insights on the future of digital marketing, AI integration, and customer engagement strategies.",
-      image: "event-marketing.jpg",
+      image: "/now1.jpg",
       speakers: 12,
       attendees: 300,
       price: "₦25,000",
@@ -30,7 +30,7 @@ const EventsScreen = () => {
       type: "Competition",
       category: "Entrepreneurship",
       description: "Witness innovative startups pitch their ideas to a panel of investors. Great networking opportunity for entrepreneurs.",
-      image: "event-pitch.jpg",
+      image: "/now2.jpg",
       speakers: 8,
       attendees: 150,
       price: "Free",
@@ -45,7 +45,7 @@ const EventsScreen = () => {
       type: "Workshop",
       category: "Design",
       description: "Hands-on workshop covering UI/UX design principles, brand identity development, and creative process optimization.",
-      image: "event-design.jpg",
+      image: "/now3.jpg",
       speakers: 3,
       attendees: 25,
       price: "₦15,000",
@@ -63,7 +63,7 @@ const EventsScreen = () => {
       type: "Forum",
       category: "Technology",
       description: "Exploring the latest trends in tech innovation and their impact on Nigerian businesses.",
-      image: "event-tech.jpg",
+      image: "/now4.jpg",
       speakers: 10,
       attendees: 200,
       status: "Past"
@@ -77,7 +77,7 @@ const EventsScreen = () => {
       type: "Webinar",
       category: "Branding",
       description: "Interactive session on building resilient brands in the digital age.",
-      image: "event-branding.jpg",
+      image: "/now1.jpg",
       speakers: 2,
       attendees: 85,
       status: "Past"
@@ -224,13 +224,13 @@ const EventsScreen = () => {
                   className="group bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-500 transform hover:-translate-y-2 overflow-hidden border border-gray-100"
                 >
                   {/* Event Header */}
-                  <div className="relative h-48 bg-gradient-to-br from-[#254899] to-[#1a3480] overflow-hidden">
-                    <div className="absolute inset-0 flex items-center justify-center text-white text-3xl opacity-20">
-                      {event.type === 'Conference' ? '🎤' : 
-                       event.type === 'Workshop' ? '🛠️' : 
-                       event.type === 'Webinar' ? '💻' : 
-                       event.type === 'Competition' ? '🏆' : '👥'}
-                    </div>
+                  <div className="relative h-48 overflow-hidden">
+                    <img 
+                      src={event.image} 
+                      alt={event.title}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
                     <div className="absolute top-4 left-4 flex gap-2">
                       <span className="bg-[#ebed17] text-[#254899] px-3 py-1 rounded-full text-sm font-bold">
                         {event.type}
@@ -314,6 +314,20 @@ const EventsScreen = () => {
                   key={event.id}
                   className="group bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 opacity-80 hover:opacity-100"
                 >
+                  <div className="relative h-48 overflow-hidden">
+                    <img 
+                      src={event.image} 
+                      alt={event.title}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
+                    <div className="absolute top-4 right-4">
+                      <span className="bg-gray-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                        Completed
+                      </span>
+                    </div>
+                  </div>
+
                   <div className="p-6">
                     <div className="flex items-start justify-between mb-4">
                       <div>
@@ -326,9 +340,6 @@ const EventsScreen = () => {
                           <span>{event.location}</span>
                         </div>
                       </div>
-                      <span className="bg-gray-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
-                        Completed
-                      </span>
                     </div>
 
                     <p className="text-gray-600 mb-4 leading-relaxed">

@@ -1,28 +1,34 @@
 // components/about/WhyChooseUs.jsx
 import React from 'react';
+import { 
+  FaBullseye, 
+  FaBolt, 
+  FaLightbulb, 
+  FaChartLine 
+} from 'react-icons/fa';
 
 const Whychooseus = () => {
   const features = [
     {
-      icon: '🎯',
+      icon: <FaBullseye />,
       title: 'Strategic Partnership',
       description: 'We become an extension of your team, working closely to understand your goals and deliver solutions that drive real business impact.',
       stats: '150+ Successful Partnerships'
     },
     {
-      icon: '⚡',
+      icon: <FaBolt />,
       title: 'Rapid Execution',
       description: 'Our agile methodology ensures quick turnaround times without compromising on quality or strategic depth.',
       stats: '98% On-Time Delivery'
     },
     {
-      icon: '💡',
+      icon: <FaLightbulb />,
       title: 'Innovation-Driven',
       description: 'We stay ahead of industry trends and leverage cutting-edge technologies to keep your brand competitive and relevant.',
       stats: '50+ Tech Innovations'
     },
     {
-      icon: '📈',
+      icon: <FaChartLine />,
       title: 'Measurable Results',
       description: 'Every project includes clear KPIs and analytics to track performance and demonstrate ROI to stakeholders.',
       stats: 'Average 3x ROI'
