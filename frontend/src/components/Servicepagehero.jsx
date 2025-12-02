@@ -79,11 +79,11 @@ const Servicepagehero = () => {
             </div>
           </div>
 
-          {/* CTA Buttons */}
+          {/* CTA Buttons - Both buttons now have the same width */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-8">
             <button 
               onClick={() => scrollToSection("services")}
-              className="bg-[#ebed17] hover:bg-[#f0f269] text-[#254899] px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center gap-3"
+              className="bg-[#ebed17] hover:bg-[#f0f269] text-[#254899] px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center justify-center gap-3 w-full sm:w-auto min-w-[220px]"
             >
               Explore Services
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -92,7 +92,7 @@ const Servicepagehero = () => {
             </button>
             <button 
               onClick={() => scrollToSection("contact")}
-              className="border-2 border-white text-white hover:bg-white hover:text-[#254899] px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105"
+              className="border-2 border-white text-white hover:bg-white hover:text-[#254899] px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105 w-full sm:w-auto min-w-[220px]"
             >
               Get Started
             </button>

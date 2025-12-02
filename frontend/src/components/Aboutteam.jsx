@@ -84,26 +84,28 @@ const Aboutteam = () => {
               key={index}
               className="group relative bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 overflow-hidden border border-gray-100"
             >
-              {/* Image Container */}
-              <div className="relative overflow-hidden">
+              {/* Image Container with improved handling */}
+              <div className="relative w-full pt-[100%] overflow-hidden bg-gray-50">
                 <img 
                   src={member.image} 
                   alt={member.name}
-                  className="w-full h-64 object-cover group-hover:scale-110 transition-transform duration-500"
+                  className="absolute inset-0 w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-500"
                   onError={(e) => {
                     e.target.src = `data:image/svg+xml;base64,${btoa(`
-                      <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+                      <svg width="400" height="400" xmlns="http://www.w3.org/2000/svg">
                         <defs>
                           <linearGradient id="grad${index}" x1="0%" y1="0%" x2="100%" y2="100%">
                             <stop offset="0%" style="stop-color:${member.accent.includes('254899') ? '#254899' : '#ebed17'};stop-opacity:1" />
                             <stop offset="100%" style="stop-color:${member.accent.includes('254899') ? '#1a3480' : '#f0f269'};stop-opacity:1" />
                           </linearGradient>
                         </defs>
-                        <rect width="400" height="300" fill="url(#grad${index})"/>
-                        <text x="50%" y="50%" font-family="Arial" font-size="18" fill="white" text-anchor="middle" dy=".3em">${member.name.split(' ')[0]}</text>
+                        <rect width="400" height="400" fill="url(#grad${index})"/>
+                        <text x="50%" y="50%" font-family="Arial" font-size="24" fill="white" text-anchor="middle" dy=".3em">${member.name.split(' ')[0]}</text>
                       </svg>
                     `)}`;
                   }}
+                  loading="lazy"
+                  decoding="async"
                 />
                 
                 {/* Hover Overlay */}
