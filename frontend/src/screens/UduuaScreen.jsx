@@ -12,10 +12,10 @@ import {
 
 const UduuaScreen = () => {
   const features = [
-    {
-      icon: <FaUsers className="text-2xl" />,
-      title: 'Real Influencers',
-      description: 'Authentic creators with engaged communities that drive real results'
+     {
+      icon: <FaRocket className="text-2xl" />,
+      title: 'Distribution and Sales Push',
+      description: 'Coordinated campaigns that create momentum and drive conversions'
     },
     {
       icon: <FaChartLine className="text-2xl" />,
@@ -27,11 +27,11 @@ const UduuaScreen = () => {
       title: 'Targeted Promoters',
       description: 'Strategic promoters who reach your exact target audience'
     },
-    {
-      icon: <FaRocket className="text-2xl" />,
-      title: 'Sales Push Network',
-      description: 'Coordinated campaigns that create momentum and drive conversions'
-    }
+     {
+      icon: <FaUsers className="text-2xl" />,
+      title: 'Real Influencers',
+      description: 'Authentic creators with engaged communities that drive real results'
+    },
   ];
 
   const services = [
@@ -49,6 +49,11 @@ const UduuaScreen = () => {
       title: 'Sales Promotion',
       description: 'Strategic campaigns that create urgency and drive immediate sales',
       results: ['Increased conversions', 'Higher average order value', 'Repeat purchases']
+    },
+    {
+      title: 'Market Distribution',
+      description: 'Extensive network to ensure your products reach the right customers',
+      results: ['Wider reach', 'Targeted audience access', 'Improved market penetration']
     }
   ];
 
@@ -56,48 +61,48 @@ const UduuaScreen = () => {
     <div className="min-h-screen bg-white">
       <Header />
       {/* Hero Section */}
-      <section className="mt-10 relative min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0043FC] via-[#0038D4] to-[#002DAC] px-4 sm:px-6 lg:px-8 overflow-hidden">
+      <section className="mt-10 relative min-h-screen flex items-center justify-center bg-gradient-to-br from-[#79FFFF] via-[#79FFFF to-[#79FFFF] px-4 sm:px-6 lg:px-8 overflow-hidden">
         <div className="max-w-6xl mx-auto text-center relative z-10">
           <div className="space-y-8">
             {/* Sub-brand Logo */}
-            <div className="flex justify-center mb-4">
+            <div className="flex justify-center mb-0">
               <img 
                 src="/4copy.png" 
                 alt="Uduua" 
-                className="h-16 w-auto rounded-md"
+                className="h-50 w-auto rounded-md"
               />
             </div>
 
             {/* Brand Badge */}
-            <div className="inline-flex items-center gap-2 bg-[#79FFFF]/10 backdrop-blur-sm border border-[#79FFFF]/30 rounded-full px-6 py-3 mb-8">
-              <div className="w-2 h-2 bg-[#79FFFF] rounded-full animate-pulse"></div>
-              <span className="text-[#79FFFF] font-semibold text-sm uppercase tracking-wider">
+            <div className="inline-flex items-center gap-2 bg-[#0043FC]/10 backdrop-blur-sm border border-[#79FFFF]/30 rounded-full px-6 py-3 mb-8">
+              <div className="w-2 h-2 bg-[#0043FC] rounded-full animate-pulse"></div>
+              <span className="text-[#0043FC] font-semibold text-sm uppercase tracking-wider">
                 A Lovoh Create Brand
               </span>
             </div>
 
-            {/* Main Heading */}
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-tight">
-              Úduua
-            </h1>
+        {/* Main Heading
+        <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-[#0043FC] leading-tight">
+          Úduua
+        </h1> */}
             
             {/* Tagline */}
             <div className="space-y-4">
-              <p className="text-2xl lg:text-3xl text-gray-200 italic">
-                …make it sell
+              <p className="text-2xl lg:text-3xl text-[#0043FC] italic">
+                You have the Products, We Make it Sell
               </p>
-              <p className="text-xl text-gray-200 max-w-3xl mx-auto leading-relaxed">
-                Marketing and sales push network powered by real influencers, promoters, 
+              <p className="text-xl text-[#0043FC] max-w-3xl mx-auto leading-relaxed">
+                Marketing and sales push network powered by real distributors, promoters, influencers,
                 and performance experts.
               </p>
             </div>
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-8">
-              <button className="bg-[#79FFFF] hover:bg-[#a6fffe] text-[#0043FC] px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl">
+              <button className="bg-[#0043FC] hover:bg-[#a6fffe] text-[#79FFFF] hover:text-[#0043FC] px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl">
                 Start Selling Now
               </button>
-              <button className="border-2 border-white text-white hover:bg-white hover:text-[#0043FC] px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105">
+              <button className="border-2 border-[#0043FC] text-[#0043FC] hover:bg-white hover:text-[#0043FC] px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105">
                 Book Demo
               </button>
             </div>

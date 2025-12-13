@@ -71,15 +71,15 @@ const PuulsScreen = () => {
     <div className="min-h-screen bg-white">
       <Header />
       {/* Hero Section */}
-      <section className="mt-15 relative min-h-screen flex items-center justify-center bg-gradient-to-br from-[#004BFF] via-[#0033CC] to-[#002699] px-4 sm:px-6 lg:px-8 overflow-hidden">
+      <section className="mt-15 relative min-h-screen flex items-center justify-center bg-gradient-to-br from-[#004aff] via-[#0033CC] to-[#002699] px-4 sm:px-6 lg:px-8 overflow-hidden">
         <div className="max-w-6xl mx-auto text-center relative z-10">
           <div className="space-y-8">
             {/* Sub-brand Logo */}
             <div className="flex justify-center mb-4">
               <img 
-                src="/2copy.png" 
+                src="/2copy1.png" 
                 alt="Puuls" 
-                className="h-16 w-auto rounded-md border border-white"
+                className="h-50 w-auto rounded-md"
               />
             </div>
 
@@ -90,19 +90,14 @@ const PuulsScreen = () => {
                 A Lovoh Create Brand
               </span>
             </div>
-
-            {/* Main Heading */}
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-tight">
-              Ƥuuls
-            </h1>
             
             {/* Tagline */}
             <div className="space-y-4">
               <p className="text-2xl lg:text-3xl text-gray-200">
-                the workforce you need
+                What do you need help with today?
               </p>
               <p className="text-xl text-gray-200 max-w-3xl mx-auto leading-relaxed">
-                Pool of top creative & tech associates for design, visuals, video, 
+                We're a ready pool of top creative & tech associates for design, visuals, video, 
                 web/app, and digital solutions.
               </p>
             </div>
@@ -110,7 +105,7 @@ const PuulsScreen = () => {
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-8">
               <button className="bg-white hover:bg-gray-100 text-[#004BFF] px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl">
-                Find Talent
+                Start Project
               </button>
               <button className="border-2 border-white text-white hover:bg-white hover:text-[#004BFF] px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105">
                 Join as Talent
@@ -151,7 +146,7 @@ const PuulsScreen = () => {
               </span>
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-              Access our curated pool of top-tier creative and technical professionals 
+              Access our army of top-tier creative and tech professionals 
               ready to bring your projects to life.
             </p>
           </div>

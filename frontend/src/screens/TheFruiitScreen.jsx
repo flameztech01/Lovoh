@@ -89,7 +89,7 @@ const TheFruiitScreen = () => {
               <img 
                 src="/10copy.png" 
                 alt="theFruiit" 
-                className="h-16 w-auto"
+                className="h-30 w-auto mb-10"
               />
             </div>
 
@@ -102,17 +102,17 @@ const TheFruiitScreen = () => {
             </div>
 
             {/* Main Heading */}
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-[#FFFCFF] leading-tight">
+            {/* <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-[#FFFCFF] leading-tight">
               theFruiit
-            </h1>
+            </h1> */}
             
             {/* Tagline */}
             <div className="space-y-4">
               <p className="text-2xl lg:text-3xl text-[#FFFCFF] italic">
-                …everyday advancement
+                TheFruiit Community
               </p>
               <p className="text-xl text-[#FFFCFF] max-w-3xl mx-auto leading-relaxed">
-                Growth community empowering young people for 360° development in lifestyle, 
+                Growth community, empowering young people for 360° development in lifestyle, 
                 leadership, creativity, career and business.
               </p>
             </div>
@@ -209,7 +209,7 @@ const TheFruiitScreen = () => {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl lg:text-5xl font-bold text-[#193564] mb-6">
-              How theFruiit
+              How TheFruiit
               <span className="block text-transparent bg-clip-text bg-gradient-to-r from-[#7EF949] to-[#193564]">
                 Works
               </span>

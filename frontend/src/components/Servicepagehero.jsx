@@ -57,7 +57,7 @@ const Servicepagehero = () => {
       <div className="max-w-7xl mx-auto text-center relative z-10 w-full">
         <div className="space-y-6 md:space-y-8 px-2">
           {/* Badge - Mobile optimized */}
-          <div className="inline-flex items-center gap-2 bg-[#ebed17]/10 backdrop-blur-sm border border-[#ebed17]/30 rounded-full px-4 py-2 md:px-6 md:py-3 mb-4 md:mb-8">
+          <div className="inline-flex items-center gap-2 bg-[#ebed17]/10 backdrop-blur-sm border border-[#ebed17]/30 rounded-full px-4 py-2 md:px-6 md:py-3 mb-4 md:mb-8 mt-20">
             <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-[#ebed17] rounded-full animate-pulse"></div>
             <span className="text-[#ebed17] font-semibold text-xs md:text-sm uppercase tracking-wider whitespace-nowrap">
               Comprehensive Solutions
@@ -118,34 +118,12 @@ const Servicepagehero = () => {
             </button>
           </div>
 
-          {/* Stats - Responsive grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 pt-8 md:pt-12 max-w-md md:max-w-2xl mx-auto px-2">
-            <div className="text-center p-2">
-              <div className="text-xl md:text-2xl font-bold text-[#ebed17] mb-1 md:mb-2">150+</div>
-              <div className="text-gray-300 text-xs md:text-sm">Projects Delivered</div>
-            </div>
-            <div className="text-center p-2">
-              <div className="text-xl md:text-2xl font-bold text-[#ebed17] mb-1 md:mb-2">98%</div>
-              <div className="text-gray-300 text-xs md:text-sm">Client Satisfaction</div>
-            </div>
-            <div className="text-center p-2">
-              <div className="text-xl md:text-2xl font-bold text-[#ebed17] mb-1 md:mb-2">5+</div>
-              <div className="text-gray-300 text-xs md:text-sm">Years Experience</div>
-            </div>
-            <div className="text-center p-2">
-              <div className="text-xl md:text-2xl font-bold text-[#ebed17] mb-1 md:mb-2">50+</div>
-              <div className="text-gray-300 text-xs md:text-sm">Happy Clients</div>
-            </div>
-          </div>
+        
         </div>
       </div>
 
       {/* Scroll Indicator - Hidden on mobile for better UX */}
-      <div className="absolute bottom-4 md:bottom-8 left-1/2 transform -translate-x-1/2 hidden md:block">
-        <div className="w-6 h-10 border-2 border-[#ebed17] rounded-full flex justify-center">
-          <div className="w-1 h-3 bg-[#ebed17] rounded-full mt-2 animate-bounce"></div>
-        </div>
-      </div>
+     
     </section>
   );
 };

@@ -118,7 +118,7 @@ const BizzzedScreen = () => {
       <Header />
       
       {/* Hero Section */}
-      <section className="mt-10 relative py-20 bg-gradient-to-br from-[#1e3a8a] via-[#1e40af] to-[#1d4ed8]">
+      <section className="mt-10 relative py-20 bg-gradient-to-br from-[#79FFFF] via-[#79FFFF] to-[#79FFFF]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="space-y-6">
             {/* Sub-brand Logo */}
@@ -126,35 +126,38 @@ const BizzzedScreen = () => {
               <img 
                 src="/8copy.png" 
                 alt="Bizzzed" 
-                className="h-16 w-auto rounded-md"
+                className="h-40 w-auto rounded-md mb-15"
               />
             </div>
 
             {/* Magazine Badge */}
-            <div className="inline-flex items-center gap-2 bg-[#79FFFF]/10 backdrop-blur-sm border border-[#79FFFF]/30 rounded-full px-6 py-3">
-              <div className="w-2 h-2 bg-[#79FFFF] rounded-full animate-pulse"></div>
-              <span className="text-[#79FFFF] font-semibold text-sm uppercase tracking-wider">
-                Business & Innovation Magazine
+            <div className="inline-flex items-center gap-2 bg-[#1e3a8a]/10 backdrop-blur-sm border border-[#79FFFF]/30 rounded-full px-6 py-3">
+              <div className="w-2 h-2 bg-[#1e3a8a] rounded-full animate-pulse"></div>
+              <span className="text-[#193564] font-semibold text-sm uppercase tracking-wider">
+                A Lovoh Create Brand
               </span>
             </div>
 
             {/* Magazine Title */}
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-tight">
+            {/* <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-[#1e3a8a] leading-tight">
               Bizzzed
-            </h1>
+            </h1> */}
             
             {/* Tagline */}
-            <p className="text-xl lg:text-2xl text-gray-200 max-w-3xl mx-auto leading-relaxed">
+              <p className="text-2xl lg:text-3xl text-[#193564] italic">
+                Business and Innovation Magazine
+              </p>
+            <p className="text-xl lg:text-2xl text-[#193564] max-w-3xl mx-auto leading-relaxed">
               Your daily dose of business insights, marketing strategies, and innovation trends 
               that keep you ahead in the competitive landscape.
             </p>
 
             {/* Subscription CTA */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-6">
-              <button className="bg-[#79FFFF] hover:bg-[#a6fffe] text-[#1e3a8a] px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl">
+              <button className="bg-[#193564] hover:bg-white text-[#79FFFF] hover:text-[#193564] px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl">
                 Subscribe Now
               </button>
-              <button className="border-2 border-white text-white hover:bg-white hover:text-[#1e3a8a] px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105">
+              <button className="border-2 border-[#193564] text-[#193564] hover:bg-white hover:text-[#193564] px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105">
                 Latest Issue
               </button>
             </div>
@@ -313,7 +316,7 @@ const BizzzedScreen = () => {
 
           {/* Load More Button */}
           <div className="text-center mt-12">
-            <button className="bg-[#1e3a8a] hover:bg-[#1e40af] text-white px-8 py-4 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105">
+            <button className="bg-[#193564] hover:bg-[#1e40af] text-white px-8 py-4 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105">
               Load More Articles
             </button>
           </div>
@@ -353,7 +356,7 @@ const BizzzedScreen = () => {
       <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gray-50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl lg:text-4xl font-bold text-[#193564] mb-4">
               Explore Topics
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
@@ -368,7 +371,7 @@ const BizzzedScreen = () => {
                 onClick={() => setActiveCategory(category)}
                 className="group bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 text-center border border-gray-100"
               >
-                <div className="w-12 h-12 bg-[#1e3a8a] rounded-2xl flex items-center justify-center text-white text-lg mb-3 mx-auto group-hover:bg-[#79FFFF] group-hover:text-[#1e3a8a] transition-all duration-300">
+                <div className="w-12 h-12 bg-[#193564] rounded-2xl flex items-center justify-center text-white text-lg mb-3 mx-auto group-hover:bg-[#79FFFF] group-hover:text-[#1e3a8a] transition-all duration-300">
                   {getCategoryIcon(category)}
                 </div>
                 <h3 className="font-semibold text-gray-900 group-hover:text-[#1e3a8a] transition-colors duration-300">
