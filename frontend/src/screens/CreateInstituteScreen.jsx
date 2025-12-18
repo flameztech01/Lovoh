@@ -14,43 +14,60 @@ import {
   FaBullseye,
   FaHandsHelping,
   FaClipboardCheck,
-  FaRocket
+  FaRocket,
+  FaPlayCircle,
+  FaCheckCircle,
+  FaStar,
+  FaArrowRight
 } from 'react-icons/fa';
 import Footer from '../components/Footer.jsx';
 
 const CreateInstituteScreen = () => {
   const [activeTrack, setActiveTrack] = useState('All');
 
+  const heroImages = [
+    "/learning1.jpg",
+    "/learning2.jpg",
+    "/learning3.jpg",
+    "/learning4.jpg"
+  ];
+
   const programStructure = [
     {
       id: 1,
       phase: "Week 1",
       title: "Foundations & Orientation",
-      description: "Digital basics, brand awareness, tools & workflows, professional expectations",
+      description: "Digital basics, brand awareness, tools & workflows",
       duration: "1 Week",
       focus: "Alignment & Shared Language",
       icon: <FaGraduationCap />,
-      color: "bg-blue-100 text-blue-700"
+      color: "bg-blue-100 text-blue-700",
+      image: "/foundation.jpg",
+      stats: ["100% Practical", "Team Integration", "Toolkit Provided"]
     },
     {
       id: 2,
       phase: "Weeks 2-5",
       title: "Specialization Tracks",
-      description: "Deep dive into chosen specialization with practical, hands-on learning",
+      description: "Deep dive into chosen specialization",
       duration: "4 Weeks",
-      focus: "Track-Specific Skills",
+      focus: "Track-Specific Mastery",
       icon: <FaChalkboardTeacher />,
-      color: "bg-purple-100 text-purple-700"
+      color: "bg-purple-100 text-purple-700",
+      image: "/specialization.jpg",
+      stats: ["Hands-on Projects", "Expert Mentors", "Live Feedback"]
     },
     {
       id: 3,
       phase: "Weeks 6-8",
       title: "Guided Internship",
-      description: "Track-aligned participation with controlled exposure and supervised execution",
+      description: "Real workflow exposure with supervision",
       duration: "3 Weeks",
-      focus: "Real Workflow Experience",
+      focus: "Industry Experience",
       icon: <FaBriefcase />,
-      color: "bg-green-100 text-green-700"
+      color: "bg-green-100 text-green-700",
+      image: "/internship.jpg",
+      stats: ["Client Projects", "Team Collaboration", "Portfolio Building"]
     }
   ];
 
@@ -59,205 +76,282 @@ const CreateInstituteScreen = () => {
       id: 1,
       name: "Strategy Track",
       title: "Brand Strategy & Business Thinking",
-      description: "Learn brand positioning, business models, strategy documentation, and structuring brands for growth",
+      description: "Learn to think strategically about brands and business positioning",
       duration: "4 Weeks",
       outcome: "Think strategically about brands and business",
       icon: <FaBullseye />,
       color: "from-blue-500 to-blue-700",
-      facilitators: ["BDM Unit", "Business Strategist", "External Experts"],
-      skills: ["Brand Positioning", "Business Models", "Strategy Documentation", "Growth Structuring"]
+      image: "/strategy.jpg",
+      facilitators: ["Industry Strategists", "BDM Team", "Business Leaders"],
+      skills: ["Brand Positioning", "Business Models", "Strategy Documentation"],
+      projects: 5,
+      mentors: 3
     },
     {
       id: 2,
       name: "Media & Marketing",
-      title: "Media, Content & Campaign Execution",
-      description: "Master social media management, content creation, campaign execution, and performance reporting",
+      title: "Content & Campaign Execution",
+      description: "Master social media, content creation, and campaign management",
       duration: "4 Weeks",
       outcome: "Execute marketing campaigns effectively",
       icon: <FaChartLine />,
       color: "from-purple-500 to-purple-700",
-      facilitators: ["Head of Digitals", "Digital & Creative Unit", "Media Experts"],
-      skills: ["Social Media", "Content Creation", "Campaign Management", "Performance Analysis"]
+      image: "/marketing.jpg",
+      facilitators: ["Digital Experts", "Content Creators", "Media Specialists"],
+      skills: ["Social Media", "Content Creation", "Campaign Management"],
+      projects: 6,
+      mentors: 4
     },
     {
       id: 3,
       name: "Tech Track",
       title: "Digital Products & Systems",
-      description: "Learn web fundamentals, no-code/low-code tools, software thinking, and product mindset",
+      description: "Build digital solutions with no-code/low-code tools",
       duration: "4 Weeks",
       outcome: "Build digital solutions",
       icon: <FaLaptopCode />,
       color: "from-green-500 to-green-700",
-      facilitators: ["Innovation & Tech Unit", "Product Experts", "Tech Facilitators"],
-      skills: ["Web Fundamentals", "No-Code Tools", "Product Thinking", "Systems Mindset"]
+      image: "/tech.jpg",
+      facilitators: ["Tech Innovators", "Product Designers", "Developers"],
+      skills: ["Web Development", "No-Code Tools", "Product Thinking"],
+      projects: 4,
+      mentors: 3
     }
   ];
 
-  const leadershipTeam = [
+  const successStories = [
     {
       id: 1,
-      role: "Head of Digitals",
-      title: "Academic / Program Lead",
-      responsibilities: [
-        "Own curriculum delivery",
-        "Coordinate all tracks",
-        "Supervise facilitators",
-        "Ensure learning quality"
-      ],
-      icon: <FaChalkboardTeacher />
+      name: "Alex Johnson",
+      role: "Marketing Strategist",
+      track: "Strategy Track",
+      image: "/alumni1.jpg",
+      quote: "The practical approach transformed how I think about brands.",
+      company: "Now at TechCorp"
     },
     {
       id: 2,
-      role: "BDM Unit",
-      title: "Integration & Sustainability Engine",
-      responsibilities: [
-        "Design workflow integration",
-        "Control project exposure",
-        "Balance learning & business needs",
-        "Ensure scalability"
-      ],
-      icon: <FaHandsHelping />
+      name: "Sarah Chen",
+      role: "Content Director",
+      track: "Media & Marketing",
+      image: "/alumni2.jpg",
+      quote: "From theory to execution in 8 weeks. Game-changing!",
+      company: "Leading at CreativeHub"
     },
     {
       id: 3,
-      role: "CGO Office",
-      title: "Program Governance & Quality",
-      responsibilities: [
-        "Manage external facilitators",
-        "Maintain learning standards",
-        "Track learner outcomes",
-        "Ensure accountability"
-      ],
-      icon: <FaClipboardCheck />
+      name: "Marcus Lee",
+      role: "Product Builder",
+      track: "Tech Track",
+      image: "/alumni3.jpg",
+      quote: "Built my first MVP during the internship phase.",
+      company: "Founder at StartupX"
     }
   ];
 
-  const programDetails = [
+  const campusLife = [
+    "/campus1.jpg",
+    "/campus2.jpg",
+    "/campus3.jpg",
+    "/campus4.jpg",
+    "/campus5.jpg",
+    "/campus6.jpg"
+  ];
+
+  const keyFeatures = [
     {
       id: 1,
-      title: "Cohort-Based Model",
-      description: "8-week intensive programs with structured progression",
-      icon: <FaUsers />
+      title: "Cohort Learning",
+      description: "Learn with a community of driven peers",
+      icon: <FaUsers />,
+      image: "/feature-cohort.jpg",
+      color: "bg-gradient-to-br from-blue-400 to-blue-600"
     },
     {
       id: 2,
-      title: "Practical-First Learning",
-      description: "Learn by doing with real workflow exposure",
-      icon: <FaLightbulb />
+      title: "Live Projects",
+      description: "Work on real client briefs from day one",
+      icon: <FaBriefcase />,
+      image: "/feature-projects.jpg",
+      color: "bg-gradient-to-br from-purple-400 to-purple-600"
     },
     {
       id: 3,
-      title: "Structured Timeline",
-      description: "Weekly flow with clear milestones and deliverables",
-      icon: <FaCalendarAlt />
+      title: "Expert Mentors",
+      description: "Industry professionals guide your journey",
+      icon: <FaChalkboardTeacher />,
+      image: "/feature-mentors.jpg",
+      color: "bg-gradient-to-br from-green-400 to-green-600"
     },
     {
       id: 4,
-      title: "Certification",
-      description: "Graduate with verified skills and portfolio",
-      icon: <FaCertificate />
+      title: "Portfolio Ready",
+      description: "Graduate with tangible work samples",
+      icon: <FaCertificate />,
+      image: "/feature-portfolio.jpg",
+      color: "bg-gradient-to-br from-orange-400 to-orange-600"
     }
   ];
 
-  const filteredTracks = activeTrack === "All" 
-    ? tracks 
-    : tracks.filter(track => track.name === activeTrack);
+  const filteredTracks = activeTrack === "All" ? tracks : tracks.filter(track => track.name === activeTrack);
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
       
-      {/* Hero Section */}
-      <section className="mt-10 relative py-20 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="space-y-6">
-            {/* Sub-brand Logo */}
-            <div className="flex justify-center mb-4">
+      {/* Hero Section with Slider */}
+      <section className="mt-10 relative h-screen overflow-hidden">
+        {/* Background Images Slider */}
+        <div className="absolute inset-0">
+          {heroImages.map((img, index) => (
+            <div
+              key={index}
+              className={`absolute inset-0 transition-opacity duration-1000 ${
+                index === 0 ? 'opacity-100' : 'opacity-0'
+              }`}
+            >
               <img 
-                src="/create-institute-logo.png" 
-                alt="Create Institute" 
-                className="h-40 w-auto"
+                src={img} 
+                alt={`Learning ${index + 1}`}
+                className="w-full h-full object-cover"
               />
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-900/90 to-purple-900/70"></div>
             </div>
+          ))}
+        </div>
 
-            {/* Program Badge */}
-            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/30 rounded-full px-6 py-3">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-              <span className="text-white font-semibold text-sm uppercase tracking-wider">
-                A Lovoh Create Talent Development Program
-              </span>
+        <div className="relative h-full flex items-center">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <div className="space-y-6 backdrop-blur-sm bg-white/10 rounded-3xl p-8 lg:p-12 border border-white/20">
+              {/* Institute Logo */}
+              <div className="flex justify-center mb-6">
+                <div className="bg-white/20 backdrop-blur-lg rounded-2xl p-6">
+                  <img 
+                    src="/create-institute-logo.png" 
+                    alt="Create Institute" 
+                    className="h-32 w-auto"
+                  />
+                </div>
+              </div>
+
+              <div className="inline-flex items-center gap-3 bg-white/20 backdrop-blur-sm border border-white/30 rounded-full px-6 py-3 mb-6">
+                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                <span className="text-white font-semibold text-sm uppercase tracking-wider">
+                  Cohort 1 Applications Open • January Intake
+                </span>
+              </div>
+
+              <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-tight drop-shadow-2xl">
+                Create Institute
+              </h1>
+              
+              <p className="text-2xl lg:text-3xl text-white/90 italic font-light mb-6">
+                Where Theory Meets <span className="font-bold text-green-300">Execution</span>
+              </p>
+              
+              <p className="text-xl lg:text-2xl text-white/90 max-w-3xl mx-auto leading-relaxed backdrop-blur-sm bg-black/20 p-6 rounded-2xl">
+                An immersive 8-week journey transforming creative talent into 
+                <span className="font-bold text-yellow-300"> execution-ready professionals</span> through hands-on learning.
+              </p>
+
+              {/* Video Preview */}
+              <div className="flex justify-center my-8">
+                <div className="relative group cursor-pointer">
+                  <div className="w-32 h-32 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center transform group-hover:scale-110 transition-transform duration-300">
+                    <FaPlayCircle className="text-white text-4xl" />
+                  </div>
+                  <div className="absolute inset-0 animate-ping rounded-full border-4 border-white/30 group-hover:border-white/50"></div>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-6">
+                <button className="group bg-green-500 hover:bg-green-600 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-2xl hover:shadow-3xl flex items-center gap-3">
+                  Apply Now
+                  <FaArrowRight className="group-hover:translate-x-2 transition-transform duration-300" />
+                </button>
+                <button className="group border-2 border-white text-white hover:bg-white/20 px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105 backdrop-blur-sm">
+                  View Program Tour
+                </button>
+              </div>
             </div>
+          </div>
+        </div>
 
-            {/* Institute Title */}
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-tight">
-              Create Institute
-            </h1>
-            
-            {/* Tagline */}
-            <p className="text-2xl lg:text-3xl text-blue-100 italic">
-              Execution-Ready Talent Development
-            </p>
-            <p className="text-xl lg:text-2xl text-blue-100 max-w-3xl mx-auto leading-relaxed">
-              An 8-week structured program training creatives, marketers, strategists, 
-              and tech talents through practical learning and real workflow exposure.
-            </p>
-
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-6">
-              <button className="bg-green-500 hover:bg-green-600 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl">
-                Apply Now
-              </button>
-              <button className="border-2 border-white text-white hover:bg-white hover:text-blue-900 px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105">
-                Download Brochure
-              </button>
-            </div>
+        {/* Scroll Indicator */}
+        <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 animate-bounce">
+          <div className="w-8 h-12 border-2 border-white/50 rounded-full flex justify-center">
+            <div className="w-1 h-3 bg-white/70 rounded-full mt-2 animate-pulse"></div>
           </div>
         </div>
       </section>
 
-      {/* Program Structure Section */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white">
+      {/* Visual Program Structure */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
-              8-Week Program Structure
+          <div className="text-center mb-16">
+            <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
+              Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">8-Week Journey</span>
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              A carefully designed progression from foundations to guided internship
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              A visual roadmap from learning to execution
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-            {programStructure.map((phase) => (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {programStructure.map((phase, index) => (
               <div 
                 key={phase.id}
-                className="group bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 overflow-hidden border border-gray-100"
+                className="group relative overflow-hidden rounded-3xl shadow-2xl hover:shadow-3xl transition-all duration-700 transform hover:-translate-y-4"
               >
-                <div className="p-8">
-                  <div className={`w-16 h-16 rounded-2xl ${phase.color} flex items-center justify-center text-2xl mb-6 mx-auto group-hover:scale-110 transition-transform duration-300`}>
-                    {phase.icon}
-                  </div>
-                  
-                  <div className="text-center mb-4">
-                    <span className="inline-block bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm font-semibold mb-2">
-                      {phase.phase}
+                {/* Background Image */}
+                <div className="absolute inset-0">
+                  <img 
+                    src={phase.image} 
+                    alt={phase.title}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent"></div>
+                </div>
+
+                {/* Content Overlay */}
+                <div className="relative h-full min-h-[500px] flex flex-col justify-end p-8">
+                  {/* Phase Badge */}
+                  <div className="absolute top-6 left-6">
+                    <span className="bg-white text-gray-900 px-4 py-2 rounded-full text-sm font-bold">
+                      Phase {index + 1}
                     </span>
-                    <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                      {phase.title}
-                    </h3>
-                    <p className="text-gray-600 mb-4">
-                      {phase.description}
-                    </p>
                   </div>
 
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-700 font-medium">Duration:</span>
-                      <span className="font-bold">{phase.duration}</span>
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-12 h-12 rounded-xl ${phase.color} flex items-center justify-center text-xl`}>
+                        {phase.icon}
+                      </div>
+                      <div>
+                        <span className="text-white/80 text-sm font-semibold uppercase tracking-wider">
+                          {phase.phase}
+                        </span>
+                        <h3 className="text-2xl font-bold text-white">
+                          {phase.title}
+                        </h3>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-700 font-medium">Focus:</span>
-                      <span className="font-bold text-blue-600">{phase.focus}</span>
+
+                    <p className="text-white/90 text-lg">
+                      {phase.description}
+                    </p>
+
+                    <div className="grid grid-cols-3 gap-3">
+                      {phase.stats.map((stat, idx) => (
+                        <div key={idx} className="bg-white/10 backdrop-blur-sm rounded-lg p-3 text-center">
+                          <span className="text-white text-sm font-medium">{stat}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center justify-between pt-4 border-t border-white/20">
+                      <span className="text-white font-bold text-lg">{phase.duration}</span>
+                      <span className="text-green-300 font-bold">{phase.focus}</span>
                     </div>
                   </div>
                 </div>
@@ -267,26 +361,26 @@ const CreateInstituteScreen = () => {
         </div>
       </section>
 
-      {/* Specialization Tracks Section */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gray-50">
+      {/* Tracks Gallery */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-gray-50 to-white">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
-              Choose Your Specialization Track
+          <div className="text-center mb-16">
+            <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
+              Choose Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">Pathway</span>
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Deep dive into one track during weeks 2-5 for focused skill development
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Specialize in one track and master it through intensive, project-based learning
             </p>
           </div>
 
           {/* Track Filter */}
-          <div className="flex flex-wrap justify-center gap-3 mb-12">
+          <div className="flex flex-wrap justify-center gap-4 mb-12">
             <button
               onClick={() => setActiveTrack('All')}
-              className={`px-6 py-3 rounded-full font-semibold transition-all duration-300 transform hover:scale-105 ${
+              className={`px-8 py-4 rounded-2xl font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg ${
                 activeTrack === 'All'
-                  ? 'bg-blue-600 text-white shadow-lg'
-                  : 'bg-white text-gray-700 border border-gray-200 hover:border-blue-600 hover:text-blue-600'
+                  ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'
+                  : 'bg-white text-gray-700 border border-gray-200 hover:border-blue-600'
               }`}
             >
               All Tracks
@@ -295,10 +389,10 @@ const CreateInstituteScreen = () => {
               <button
                 key={track.name}
                 onClick={() => setActiveTrack(track.name)}
-                className={`px-6 py-3 rounded-full font-semibold transition-all duration-300 transform hover:scale-105 ${
+                className={`px-8 py-4 rounded-2xl font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg ${
                   activeTrack === track.name
-                    ? 'bg-blue-600 text-white shadow-lg'
-                    : 'bg-white text-gray-700 border border-gray-200 hover:border-blue-600 hover:text-blue-600'
+                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'
+                    : 'bg-white text-gray-700 border border-gray-200 hover:border-blue-600'
                 }`}
               >
                 {track.name}
@@ -306,62 +400,68 @@ const CreateInstituteScreen = () => {
             ))}
           </div>
 
-          {/* Tracks Grid */}
+          {/* Tracks Gallery */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {filteredTracks.map((track) => (
               <div 
                 key={track.id}
-                className="group bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-500 transform hover:-translate-y-2 overflow-hidden border border-gray-100"
+                className="group relative overflow-hidden rounded-3xl shadow-2xl hover:shadow-3xl transition-all duration-700"
               >
-                {/* Track Header */}
-                <div className={`h-3 bg-gradient-to-r ${track.color}`}></div>
-                
-                <div className="p-8">
-                  <div className="flex items-center gap-4 mb-6">
-                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-r ${track.color} text-white flex items-center justify-center text-xl`}>
+                {/* Track Image */}
+                <div className="relative h-64 overflow-hidden">
+                  <img 
+                    src={track.image} 
+                    alt={track.name}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/40 to-transparent"></div>
+                  <div className="absolute top-4 right-4">
+                    <span className="bg-white/90 text-gray-900 px-3 py-1 rounded-full text-sm font-bold">
+                      {track.projects} Projects
+                    </span>
+                  </div>
+                </div>
+
+                {/* Track Content */}
+                <div className="p-8 bg-white">
+                  <div className="flex items-start gap-4 mb-6">
+                    <div className={`w-16 h-16 rounded-2xl bg-gradient-to-r ${track.color} text-white flex items-center justify-center text-2xl`}>
                       {track.icon}
                     </div>
                     <div>
-                      <h3 className="text-xl font-bold text-gray-900">{track.name}</h3>
-                      <p className="text-gray-600 text-sm">{track.duration}</p>
+                      <h3 className="text-2xl font-bold text-gray-900 mb-2">{track.name}</h3>
+                      <p className="text-gray-600">{track.duration} • {track.mentors} Mentors</p>
                     </div>
                   </div>
 
-                  <h4 className="text-lg font-bold text-gray-900 mb-3">
-                    {track.title}
-                  </h4>
+                  <h4 className="text-xl font-bold text-gray-900 mb-4">{track.title}</h4>
+                  <p className="text-gray-600 mb-6 leading-relaxed">{track.description}</p>
 
-                  <p className="text-gray-600 mb-6 leading-relaxed">
-                    {track.description}
-                  </p>
-
+                  {/* Skills */}
                   <div className="mb-6">
-                    <h5 className="font-semibold text-gray-900 mb-2">Key Skills:</h5>
+                    <h5 className="font-semibold text-gray-900 mb-3">You'll Master:</h5>
                     <div className="flex flex-wrap gap-2">
                       {track.skills.map((skill, index) => (
-                        <span key={index} className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">
+                        <span key={index} className="bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 px-4 py-2 rounded-full text-sm font-medium">
                           {skill}
                         </span>
                       ))}
                     </div>
                   </div>
 
-                  <div className="mb-6">
-                    <h5 className="font-semibold text-gray-900 mb-2">Facilitated By:</h5>
-                    <div className="space-y-2">
-                      {track.facilitators.map((facilitator, index) => (
-                        <div key={index} className="flex items-center gap-2">
-                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                          <span className="text-gray-700">{facilitator}</span>
-                        </div>
-                      ))}
+                  {/* Stats */}
+                  <div className="flex items-center justify-between pt-6 border-t border-gray-100">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-600">{track.projects}</div>
+                      <div className="text-sm text-gray-600">Live Projects</div>
                     </div>
-                  </div>
-
-                  <div className="pt-6 border-t border-gray-100">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-700 font-medium">Outcome:</span>
-                      <span className="font-bold text-blue-600">{track.outcome}</span>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-purple-600">{track.mentors}</div>
+                      <div className="text-sm text-gray-600">Expert Mentors</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-600">100%</div>
+                      <div className="text-sm text-gray-600">Practical</div>
                     </div>
                   </div>
                 </div>
@@ -371,45 +471,61 @@ const CreateInstituteScreen = () => {
         </div>
       </section>
 
-      {/* Governance & Leadership Section */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white">
+      {/* Success Stories Gallery */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-blue-900 to-purple-900">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
-              Program Governance & Leadership
+          <div className="text-center mb-16">
+            <h2 className="text-4xl lg:text-5xl font-bold text-white mb-6">
+              Success <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-400">Stories</span>
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Structured oversight ensuring quality, integration, and sustainability
+            <p className="text-xl text-white/80 max-w-2xl mx-auto">
+              Hear from professionals who transformed their careers
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {leadershipTeam.map((leader) => (
+            {successStories.map((story) => (
               <div 
-                key={leader.id}
-                className="group bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-500 transform hover:-translate-y-2 overflow-hidden border border-gray-100"
+                key={story.id}
+                className="group relative overflow-hidden rounded-3xl shadow-2xl hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-4"
               >
-                <div className="p-8">
-                  <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-blue-700 rounded-2xl flex items-center justify-center text-white text-2xl mb-6 mx-auto group-hover:scale-110 transition-transform duration-300">
-                    {leader.icon}
+                {/* Story Image */}
+                <div className="relative h-80 overflow-hidden">
+                  <img 
+                    src={story.image} 
+                    alt={story.name}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
+                  
+                  {/* Track Badge */}
+                  <div className="absolute top-4 left-4">
+                    <span className="bg-white/20 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-bold">
+                      {story.track}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Story Content */}
+                <div className="p-8 bg-white">
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-14 h-14 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-lg font-bold">
+                      {story.name.split(' ').map(n => n[0]).join('')}
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-900">{story.name}</h3>
+                      <p className="text-blue-600 font-semibold">{story.role}</p>
+                      <p className="text-gray-500 text-sm">{story.company}</p>
+                    </div>
                   </div>
 
-                  <div className="text-center mb-6">
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">
-                      {leader.role}
-                    </h3>
-                    <p className="text-blue-600 font-semibold mb-4">
-                      {leader.title}
-                    </p>
-                  </div>
+                  <blockquote className="text-gray-700 italic text-lg leading-relaxed mb-6">
+                    "{story.quote}"
+                  </blockquote>
 
-                  <div className="space-y-3">
-                    <h4 className="font-semibold text-gray-900">Responsibilities:</h4>
-                    {leader.responsibilities.map((responsibility, index) => (
-                      <div key={index} className="flex items-start gap-3">
-                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                        <span className="text-gray-700">{responsibility}</span>
-                      </div>
+                  <div className="flex items-center gap-2">
+                    {[...Array(5)].map((_, i) => (
+                      <FaStar key={i} className="text-yellow-400" />
                     ))}
                   </div>
                 </div>
@@ -419,127 +535,156 @@ const CreateInstituteScreen = () => {
         </div>
       </section>
 
-      {/* Program Details */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gray-50">
+      {/* Campus Life Gallery */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
-              Program Features & Benefits
+          <div className="text-center mb-16">
+            <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
+              Campus <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-teal-600">Life</span>
             </h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Experience the vibrant learning environment
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {programDetails.map((detail) => (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-12">
+            {campusLife.map((img, index) => (
               <div 
-                key={detail.id}
-                className="group bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 text-center border border-gray-100"
+                key={index}
+                className="relative overflow-hidden rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 cursor-pointer group"
               >
-                <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-700 rounded-2xl flex items-center justify-center text-white text-lg mb-4 mx-auto group-hover:scale-110 transition-transform duration-300">
-                  {detail.icon}
+                <img 
+                  src={img} 
+                  alt={`Campus ${index + 1}`}
+                  className="w-full h-48 object-cover transition-transform duration-500 group-hover:scale-110"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+                  <span className="text-white font-medium text-sm">View</span>
                 </div>
-                <h3 className="font-bold text-gray-900 mb-2">
-                  {detail.title}
-                </h3>
-                <p className="text-gray-600 text-sm">
-                  {detail.description}
-                </p>
               </div>
             ))}
           </div>
 
-          {/* Additional Benefits */}
-          <div className="mt-12 bg-gradient-to-r from-blue-600 to-blue-800 rounded-3xl p-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div>
-                <h3 className="text-2xl font-bold text-white mb-4">
-                  Welcome Pack
-                </h3>
-                <ul className="space-y-3">
-                  <li className="flex items-center gap-3 text-white">
-                    <FaRocket className="text-green-400" />
-                    <span>Digital ID Card / Member's Card</span>
-                  </li>
-                  <li className="flex items-center gap-3 text-white">
-                    <FaRocket className="text-green-400" />
-                    <span>Onboarding materials & assets</span>
-                  </li>
-                  <li className="flex items-center gap-3 text-white">
-                    <FaRocket className="text-green-400" />
-                    <span>Social media assets & toolkit</span>
-                  </li>
-                </ul>
+          {/* Features Gallery */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {keyFeatures.map((feature) => (
+              <div 
+                key={feature.id}
+                className="group relative overflow-hidden rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-500"
+              >
+                {/* Feature Image */}
+                <div className="relative h-48 overflow-hidden">
+                  <img 
+                    src={feature.image} 
+                    alt={feature.title}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                  <div className="absolute top-4 right-4">
+                    <div className={`w-12 h-12 rounded-xl text-white flex items-center justify-center text-xl ${feature.color}`}>
+                      {feature.icon}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Feature Content */}
+                <div className="p-6 bg-white">
+                  <h3 className="text-xl font-bold text-gray-900 mb-3">{feature.title}</h3>
+                  <p className="text-gray-600">{feature.description}</p>
+                  <div className="mt-4 flex items-center gap-2 text-blue-600 font-semibold group-hover:gap-3 transition-all duration-300">
+                    <span>Learn more</span>
+                    <FaArrowRight className="transform group-hover:translate-x-2 transition-transform duration-300" />
+                  </div>
+                </div>
               </div>
-              <div>
-                <h3 className="text-2xl font-bold text-white mb-4">
-                  Post-Program Support
-                </h3>
-                <ul className="space-y-3">
-                  <li className="flex items-center gap-3 text-white">
-                    <FaCertificate className="text-yellow-400" />
-                    <span>Graduation Certificate</span>
-                  </li>
-                  <li className="flex items-center gap-3 text-white">
-                    <FaBriefcase className="text-yellow-400" />
-                    <span>CV & Portfolio Guidance</span>
-                  </li>
-                  <li className="flex items-center gap-3 text-white">
-                    <FaHandsHelping className="text-yellow-400" />
-                    <span>Placement Recommendations</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Cohort 1 Timeline */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white">
+      {/* Visual Timeline */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-gray-900 to-blue-900">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
-              Cohort 1 — January Intake
+          <div className="text-center mb-16">
+            <h2 className="text-4xl lg:text-5xl font-bold text-white mb-6">
+              Cohort 1 <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-rose-400">Timeline</span>
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Join our inaugural cohort and be part of the first wave of execution-ready talent
+            <p className="text-xl text-white/80 max-w-2xl mx-auto">
+              January Intake • 8 Weeks • Limited Spots
             </p>
           </div>
 
-          <div className="bg-gray-50 rounded-3xl p-8">
-            <div className="space-y-8">
-              {/* January Phase */}
-              <div className="flex flex-col md:flex-row items-center gap-6">
-                <div className="md:w-1/3">
-                  <div className="bg-blue-600 text-white px-6 py-4 rounded-2xl text-center">
-                    <span className="block text-2xl font-bold">JANUARY</span>
-                    <span className="block text-lg">Weeks 1-5</span>
+          <div className="relative">
+            {/* Timeline Line */}
+            <div className="absolute left-1/2 transform -translate-x-1/2 h-full w-1 bg-gradient-to-b from-blue-400 to-purple-600"></div>
+
+            {/* Timeline Items */}
+            <div className="space-y-16">
+              {/* January */}
+              <div className="relative flex items-center justify-center">
+                <div className="w-full max-w-2xl bg-white/10 backdrop-blur-lg rounded-3xl p-8 border border-white/20">
+                  <div className="flex flex-col md:flex-row items-center gap-8">
+                    <div className="md:w-1/3">
+                      <div className="relative">
+                        <img 
+                          src="/january.jpg" 
+                          alt="January"
+                          className="w-full h-48 object-cover rounded-2xl shadow-2xl"
+                        />
+                        <div className="absolute -top-4 -right-4">
+                          <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-2xl font-bold text-lg">
+                            JAN
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="md:w-2/3">
+                      <h3 className="text-2xl font-bold text-white mb-4">
+                        Foundations & Specialization Kickoff
+                      </h3>
+                      <p className="text-white/90 mb-6">
+                        Week 1: Orientation & digital mastery • Weeks 2-5: Deep specialization in chosen track with expert mentors
+                      </p>
+                      <div className="flex items-center gap-4">
+                        <FaCheckCircle className="text-green-400 text-xl" />
+                        <span className="text-white font-medium">Applications Open Now</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="md:w-2/3">
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">
-                    Foundations & Specialization
-                  </h3>
-                  <p className="text-gray-600">
-                    Week 1: Orientation & digital basics • Weeks 2-5: Deep dive into chosen specialization track
-                  </p>
                 </div>
               </div>
 
-              {/* February-March Phase */}
-              <div className="flex flex-col md:flex-row items-center gap-6">
-                <div className="md:w-1/3">
-                  <div className="bg-green-600 text-white px-6 py-4 rounded-2xl text-center">
-                    <span className="block text-2xl font-bold">FEB-MAR</span>
-                    <span className="block text-lg">Weeks 6-8</span>
+              {/* February-March */}
+              <div className="relative flex items-center justify-center">
+                <div className="w-full max-w-2xl bg-white/10 backdrop-blur-lg rounded-3xl p-8 border border-white/20">
+                  <div className="flex flex-col md:flex-row items-center gap-8">
+                    <div className="md:w-1/3 order-2 md:order-1">
+                      <h3 className="text-2xl font-bold text-white mb-4">
+                        Guided Internship & Portfolio Building
+                      </h3>
+                      <p className="text-white/90 mb-6">
+                        Weeks 6-8: Real client projects, supervised execution, and portfolio development with industry partners
+                      </p>
+                      <div className="flex items-center gap-4">
+                        <FaCertificate className="text-yellow-400 text-xl" />
+                        <span className="text-white font-medium">Certificate & Placement Support</span>
+                      </div>
+                    </div>
+                    <div className="md:w-1/3 order-1 md:order-2">
+                      <div className="relative">
+                        <img 
+                          src="/march.jpg" 
+                          alt="February-March"
+                          className="w-full h-48 object-cover rounded-2xl shadow-2xl"
+                        />
+                        <div className="absolute -top-4 -left-4">
+                          <div className="bg-gradient-to-r from-green-500 to-teal-600 text-white px-6 py-3 rounded-2xl font-bold text-lg">
+                            FEB-MAR
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="md:w-2/3">
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">
-                    Guided Internship
-                  </h3>
-                  <p className="text-gray-600">
-                    Track-aligned participation with supervised execution and controlled workflow exposure
-                  </p>
                 </div>
               </div>
             </div>
@@ -547,29 +692,60 @@ const CreateInstituteScreen = () => {
         </div>
       </section>
 
-      {/* Application CTA */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-blue-900 to-blue-800">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl lg:text-4xl font-bold text-white mb-6">
-            Ready to Become Execution-Ready?
+      {/* Final CTA with Gallery Background */}
+      <section className="relative py-20 px-4 sm:px-6 lg:px-8">
+        {/* Background Gallery */}
+        <div className="absolute inset-0 grid grid-cols-4 gap-0">
+          {[1, 2, 3, 4].map((num) => (
+            <div key={num} className="overflow-hidden">
+              <img 
+                src={`/images/cta${num}.jpg`}
+                alt={`CTA Background ${num}`}
+                className="w-full h-full object-cover opacity-30"
+              />
+            </div>
+          ))}
+        </div>
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-900/90 to-purple-900/90"></div>
+
+        <div className="relative max-w-4xl mx-auto text-center">
+          <h2 className="text-4xl lg:text-5xl font-bold text-white mb-6 drop-shadow-2xl">
+            Ready to Transform Your Career?
           </h2>
-          <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
-            Join Create Institute and transform theoretical knowledge into practical, 
-            job-ready skills through our structured 8-week program.
+          <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto backdrop-blur-sm bg-white/10 p-6 rounded-3xl border border-white/20">
+            Join Cohort 1 and become part of a new generation of 
+            <span className="font-bold text-yellow-300"> execution-ready professionals</span>
           </p>
           
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button className="bg-green-500 hover:bg-green-600 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105">
+          <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
+            <button className="group bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-10 py-5 rounded-2xl font-bold text-xl transition-all duration-300 transform hover:scale-105 shadow-2xl hover:shadow-3xl flex items-center gap-3">
+              <FaRocket className="group-hover:animate-pulse" />
               Apply for Cohort 1
+              <FaArrowRight className="group-hover:translate-x-2 transition-transform duration-300" />
             </button>
-            <button className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-blue-900 px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105">
-              Schedule Consultation
+            <button className="group bg-white/20 backdrop-blur-lg border-2 border-white text-white hover:bg-white/30 px-10 py-5 rounded-2xl font-bold text-xl transition-all duration-300 transform hover:scale-105">
+              Book Campus Tour
             </button>
           </div>
           
-          <p className="text-sm text-blue-300 mt-6">
-            Limited spots available for our inaugural cohort
-          </p>
+          <div className="mt-10 flex flex-wrap justify-center gap-6">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-white">24</div>
+              <div className="text-white/80">Spots Available</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-white">8</div>
+              <div className="text-white/80">Weeks Intensive</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-white">15+</div>
+              <div className="text-white/80">Live Projects</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-white">100%</div>
+              <div className="text-white/80">Practical Learning</div>
+            </div>
+          </div>
         </div>
       </section>
 
