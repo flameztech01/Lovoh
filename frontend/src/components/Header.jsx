@@ -16,7 +16,8 @@ const Header = () => {
   const brands = [
     { name: 'Puuls', path: '/puuls', description: 'the workforce you need' },
     { name: 'Uduua', path: '/uduua', description: 'make it sell' },
-    { name: 'The Fruiit', path: '/thefruiit', description: 'everyday advancement' }
+    { name: 'The Fruiit', path: '/thefruiit', description: 'everyday advancement' },
+    { name: 'Create Institute', path: '/createinstitute', description: 'learn and grow' }
   ];
 
   const handleMobileLinkClick = () => {

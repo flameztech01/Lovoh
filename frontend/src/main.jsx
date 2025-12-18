@@ -20,6 +20,7 @@ import PuulsScreen from './screens/PuulsScreen.jsx';
 import TheFruiitScreen from './screens/TheFruiitScreen.jsx';
 import PrivateRoute from './adminComponents/Privateroute.jsx';
 import BizzzedScreen from './screens/BizzzedScreen.jsx';
+import CreateInstituteScreen from './screens/CreateInstituteScreen.jsx';
 import EventsScreen from './screens/EventScreen.jsx';
 import ContactUsScreen from './screens/ContactUsScreen.jsx'
 
@@ -35,6 +36,8 @@ const router = createBrowserRouter([
       {path: '/uduua', element: <UduuaScreen />},
       {path: '/puuls', element: <PuulsScreen />},
       {path: '/thefruiit', element: <TheFruiitScreen />},
+      {path: '/createinstitute', element: <CreateInstituteScreen />},
+
       {path: '/bizzzed', element: <BizzzedScreen />},
       {path: '/events', element: <EventsScreen />},
       {path: '/contact', element: <ContactUsScreen />},
