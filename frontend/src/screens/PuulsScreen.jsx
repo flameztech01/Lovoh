@@ -106,8 +106,18 @@ const PuulsScreen = () => {
         
         <div className="max-w-7xl mx-auto w-full relative z-10">
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+            
             {/* Left Column - Text Content */}
             <div className="space-y-6">
+                {/* Sub-brand Logo */}
+              <div className="mb-2">
+                <img 
+                  src="/2copy1.png" 
+                  alt="Puuls" 
+                  className="h-16 w-auto"
+                />
+              </div>
+
               {/* Brand Badge */}
               <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm border border-white/30 rounded-full px-4 py-2 mb-2">
                 <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div>
@@ -116,14 +126,14 @@ const PuulsScreen = () => {
                 </span>
               </div>
               
-              {/* Sub-brand Logo */}
+              {/* Sub-brand Logo
               <div className="mb-2">
                 <img 
                   src="/2copy1.png" 
                   alt="Puuls" 
                   className="h-16 w-auto"
                 />
-              </div>
+              </div> */}
 
               {/* Tagline */}
               <div className="space-y-4">
