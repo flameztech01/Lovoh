@@ -165,7 +165,7 @@ const CreateInstituteScreen = () => {
       description: "Learn with a community of driven peers",
       icon: <FaUsers />,
       image: "/feature-cohort.jpg",
-      color: "bg-gradient-to-br from-blue-400 to-blue-600"
+      color: "bg-[#004aff]"
     },
     {
       id: 2,
@@ -173,7 +173,7 @@ const CreateInstituteScreen = () => {
       description: "Work on real client briefs from day one",
       icon: <FaBriefcase />,
       image: "/feature-projects.jpg",
-      color: "bg-gradient-to-br from-purple-400 to-purple-600"
+      color: "bg-[#004aff]"
     },
     {
       id: 3,
@@ -181,7 +181,7 @@ const CreateInstituteScreen = () => {
       description: "Industry professionals guide your journey",
       icon: <FaChalkboardTeacher />,
       image: "/feature-mentors.jpg",
-      color: "bg-gradient-to-br from-green-400 to-green-600"
+      color: "bg-[#004aff]"
     },
     {
       id: 4,
@@ -189,7 +189,7 @@ const CreateInstituteScreen = () => {
       description: "Graduate with tangible work samples",
       icon: <FaCertificate />,
       image: "/feature-portfolio.jpg",
-      color: "bg-gradient-to-br from-orange-400 to-orange-600"
+      color: "bg-[#004aff]"
     }
   ];
 
@@ -215,7 +215,7 @@ const CreateInstituteScreen = () => {
                 alt={`Learning ${index + 1}`}
                 className="w-full h-full object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-900/90 to-purple-900/70"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-[#004aff]/90 to-[#004aff]/70"></div>
             </div>
           ))}
         </div>
@@ -223,13 +223,13 @@ const CreateInstituteScreen = () => {
         <div className="relative h-full flex items-center">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <div className="space-y-6 backdrop-blur-sm bg-white/10 rounded-3xl p-8 lg:p-12 border border-white/20">
-              {/* Institute Logo */}
+              {/* Institute Logo - Made Smaller */}
               <div className="flex justify-center mb-6">
-                <div className="bg-white/20 backdrop-blur-lg rounded-2xl p-6">
+                <div className="bg-white/20 backdrop-blur-lg rounded-2xl p-4">
                   <img 
-                    src="/create-institute-logo.png" 
+                    src="/6.png" 
                     alt="Create Institute" 
-                    className="h-32 w-auto"
+                    className="h-20 w-auto"
                   />
                 </div>
               </div>
@@ -241,9 +241,9 @@ const CreateInstituteScreen = () => {
                 </span>
               </div>
 
-              <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-tight drop-shadow-2xl">
+              {/* <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-tight drop-shadow-2xl">
                 Create Institute
-              </h1>
+              </h1> */}
               
               <p className="text-2xl lg:text-3xl text-white/90 italic font-light mb-6">
                 Where Theory Meets <span className="font-bold text-green-300">Execution</span>
@@ -255,17 +255,17 @@ const CreateInstituteScreen = () => {
               </p>
 
               {/* Video Preview */}
-              <div className="flex justify-center my-8">
+              {/* <div className="flex justify-center my-8">
                 <div className="relative group cursor-pointer">
-                  <div className="w-32 h-32 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center transform group-hover:scale-110 transition-transform duration-300">
+                  <div className="w-32 h-32 bg-[#004aff] rounded-full flex items-center justify-center transform group-hover:scale-110 transition-transform duration-300">
                     <FaPlayCircle className="text-white text-4xl" />
                   </div>
                   <div className="absolute inset-0 animate-ping rounded-full border-4 border-white/30 group-hover:border-white/50"></div>
                 </div>
-              </div>
+              </div> */}
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-6">
-                <button className="group bg-green-500 hover:bg-green-600 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-2xl hover:shadow-3xl flex items-center gap-3">
+                <button className="group bg-[#004aff] hover:bg-[#003bd6] text-white px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-2xl hover:shadow-3xl flex items-center gap-3">
                   Apply Now
                   <FaArrowRight className="group-hover:translate-x-2 transition-transform duration-300" />
                 </button>
@@ -278,11 +278,11 @@ const CreateInstituteScreen = () => {
         </div>
 
         {/* Scroll Indicator */}
-        <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 animate-bounce">
+        {/* <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 animate-bounce">
           <div className="w-8 h-12 border-2 border-white/50 rounded-full flex justify-center">
             <div className="w-1 h-3 bg-white/70 rounded-full mt-2 animate-pulse"></div>
           </div>
-        </div>
+        </div> */}
       </section>
 
       {/* Visual Program Structure */}
@@ -290,7 +290,7 @@ const CreateInstituteScreen = () => {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
-              Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">8-Week Journey</span>
+              Your <span className="text-[#004aff]">8-Week Journey</span>
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
               A visual roadmap from learning to execution
@@ -366,7 +366,7 @@ const CreateInstituteScreen = () => {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
-              Choose Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">Pathway</span>
+              Choose Your <span className="text-[#004aff]">Pathway</span>
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
               Specialize in one track and master it through intensive, project-based learning
@@ -379,8 +379,8 @@ const CreateInstituteScreen = () => {
               onClick={() => setActiveTrack('All')}
               className={`px-8 py-4 rounded-2xl font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg ${
                 activeTrack === 'All'
-                  ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'
-                  : 'bg-white text-gray-700 border border-gray-200 hover:border-blue-600'
+                  ? 'bg-[#004aff] text-white'
+                  : 'bg-white text-gray-700 border border-gray-200 hover:border-[#004aff]'
               }`}
             >
               All Tracks
@@ -391,8 +391,8 @@ const CreateInstituteScreen = () => {
                 onClick={() => setActiveTrack(track.name)}
                 className={`px-8 py-4 rounded-2xl font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg ${
                   activeTrack === track.name
-                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'
-                    : 'bg-white text-gray-700 border border-gray-200 hover:border-blue-600'
+                    ? 'bg-[#004aff] text-white'
+                    : 'bg-white text-gray-700 border border-gray-200 hover:border-[#004aff]'
                 }`}
               >
                 {track.name}
@@ -425,7 +425,7 @@ const CreateInstituteScreen = () => {
                 {/* Track Content */}
                 <div className="p-8 bg-white">
                   <div className="flex items-start gap-4 mb-6">
-                    <div className={`w-16 h-16 rounded-2xl bg-gradient-to-r ${track.color} text-white flex items-center justify-center text-2xl`}>
+                    <div className={`w-16 h-16 rounded-2xl bg-[#004aff] text-white flex items-center justify-center text-2xl`}>
                       {track.icon}
                     </div>
                     <div>
@@ -452,11 +452,11 @@ const CreateInstituteScreen = () => {
                   {/* Stats */}
                   <div className="flex items-center justify-between pt-6 border-t border-gray-100">
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-blue-600">{track.projects}</div>
+                      <div className="text-2xl font-bold text-[#004aff]">{track.projects}</div>
                       <div className="text-sm text-gray-600">Live Projects</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-purple-600">{track.mentors}</div>
+                      <div className="text-2xl font-bold text-[#004aff]">{track.mentors}</div>
                       <div className="text-sm text-gray-600">Expert Mentors</div>
                     </div>
                     <div className="text-center">
@@ -472,11 +472,11 @@ const CreateInstituteScreen = () => {
       </section>
 
       {/* Success Stories Gallery */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-blue-900 to-purple-900">
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-[#004aff]">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl lg:text-5xl font-bold text-white mb-6">
-              Success <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-400">Stories</span>
+              Success <span className="text-yellow-300">Stories</span>
             </h2>
             <p className="text-xl text-white/80 max-w-2xl mx-auto">
               Hear from professionals who transformed their careers
@@ -509,12 +509,12 @@ const CreateInstituteScreen = () => {
                 {/* Story Content */}
                 <div className="p-8 bg-white">
                   <div className="flex items-center gap-4 mb-6">
-                    <div className="w-14 h-14 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-lg font-bold">
+                    <div className="w-14 h-14 bg-[#004aff] rounded-full flex items-center justify-center text-white text-lg font-bold">
                       {story.name.split(' ').map(n => n[0]).join('')}
                     </div>
                     <div>
                       <h3 className="text-xl font-bold text-gray-900">{story.name}</h3>
-                      <p className="text-blue-600 font-semibold">{story.role}</p>
+                      <p className="text-[#004aff] font-semibold">{story.role}</p>
                       <p className="text-gray-500 text-sm">{story.company}</p>
                     </div>
                   </div>
@@ -540,7 +540,7 @@ const CreateInstituteScreen = () => {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
-              Campus <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-teal-600">Life</span>
+              Campus <span className="text-[#004aff]">Life</span>
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
               Experience the vibrant learning environment
@@ -591,7 +591,7 @@ const CreateInstituteScreen = () => {
                 <div className="p-6 bg-white">
                   <h3 className="text-xl font-bold text-gray-900 mb-3">{feature.title}</h3>
                   <p className="text-gray-600">{feature.description}</p>
-                  <div className="mt-4 flex items-center gap-2 text-blue-600 font-semibold group-hover:gap-3 transition-all duration-300">
+                  <div className="mt-4 flex items-center gap-2 text-[#004aff] font-semibold group-hover:gap-3 transition-all duration-300">
                     <span>Learn more</span>
                     <FaArrowRight className="transform group-hover:translate-x-2 transition-transform duration-300" />
                   </div>
@@ -603,11 +603,11 @@ const CreateInstituteScreen = () => {
       </section>
 
       {/* Visual Timeline */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-gray-900 to-blue-900">
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-[#004aff]">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl lg:text-5xl font-bold text-white mb-6">
-              Cohort 1 <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-rose-400">Timeline</span>
+              Cohort 1 <span className="text-yellow-300">Timeline</span>
             </h2>
             <p className="text-xl text-white/80 max-w-2xl mx-auto">
               January Intake • 8 Weeks • Limited Spots
@@ -616,7 +616,7 @@ const CreateInstituteScreen = () => {
 
           <div className="relative">
             {/* Timeline Line */}
-            <div className="absolute left-1/2 transform -translate-x-1/2 h-full w-1 bg-gradient-to-b from-blue-400 to-purple-600"></div>
+            <div className="absolute left-1/2 transform -translate-x-1/2 h-full w-1 bg-white/30"></div>
 
             {/* Timeline Items */}
             <div className="space-y-16">
@@ -632,7 +632,7 @@ const CreateInstituteScreen = () => {
                           className="w-full h-48 object-cover rounded-2xl shadow-2xl"
                         />
                         <div className="absolute -top-4 -right-4">
-                          <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-2xl font-bold text-lg">
+                          <div className="bg-white text-[#004aff] px-6 py-3 rounded-2xl font-bold text-lg">
                             JAN
                           </div>
                         </div>
@@ -678,7 +678,7 @@ const CreateInstituteScreen = () => {
                           className="w-full h-48 object-cover rounded-2xl shadow-2xl"
                         />
                         <div className="absolute -top-4 -left-4">
-                          <div className="bg-gradient-to-r from-green-500 to-teal-600 text-white px-6 py-3 rounded-2xl font-bold text-lg">
+                          <div className="bg-white text-[#004aff] px-6 py-3 rounded-2xl font-bold text-lg">
                             FEB-MAR
                           </div>
                         </div>
@@ -706,7 +706,7 @@ const CreateInstituteScreen = () => {
             </div>
           ))}
         </div>
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-900/90 to-purple-900/90"></div>
+        <div className="absolute inset-0 bg-[#004aff]/90"></div>
 
         <div className="relative max-w-4xl mx-auto text-center">
           <h2 className="text-4xl lg:text-5xl font-bold text-white mb-6 drop-shadow-2xl">
@@ -718,7 +718,7 @@ const CreateInstituteScreen = () => {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
-            <button className="group bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-10 py-5 rounded-2xl font-bold text-xl transition-all duration-300 transform hover:scale-105 shadow-2xl hover:shadow-3xl flex items-center gap-3">
+            <button className="group bg-[#004aff] hover:bg-[#003bd6] text-white px-10 py-5 rounded-2xl font-bold text-xl transition-all duration-300 transform hover:scale-105 shadow-2xl hover:shadow-3xl flex items-center gap-3">
               <FaRocket className="group-hover:animate-pulse" />
               Apply for Cohort 1
               <FaArrowRight className="group-hover:translate-x-2 transition-transform duration-300" />
