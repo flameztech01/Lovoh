@@ -305,7 +305,7 @@ const TheFruiitScreen = () => {
           </div>
 
           {/* Scroll Indicator */}
-          <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
+          {/* <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
             <div className="flex flex-col items-center">
               <span className="text-[#7EF949] text-sm mb-2 animate-pulse">Discover Growth</span>
               <div className="relative">
@@ -315,7 +315,7 @@ const TheFruiitScreen = () => {
                 <div className="absolute -inset-2 border border-[#7EF949]/20 rounded-full animate-ping"></div>
               </div>
             </div>
-          </div>
+          </div> */}
         </div>
       </section>
 

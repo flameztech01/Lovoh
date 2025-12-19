@@ -234,14 +234,14 @@ const UduuaScreen = () => {
           </div>
           
           {/* Scroll Indicator - Animated */}
-          <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
+          {/* <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
             <div className="flex flex-col items-center">
               <span className="text-sm text-gray-500 mb-2">Explore Solutions</span>
               <div className="w-6 h-10 rounded-full border-2 border-gray-300 flex justify-center relative">
                 <div className="w-1.5 h-1.5 bg-gradient-to-r from-[#0043FC] to-[#79FFFF] rounded-full absolute top-2 animate-scroll"></div>
               </div>
             </div>
-          </div>
+          </div> */}
         </div>
       </section>
 
