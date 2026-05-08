@@ -1,0 +1,25 @@
+
+{
+  "name": "Biizzed",
+  "short_name": "Biizzed",
+  "description": "Discover articles, magazines, and videos from creators worldwide",
+  "start_url": "/biizzed/feed",
+  "scope": "/biizzed",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1B3766",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/7.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/7.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

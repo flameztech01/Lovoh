@@ -1,0 +1,103 @@
+// components/AllEventsNavbar.jsx
+import React, { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { FaSearch, FaTimes, FaCalendarAlt, FaArrowLeft } from 'react-icons/fa';
+
+const AllEventsNavbar = () => {
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const handleBack = () => {
+    if (searchOpen) {
+      setSearchOpen(false);
+      setSearchTerm('');
+    }
+  };
+
+  return (
+    <nav className="fixed top-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {!searchOpen ? (
+          // Normal Navbar
+          <div className="flex items-center justify-between h-14 sm:h-16">
+            {/* Left - Back & Title */}
+            <div className="flex items-center gap-3">
+              <Link to="/events" className="p-1.5 -ml-1.5 text-gray-500 hover:text-[#1B3766] transition-colors rounded-lg hover:bg-gray-50">
+                <FaArrowLeft className="text-sm sm:text-base" />
+              </Link>
+              <h1 className="text-base sm:text-xl font-bold text-gray-900">All Events</h1>
+            </div>
+
+            {/* Right - Actions */}
+            <div className="flex items-center gap-1.5">
+              {/* Search Button */}
+              <button
+                onClick={() => setSearchOpen(true)}
+                className="p-2 sm:p-2.5 text-gray-500 hover:text-[#1B3766] hover:bg-gray-50 rounded-lg transition-colors"
+              >
+                <FaSearch className="text-sm sm:text-base" />
+              </button>
+
+              {/* Create Event CTA */}
+              <Link
+                to="/events/dashboard/events/new"
+                className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-[#1B3766] text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-[#142952] transition-all"
+              >
+                <FaCalendarAlt className="text-[10px] sm:text-xs" />
+                <span className="hidden sm:inline">Create Event</span>
+                <span className="sm:hidden">Create</span>
+              </Link>
+            </div>
+          </div>
+        ) : (
+          // Search Mode - Full width
+          <div className="flex items-center gap-3 h-14 sm:h-16 animate-slideDown">
+            <button
+              onClick={handleBack}
+              className="p-1.5 -ml-1.5 text-gray-500 hover:text-[#1B3766] transition-colors rounded-lg hover:bg-gray-50 flex-shrink-0"
+            >
+              <FaArrowLeft className="text-sm" />
+            </button>
+            <div className="relative flex-1">
+              <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search events, categories, locations..."
+                className="w-full pl-9 pr-10 py-2.5 sm:py-3 border border-gray-200 rounded-xl text-sm sm:text-base bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1B3766] focus:border-transparent transition-all"
+                autoFocus
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
+                >
+                  <FaTimes className="text-xs sm:text-sm" />
+                </button>
+              )}
+            </div>
+            <button
+              onClick={() => { setSearchOpen(false); setSearchTerm(''); }}
+              className="text-sm text-gray-500 hover:text-[#1B3766] font-medium flex-shrink-0"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+      </div>
+
+      <style>{`
+        @keyframes slideDown {
+          from { opacity: 0; transform: translateY(-4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slideDown {
+          animation: slideDown 0.2s ease-out;
+        }
+      `}</style>
+    </nav>
+  );
+};
+
+export default AllEventsNavbar;
