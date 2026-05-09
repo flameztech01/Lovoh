@@ -43,7 +43,7 @@ const EventSignup = () => {
     try {
       const auth2 = window.google?.accounts?.id;
       if (!auth2) {
-        toast.error('Google Sign-In is not available. Please try again later.');
+        toast.error('Google SignIn is not available. Please try again later.');
         return;
       }
 
