@@ -61,8 +61,12 @@ const createMagazine = asyncHandler(async (req, res) => {
 
   // Notify if published
   if (magazine.status === 'published') {
+    // Email subscribers (fire-and-forget is okay for email)
     notifySubscribersOfNewContent(magazine, 'magazine');
-    notifyNewContent({ type: 'magazine', content: magazine });
+    
+    // Push + in-app notifications (must await to ensure delivery)
+    const notifyResult = await notifyNewContent({ type: 'magazine', content: magazine });
+    console.log('Magazine publish notification result:', notifyResult);
   }
 
   res.status(201).json(magazine);
@@ -210,17 +214,22 @@ const updateMagazine = asyncHandler(async (req, res) => {
   if (category) magazine.category = category;
   if (tags) magazine.tags = Array.isArray(tags) ? tags : tags.split(',');
   if (isFeatured !== undefined) magazine.isFeatured = isFeatured === 'true' || isFeatured === true;
+  
   if (status) {
     const oldStatus = magazine.status;
     magazine.status = status;
+    
     if (oldStatus !== 'published' && status === 'published') {
       magazine.publishedAt = new Date();
       await magazine.save(); // persist before notifying
 
-      // Email
+      // Email subscribers
       notifySubscribersOfNewContent(magazine, 'magazine');
-      // Push
-      notifyNewContent({ type: 'magazine', content: magazine });
+      
+      // Push + in-app notifications (must await)
+      const notifyResult = await notifyNewContent({ type: 'magazine', content: magazine });
+      console.log('Magazine status-change notification result:', notifyResult);
+      
       return res.json(magazine);
     }
   }

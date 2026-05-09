@@ -76,10 +76,12 @@ const createArticle = asyncHandler(async (req, res) => {
   });
 
   if (article.status === 'published') {
-    // Email subscribers (existing)
+    // Email subscribers (fire-and-forget is okay for email)
     notifySubscribersOfNewContent(article, 'article');
-    // Push notifications
-    notifyNewContent({ type: 'article', content: article });
+    
+    // Push + in-app notifications (must await to ensure delivery)
+    const notifyResult = await notifyNewContent({ type: 'article', content: article });
+    console.log('Article publish notification result:', notifyResult);
   }
 
   res.status(201).json(article);
@@ -277,14 +279,18 @@ const updateArticle = asyncHandler(async (req, res) => {
   if (status) {
     const oldStatus = article.status;
     article.status = status;
+    
     if (oldStatus !== 'published' && status === 'published') {
       article.publishedAt = new Date();
       await article.save(); // persist before notifying
 
-      // Email
+      // Email subscribers
       notifySubscribersOfNewContent(article, 'article');
-      // Push
-      notifyNewContent({ type: 'article', content: article });
+      
+      // Push + in-app notifications (must await)
+      const notifyResult = await notifyNewContent({ type: 'article', content: article });
+      console.log('Article status-change notification result:', notifyResult);
+      
       return res.json(article);
     }
   }

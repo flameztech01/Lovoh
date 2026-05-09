@@ -4,7 +4,7 @@ import { v2 as cloudinary } from 'cloudinary';
 import Video from '../models/videoModel.js';
 import User from '../models/userModel.js';
 import streamifier from 'streamifier';
-import { notifyNewContent } from './notificationController.js';   // <-- new
+import { notifyNewContent } from './notificationController.js';   // <-- push
 
 // @desc    Upload video to Cloudinary
 // @route   POST /api/videos
@@ -76,8 +76,9 @@ const uploadVideo = asyncHandler(async (req, res) => {
     status: 'published',   // default
   });
 
-  // Push notification for new video
-  notifyNewContent({ type: 'video', content: video });
+  // Push + in-app notification for new video (must await to ensure delivery)
+  const notifyResult = await notifyNewContent({ type: 'video', content: video });
+  console.log('Video upload notification result:', notifyResult);
 
   res.status(201).json(video);
 });
@@ -438,8 +439,9 @@ const postYoutubeVideo = asyncHandler(async (req, res) => {
     status: 'published',
   });
 
-  // Push notification for new video
-  notifyNewContent({ type: 'video', content: video });
+  // Push + in-app notification for new YouTube video (must await to ensure delivery)
+  const notifyResult = await notifyNewContent({ type: 'video', content: video });
+  console.log('YouTube video notification result:', notifyResult);
 
   res.status(201).json(video);
 });
