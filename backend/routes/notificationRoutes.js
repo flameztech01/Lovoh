@@ -3,7 +3,8 @@ import { protectBoth } from '../middleware/authMiddleware.js';
 import {
   getPreferences,
   updatePreferences,
-  registerDevice,
+  subscribeToPush,
+  unsubscribeFromPush,
   getNotifications,
   markAsRead,
   markAllAsRead,
@@ -13,9 +14,9 @@ const router = express.Router();
 
 router.get('/preferences', protectBoth, getPreferences);
 router.put('/preferences', protectBoth, updatePreferences);
-router.post('/register', protectBoth, registerDevice);
+router.post('/subscribe', protectBoth, subscribeToPush);        // web-push
+router.post('/unsubscribe', protectBoth, unsubscribeFromPush);  // optional
 
-// In-app notifications
 router.get('/', protectBoth, getNotifications);
 router.put('/:id/read', protectBoth, markAsRead);
 router.put('/read-all', protectBoth, markAllAsRead);

@@ -1,7 +1,14 @@
 import asyncHandler from 'express-async-handler';
+import webPush from 'web-push';
 import NotificationPreference from '../models/notificationModel.js';
-import InAppNotification from '../models/InAppNotificationModel.js';   // new
-import admin from '../config/firebase.js';
+import InAppNotification from '../models/InAppNotificationModel.js';
+
+// ---------- Configure web‑push once ----------
+webPush.setVapidDetails(
+  `mailto:${process.env.VAPID_EMAIL}`,
+  process.env.VAPID_PUBLIC_KEY,
+  process.env.VAPID_PRIVATE_KEY
+);
 
 // ---------- Internal helper ----------
 const saveNotification = async ({ userId, type, message, data = {} }) => {
@@ -12,7 +19,7 @@ const saveNotification = async ({ userId, type, message, data = {} }) => {
   }
 };
 
-// ---------- CRUD for push preferences ----------
+// ---------- Preferences ----------
 const getPreferences = asyncHandler(async (req, res) => {
   let prefs = await NotificationPreference.findOne({ userId: req.user._id });
   if (!prefs) {
@@ -22,20 +29,11 @@ const getPreferences = asyncHandler(async (req, res) => {
 });
 
 const updatePreferences = asyncHandler(async (req, res) => {
-  const { preferences, deviceToken } = req.body;
+  const { preferences, pushSubscription } = req.body;
   const updateFields = {};
 
   if (preferences) updateFields.preferences = preferences;
-
-  if (deviceToken) {
-    const existing = await NotificationPreference.findOne({ userId: req.user._id });
-    const tokens = existing?.deviceTokens || [];
-    if (!tokens.includes(deviceToken)) {
-      if (tokens.length >= 10) tokens.shift();
-      tokens.push(deviceToken);
-    }
-    updateFields.deviceTokens = tokens;
-  }
+  if (pushSubscription) updateFields.pushSubscription = pushSubscription;
 
   const prefs = await NotificationPreference.findOneAndUpdate(
     { userId: req.user._id },
@@ -45,44 +43,39 @@ const updatePreferences = asyncHandler(async (req, res) => {
   res.json(prefs);
 });
 
-// ---------- Device token registration ----------
-const registerDevice = asyncHandler(async (req, res) => {
-  const { token } = req.body;
-
-  if (!token) {
+// ---------- Web‑push subscription management ----------
+const subscribeToPush = asyncHandler(async (req, res) => {
+  const { subscription } = req.body;
+  if (!subscription || !subscription.endpoint) {
     res.status(400);
-    throw new Error('Device token is required');
+    throw new Error('Valid subscription object with endpoint is required');
   }
 
-  let prefs = await NotificationPreference.findOne({ userId: req.user._id });
+  await NotificationPreference.findOneAndUpdate(
+    { userId: req.user._id },
+    { $set: { pushSubscription: subscription } },
+    { upsert: true }
+  );
 
-  if (!prefs) {
-    prefs = await NotificationPreference.create({
-      userId: req.user._id,
-      deviceTokens: [token],
-    });
-  } else {
-    const tokens = prefs.deviceTokens || [];
-    if (!tokens.includes(token)) {
-      if (tokens.length >= 10) tokens.shift();
-      tokens.push(token);
-    }
-    prefs.deviceTokens = tokens;
-    await prefs.save();
-  }
-
-  res.json({ message: 'Device registered', deviceTokens: prefs.deviceTokens });
+  res.json({ message: 'Subscribed to push notifications' });
 });
 
-// ---------- Push dispatchers (now also save in-app records) ----------
+const unsubscribeFromPush = asyncHandler(async (req, res) => {
+  await NotificationPreference.findOneAndUpdate(
+    { userId: req.user._id },
+    { $set: { pushSubscription: null } }
+  );
+  res.json({ message: 'Unsubscribed from push notifications' });
+});
+
+// ---------- Internal dispatchers ----------
 
 /**
- * Send push + in-app notification for new content (article, magazine, video)
+ * Send push + in‑app notification for new content (article, magazine, video)
  */
 const notifyNewContent = async ({ type, content }) => {
   try {
     const prefField = `preferences.${type}.enabled`;
-
     const prefs = await NotificationPreference.find({ [prefField]: true })
       .populate('userId', 'following')
       .lean();
@@ -96,24 +89,21 @@ const notifyNewContent = async ({ type, content }) => {
       slug: content.slug || '',
     };
 
-    const messagePayload = {
-      notification: { title, body },
-      data: { ...dataPayload, click_action: 'FLUTTER_NOTIFICATION_CLICK' },
-    };
+    // Determine the author ID (videos use 'user', others use 'createdBy')
+    const authorId = content.createdBy || content.user;
 
-    const tokensToSend = [];
     for (const pref of prefs) {
       const user = pref.userId;
       const followOnly = pref.preferences[type]?.fromFollowingOnly;
 
-      if (followOnly && content.createdBy) {
+      if (followOnly && authorId) {
         const isFollowing = user.following?.some(
-          f => f.toString() === content.createdBy.toString()
+          f => f.toString() === authorId.toString()
         );
         if (!isFollowing) continue;
       }
 
-      // Save in-app notification for this user
+      // Save in‑app notification for this user
       await saveNotification({
         userId: user._id,
         type,
@@ -121,29 +111,32 @@ const notifyNewContent = async ({ type, content }) => {
         data: dataPayload,
       });
 
-      if (pref.deviceTokens?.length) {
-        tokensToSend.push(...pref.deviceTokens);
+      // Send web‑push if subscription exists
+      if (pref.pushSubscription) {
+        try {
+          await webPush.sendNotification(
+            pref.pushSubscription,
+            JSON.stringify({ title, body, data: dataPayload })
+          );
+        } catch (err) {
+          if (err.statusCode === 410) {
+            await NotificationPreference.findOneAndUpdate(
+              { userId: user._id },
+              { $set: { pushSubscription: null } }
+            );
+          } else {
+            console.error(`Push failed for user ${user._id}:`, err);
+          }
+        }
       }
-    }
-
-    if (tokensToSend.length) {
-      const chunkSize = 500;
-      for (let i = 0; i < tokensToSend.length; i += chunkSize) {
-        const chunk = tokensToSend.slice(i, i + chunkSize);
-        await admin.messaging().sendMulticast({
-          tokens: chunk,
-          ...messagePayload,
-        });
-      }
-      console.log(`📲 Push sent to ${tokensToSend.length} devices for "${title}"`);
     }
   } catch (error) {
-    console.error('Push notification error:', error);
+    console.error('notifyNewContent error:', error);
   }
 };
 
 /**
- * Send push + in-app notification for follower events
+ * Send push + in‑app notification for follower events
  */
 const notifyFollowerEvent = async ({ targetUserId, followerName, type }) => {
   try {
@@ -157,44 +150,44 @@ const notifyFollowerEvent = async ({ targetUserId, followerName, type }) => {
         ? `${followerName} started following you`
         : `${followerName} unfollowed you`;
 
-    // Save in-app notification
+    // Save in‑app notification
     await saveNotification({
       userId: targetUserId,
-      type: 'follow',        // or 'unfollow'
+      type: 'follow',
       message,
       data: { event: type, followerName },
     });
 
-    if (!pref || !pref.deviceTokens?.length) return;
+    if (!pref || !pref.pushSubscription) return;
 
     const title =
       type === 'follow' ? 'New follower 👤' : 'Follower removed 🚶';
-    const body = message;
 
-    const messagePayload = {
-      notification: { title, body },
-      data: {
-        type: 'follow',
-        event: type,
-        click_action: 'FLUTTER_NOTIFICATION_CLICK',
-      },
-    };
-
-    const chunkSize = 500;
-    for (let i = 0; i < pref.deviceTokens.length; i += chunkSize) {
-      const chunk = pref.deviceTokens.slice(i, i + chunkSize);
-      await admin.messaging().sendMulticast({
-        tokens: chunk,
-        ...messagePayload,
-      });
+    try {
+      await webPush.sendNotification(
+        pref.pushSubscription,
+        JSON.stringify({
+          title,
+          body: message,
+          data: { type: 'follow', event: type },
+        })
+      );
+    } catch (err) {
+      if (err.statusCode === 410) {
+        await NotificationPreference.findOneAndUpdate(
+          { userId: targetUserId },
+          { $set: { pushSubscription: null } }
+        );
+      } else {
+        console.error('Follower push failed:', err);
+      }
     }
-    console.log(`📲 Follower push sent to ${targetUserId}`);
   } catch (error) {
-    console.error('Follower notification error:', error);
+    console.error('notifyFollowerEvent error:', error);
   }
 };
 
-// ---------- In-app notification retrieval and read actions ----------
+// ---------- In‑app notification retrieval and read actions ----------
 const getNotifications = asyncHandler(async (req, res) => {
   const { page = 1, limit = 20 } = req.query;
 
@@ -244,11 +237,12 @@ const markAllAsRead = asyncHandler(async (req, res) => {
 export {
   getPreferences,
   updatePreferences,
-  registerDevice,
+  subscribeToPush,
+  unsubscribeFromPush,
   notifyNewContent,
   notifyFollowerEvent,
   getNotifications,
   markAsRead,
   markAllAsRead,
-  saveNotification,   // exported in case other controllers need it directly
+  saveNotification,
 };

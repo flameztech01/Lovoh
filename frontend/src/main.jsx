@@ -131,7 +131,7 @@ import CustomFormTeam from "./screens/CustomFormTeam.jsx";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import AdminForms from "./adminScreen/AdminForms.jsx";
 
-// ====== PUSH NOTIFICATIONS ======
+// ====== PUSH NOTIFICATIONS (web‑push) ======
 import usePushNotifications from "./hooks/usePushNotifications";
 
 const router = createBrowserRouter([
@@ -170,7 +170,7 @@ const router = createBrowserRouter([
           { path: "search", element: <BizzzedSearch /> },
           { path: "feed/resubscribe", element: <BizzzedResubscribeScreen /> },
           { path: "settings", element: <BizzzedSettings /> },
-          {path: "notifications", element: <BizzzedNotifications />}
+          { path: "notifications", element: <BizzzedNotifications /> },
         ],
       },
 
@@ -289,9 +289,8 @@ const GOOGLE_CLIENT_ID =
   import.meta.env.VITE_GOOGLE_CLIENT_ID ||
   "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
 
-// Register service workers
+// Register service workers – only PWA now (push is handled by web-push via usePushNotifications)
 if ("serviceWorker" in navigator) {
-  // PWA service worker
   window.addEventListener("load", () => {
     navigator.serviceWorker
       .register("/sw.js")
@@ -299,22 +298,12 @@ if ("serviceWorker" in navigator) {
         console.log("PWA Service Worker registered:", registration);
       })
       .catch((error) => {
-        console.log("PWA Service Worker registration failed:", error);
+        console.error("PWA Service Worker registration failed:", error);
       });
   });
-
-  // Firebase Messaging service worker for background push
-  navigator.serviceWorker
-    .register("/firebase-messaging-sw.js")
-    .then((registration) => {
-      console.log("FCM Service Worker registered:", registration);
-    })
-    .catch((error) => {
-      console.error("FCM Service Worker registration failed:", error);
-    });
 }
 
-// Wrapper to activate push notification permission and token registration
+// Wrapper to activate web‑push subscription
 const AppWithNotifications = () => {
   usePushNotifications();
   return <RouterProvider router={router} />;

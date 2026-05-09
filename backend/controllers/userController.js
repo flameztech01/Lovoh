@@ -1,4 +1,4 @@
-// controllers/userController.js - Add these new functions
+// controllers/userController.js - with notification calls for follower events
 import express from 'express';
 import mongoose from 'mongoose';
 import userMessage from '../models/userMessageModel.js';
@@ -6,6 +6,8 @@ import User from '../models/userModel.js';
 import asyncHandler from 'express-async-handler';
 import generateUserToken from "../utils/generateUserToken.js";
 import { OAuth2Client } from "google-auth-library";
+import { notifyFollowerEvent } from './notificationController.js';   // <-- new
+
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const getUserInfoFromAccessToken = async (accessToken) => {
@@ -187,7 +189,6 @@ const getProfileInfo = asyncHandler(async (req, res) => {
     .select('-password')
     .populate('followers', 'name username profile')
     .populate('following', 'name username profile')
-    // Populate with only needed fields
     .populate('likedArticles', 'title slug featuredImage images category readTime')
     .populate('likedMagazines', 'title slug coverImage category')
     .populate('bookmarkedArticles', 'title slug featuredImage images category')
@@ -228,7 +229,6 @@ const followUser = asyncHandler(async (req, res) => {
   
   const userToFollowId = req.params.id;
   
-  // Validate ID format
   if (!mongoose.Types.ObjectId.isValid(userToFollowId)) {
     console.log('❌ Invalid ObjectId format');
     res.status(400);
@@ -244,7 +244,6 @@ const followUser = asyncHandler(async (req, res) => {
 
   const currentUser = await User.findById(req.user._id);
   
-  // Check if already following
   const isAlreadyFollowing = currentUser.following.includes(userToFollowId);
   if (isAlreadyFollowing) {
     console.log('❌ Already following');
@@ -252,19 +251,24 @@ const followUser = asyncHandler(async (req, res) => {
     throw new Error('Already following this user');
   }
 
-  // Check self-follow
   if (req.user._id.toString() === userToFollowId) {
     console.log('❌ Cannot follow yourself');
     res.status(400);
     throw new Error('Cannot follow yourself');
   }
 
-  // Add to following/followers
   currentUser.following.push(userToFollowId);
   userToFollow.followers.push(req.user._id);
   
   await currentUser.save();
   await userToFollow.save();
+
+  // 🔔 Notify the target user
+  await notifyFollowerEvent({
+    targetUserId: userToFollowId,
+    followerName: currentUser.name || currentUser.username,
+    type: 'follow',
+  });
 
   console.log('✅ Follow successful');
   res.json({ message: 'Followed successfully' });
@@ -287,21 +291,25 @@ const unfollowUser = asyncHandler(async (req, res) => {
     throw new Error("User not found");
   }
 
-  // Check if actually following
   if (!currentUser.following.includes(req.params.id)) {
     res.status(400);
     throw new Error("You are not following this user");
   }
 
-  // Remove from current user's following
   currentUser.following.pull(req.params.id);
   currentUser.followingCount = currentUser.following.length;
   await currentUser.save();
 
-  // Remove from target user's followers
   userToUnfollow.followers.pull(req.user._id);
   userToUnfollow.followersCount = userToUnfollow.followers.length;
   await userToUnfollow.save();
+
+  // 🔔 Notify the target user
+  await notifyFollowerEvent({
+    targetUserId: req.params.id,
+    followerName: currentUser.name || currentUser.username,
+    type: 'unfollow',
+  });
 
   res.json({
     message: `You have unfollowed ${userToUnfollow.name}`,
@@ -379,7 +387,6 @@ const getFollowing = asyncHandler(async (req, res) => {
 const getUserSuggestions = asyncHandler(async (req, res) => {
   const currentUser = await User.findById(req.user._id);
   
-  // Get users who are not followed and not the current user
   const excludeIds = [...currentUser.following, req.user._id];
   
   const suggestions = await User.find({
@@ -418,7 +425,6 @@ const deleteAccount = asyncHandler(async (req, res) => {
     throw new Error("User not found");
   }
 
-  // Remove user from all followers/following lists
   await User.updateMany(
     { followers: req.user._id },
     { $pull: { followers: req.user._id }, $inc: { followersCount: -1 } }
@@ -473,7 +479,6 @@ export {
   updateProfile,
   logout,
   deleteAccount,
-  // New exports
   getProfileInfo,
   getProfileById,
   followUser,

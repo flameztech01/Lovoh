@@ -1,37 +1,32 @@
 import { useEffect } from 'react';
 import { useSelector } from 'react-redux';
-import { messaging, getToken } from '../firebase';
-import { useRegisterDeviceMutation } from '../slices/notificationApiSlice';
+import { useSubscribeToPushMutation } from '../slices/notificationApiSlice';
 
 const usePushNotifications = () => {
   const { userInfo } = useSelector((state) => state.auth);
-  const [registerDevice] = useRegisterDeviceMutation();
+  const [subscribeToPush] = useSubscribeToPushMutation();
 
   useEffect(() => {
-    if (!userInfo || !('Notification' in window)) return;
+    if (!userInfo || !('serviceWorker' in navigator)) return;
 
-    // Request permission and get FCM token
-    const requestPermission = async () => {
-      try {
-        const permission = await Notification.requestPermission();
-        if (permission === 'granted') {
-          const token = await getToken(messaging, {
-            vapidKey: 'BGRlhXRPQnXWDw3cTP5KmCriauV2PRTjdAuKW7p1KotzlrxD-zDqZYrbhSpy-mA_soqPtLtlmNpKOsIc5YhTKfE',   // get from Firebase Console → Cloud Messaging → Web configuration
-          });
-          if (token) {
-            await registerDevice({ token }).unwrap();
-            console.log('Device token registered');
-          }
-        }
-      } catch (error) {
-        console.error('Push notification permission error:', error);
-      }
+    const register = async () => {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') return;
+
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: import.meta.env.VITE_VAPID_PUBLIC_KEY,
+      });
+
+      await subscribeToPush({ subscription }).unwrap();
+      console.log('Web-push subscribed');
     };
 
-    requestPermission();
-  }, [userInfo, registerDevice]);
+    register();
+  }, [userInfo, subscribeToPush]);
 
-  return null; // Hook only runs side effects
+  return null;
 };
 
 export default usePushNotifications;

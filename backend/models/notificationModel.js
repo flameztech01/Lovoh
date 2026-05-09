@@ -9,7 +9,11 @@ const notificationPreferenceSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
-    deviceTokens: [String], // Firebase Cloud Messaging tokens
+    // Web‑push subscription (replaces Firebase device tokens)
+    pushSubscription: {
+      type: Object,
+      default: null,
+    },
     preferences: {
       articles: {
         enabled: { type: Boolean, default: true },

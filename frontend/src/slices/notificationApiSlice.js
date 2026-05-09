@@ -5,7 +5,7 @@ const NOTIFICATIONS_URL = '/notifications';
 
 export const notificationApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
-    // ==================== PUSH NOTIFICATION PREFERENCES ====================
+    // ==================== PREFERENCES ====================
 
     // Get current notification preferences
     getNotificationPreferences: builder.query({
@@ -15,7 +15,7 @@ export const notificationApiSlice = apiSlice.injectEndpoints({
       providesTags: ['NotificationPreferences'],
     }),
 
-    // Update preferences (and optionally add a device token)
+    // Update preferences (and optionally store a push subscription)
     updateNotificationPreferences: builder.mutation({
       query: (data) => ({
         url: `${NOTIFICATIONS_URL}/preferences`,
@@ -25,17 +25,28 @@ export const notificationApiSlice = apiSlice.injectEndpoints({
       invalidatesTags: ['NotificationPreferences'],
     }),
 
-    // Register a device token (if you only want to send tokens without changing prefs)
-    registerDevice: builder.mutation({
+    // ==================== WEB‑PUSH SUBSCRIPTION ====================
+
+    // Subscribe to web‑push
+    subscribeToPush: builder.mutation({
       query: (data) => ({
-        url: `${NOTIFICATIONS_URL}/register`,
+        url: `${NOTIFICATIONS_URL}/subscribe`,
         method: 'POST',
-        body: data,
+        body: data,   // expects { subscription }
       }),
       invalidatesTags: ['NotificationPreferences'],
     }),
 
-    // ==================== IN-APP NOTIFICATIONS ====================
+    // Unsubscribe from web‑push
+    unsubscribeFromPush: builder.mutation({
+      query: () => ({
+        url: `${NOTIFICATIONS_URL}/unsubscribe`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['NotificationPreferences'],
+    }),
+
+    // ==================== IN‑APP NOTIFICATIONS ====================
 
     // Get list of notifications
     getNotifications: builder.query({
@@ -69,8 +80,9 @@ export const notificationApiSlice = apiSlice.injectEndpoints({
 export const {
   useGetNotificationPreferencesQuery,
   useUpdateNotificationPreferencesMutation,
-  useRegisterDeviceMutation,
-  useGetNotificationsQuery,                // new
-  useMarkNotificationReadMutation,         // new
-  useMarkAllNotificationsReadMutation,     // new
+  useSubscribeToPushMutation,          // new – subscribe
+  useUnsubscribeFromPushMutation,      // new – unsubscribe
+  useGetNotificationsQuery,
+  useMarkNotificationReadMutation,
+  useMarkAllNotificationsReadMutation,
 } = notificationApiSlice;
