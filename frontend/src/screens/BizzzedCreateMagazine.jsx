@@ -8,7 +8,7 @@ import {
 import { useCreateMagazineMutation } from '../slices/magApiSlice';
 import { toast } from 'react-toastify';
 import BizzzedArticlesNavbar from '../components/BizzzedArticlesNavbar';
-import BizzzedBottomBar from '../components/BizzzedBottombar';
+import BizzzedBottomBar from '../components/BizzzedBottomBar';
 
 const BizzzedCreateMagazine = () => {
   const navigate = useNavigate();

@@ -4,7 +4,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { FaCheckCircle, FaTimesCircle, FaSpinner, FaArrowRight } from 'react-icons/fa';
 import { useSubscribeMutation } from '../slices/subscribeApiSlice';
 import BizzzedArticlesNavbar from '../components/BizzzedArticlesNavbar';
-import BizzzedBottomBar from '../components/BizzzedBottombar';
+import BizzzedBottomBar from '../components/BizzzedBottomBar';
 
 const BizzzedResubscribeScreen = () => {
   const [searchParams] = useSearchParams();

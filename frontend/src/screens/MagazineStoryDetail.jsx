@@ -13,7 +13,7 @@ import { toast } from 'react-toastify';
 import { useSelector } from 'react-redux';
 import { useGetMagazineBySlugQuery, useGetMagazinesQuery, useLikeMagazineMutation, useBookmarkMagazineMutation, useAddMagazineCommentMutation, useLikeMagazineCommentMutation, useDeleteMagazineCommentMutation } from '../slices/magApiSlice';
 import { useFollowUserMutation, useUnfollowUserMutation } from '../slices/userApiSlice';
-import BizzzedBottomBar from '../components/BizzzedBottombar';
+import BizzzedBottomBar from '../components/BizzzedBottomBar';
 import * as pdfjsLib from 'pdfjs-dist';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();

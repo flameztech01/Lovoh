@@ -10,7 +10,7 @@ import {
 import { useCreateArticleMutation } from '../slices/articlesApiSlice';
 import { toast } from 'react-toastify';
 import BizzzedArticlesNavbar from '../components/BizzzedArticlesNavbar';
-import BizzzedBottomBar from '../components/BizzzedBottombar';
+import BizzzedBottomBar from '../components/BizzzedBottomBar';
 
 const ToolbarButton = ({ onClick, icon: Icon, title }) => (
   <button type="button" onClick={onClick} title={title} className="p-2 rounded hover:bg-gray-200 text-gray-600 transition-colors">

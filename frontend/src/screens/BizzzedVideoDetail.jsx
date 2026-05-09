@@ -23,7 +23,7 @@ import {
   useGetProfileInfoQuery 
 } from '../slices/userApiSlice';
 import BizzzedArticlesNavbar from '../components/BizzzedArticlesNavbar';
-import BizzzedBottomBar from '../components/BizzzedBottombar';
+import BizzzedBottomBar from '../components/BizzzedBottomBar';
 import { useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
 

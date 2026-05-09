@@ -7,7 +7,7 @@ import {
 import { useGetFollowersQuery, useGetFollowingQuery, useFollowUserMutation, useUnfollowUserMutation, useGetProfileInfoQuery } from '../slices/userApiSlice';
 import { useSelector } from 'react-redux';
 import BizzzedArticlesNavbar from '../components/BizzzedArticlesNavbar';
-import BizzzedBottomBar from '../components/BizzzedBottombar';
+import BizzzedBottomBar from '../components/BizzzedBottomBar';
 import { toast } from 'react-toastify';
 
 // ====== UTILS ======

@@ -9,7 +9,7 @@ import {
 import { useUploadVideoMutation, usePostYoutubeVideoMutation } from '../slices/videoApiSlice';
 import { toast } from 'react-toastify';
 import BizzzedArticlesNavbar from '../components/BizzzedArticlesNavbar';
-import BizzzedBottomBar from '../components/BizzzedBottombar';
+import BizzzedBottomBar from '../components/BizzzedBottomBar';
 
 const BizzzedCreateVideo = () => {
   const navigate = useNavigate();

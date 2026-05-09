@@ -23,7 +23,7 @@ import {
 } from '../slices/notificationApiSlice';
 
 import BizzzedArticlesNavbar from '../components/BizzzedArticlesNavbar';
-import BizzzedBottomBar from '../components/BizzzedBottombar';
+import BizzzedBottomBar from '../components/BizzzedBottomBar';
 
 const BizzzedSettings = () => {
   const navigate = useNavigate();
