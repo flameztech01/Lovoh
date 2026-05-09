@@ -34,7 +34,9 @@ app.use(cors({
     origin: [
         'http://localhost:3000',
         'https://lovoh-1.onrender.com',
-        'https://lovohcreate.vercel.app'
+        'https://lovohcreate.vercel.app',
+        'https://www.lovohcreate.com',
+        'https://lovohcreate.com',
     ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
