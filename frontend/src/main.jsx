@@ -3,7 +3,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.jsx";
-import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { Provider } from "react-redux";
 import store from "./store.js";
 import { Analytics } from "@vercel/analytics/react";
@@ -131,201 +131,159 @@ import CustomFormTeam from "./screens/CustomFormTeam.jsx";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import AdminForms from "./adminScreen/AdminForms.jsx";
 
-// ====== PUSH NOTIFICATIONS (web‑push) ======
+// ====== PUSH NOTIFICATIONS ======
 import usePushNotifications from "./hooks/usePushNotifications";
 
-// ==================== SUBDOMAIN DETECTION ====================
-const hostname = window.location.hostname;
-
-// Safe www redirect — only run once per session
-if (hostname.startsWith('www.') && !sessionStorage.getItem('www_redirect_done')) {
-  sessionStorage.setItem('www_redirect_done', '1');
-  const newUrl = window.location.href.replace('www.', '');
-  window.location.replace(newUrl);
-  throw new Error('Redirecting to non-www...');
-}
-
-const getSubdomain = () => {
-  if (hostname === 'uduua.lovohcreate.com') return 'uduua';
-  if (hostname === 'biizzed.lovohcreate.com') return 'biizzed';
-  if (hostname === 'event-room.lovohcreate.com') return 'events';
-  return 'main';
-};
-
-const currentSubdomain = getSubdomain();
-console.log('Current subdomain:', currentSubdomain, '| Hostname:', hostname);
-
-// ==================== ROUTE DEFINITIONS ====================
-
-// --- Biizzed routes (used by both subdomain and main domain /biizzed) ---
-const biizzedRoutes = {
-  path: "/",
-  element: <BizzzedLayout />,
-  children: [
-    { index: true, element: <BizzzedScreen /> },
-    { path: "login", element: <BizzzedLogin /> },
-    { path: "signup", element: <BizzzedSignup /> },
-    { path: "feed", element: <BizzzedFeed /> },
-    { path: "create-video", element: <BizzzedCreateVideo /> },
-    { path: "create-article", element: <BizzzedCreateArticle /> },
-    { path: "create-magazine", element: <BizzzedCreateMagazine /> },
-    { path: "profile", element: <BizzzedProfile /> },
-    { path: "followers", element: <BizzzedFollowers /> },
-    { path: "videos", element: <BizzzedVideos /> },
-    { path: "videos/:id", element: <BizzzedVideoDetail /> },
-    { path: "magazines", element: <BizzzedMagazines /> },
-    { path: "articles", element: <BizzzedArticlesScreen /> },
-    { path: "articles/:slug", element: <BizzzedArticleDetails /> },
-    { path: ":slug", element: <MagazineStoryDetail /> },
-    { path: "search", element: <BizzzedSearch /> },
-    { path: "feed/resubscribe", element: <BizzzedResubscribeScreen /> },
-    { path: "settings", element: <BizzzedSettings /> },
-    { path: "notifications", element: <BizzzedNotifications /> },
-  ],
-};
-
-// --- Uduua routes ---
-const uduuaRoutes = {
-  path: "/",
-  element: <UduuaLayout />,
-  children: [
-    { index: true, element: <UduuaScreen /> },
-    { path: "shop", element: <UduuaShop /> },
-    { path: "shop/signup", element: <UduuaSignup /> },
-    { path: "shop/login", element: <UduuaLogin /> },
-    { path: "shop/cart", element: <UduuaCart /> },
-    { path: "shop/product/:id", element: <UduuaProductDetail /> },
-    { path: "checkout", element: <UduuaCheckout /> },
-    { path: "shop/orders", element: <UduuaOrders /> },
-    { path: "shop/orders/:id", element: <UduuaOrderId /> },
-    { path: "shop/help", element: <UduuaHelp /> },
-    { path: "shop/orders/:id/confirm", element: <UduuaConfirmOrder /> },
-    { path: "shop/payment-verify", element: <UduuaPaymentVerify /> },
-    { path: "shop/payment/:id", element: <UduuaPaymentPage /> },
-    { path: "apply-seller", element: <UduuaApplySeller /> },
-    { path: "seller/add-product", element: <UduuaAddProduct /> },
-    { path: "seller/dashboard", element: <UduuaSellerDashboard /> },
-    { path: "seller/products", element: <UduuaSellerProducts /> },
-    { path: "seller/orders", element: <UduuaSellerOrders /> },
-    { path: "seller/wallet", element: <UduuaSellerWallet /> },
-    { path: "seller/payment-history", element: <UduuaSellerPaymentHistory /> },
-    { path: "services", element: <UduuaServices /> },
-  ],
-};
-
-// --- Event routes ---
-const eventRoutes = {
-  path: "/",
-  element: <App />,
-  children: [
-    { index: true, element: <EventsScreen /> },
-    { path: ":id", element: <EventDetail /> },
-    { path: "all-events", element: <AllEvents /> },
-    { path: ":id/register", element: <EventRegistration /> },
-    { path: "login", element: <EventLogin /> },
-    { path: "signup", element: <EventSignup /> },
-    {
-      element: <UserPrivateRoute />,
-      children: [
-        { path: "dashboard", element: <EventDashboard /> },
-        { path: "dashboard/events", element: <EventDashboardEvents /> },
-        { path: "dashboard/events/new", element: <EventDashboardCreateEvent /> },
-        { path: "dashboard/registrations", element: <EventDashboardRegistrations /> },
-        { path: "dashboard/wallet", element: <EventDashboardWallet /> },
-        { path: "dashboard/analytics", element: <EventDashboardAnalytics /> },
-        { path: "dashboard/events/:id", element: <EventDashboardEventDetail /> },
-        { path: "dashboard/events/:id/registrations", element: <EventDashboardEventRegistrations /> },
-        { path: "dashboard/events/:id/edit", element: <EventDashboardEditEvent /> },
-      ],
-    },
-  ],
-};
-
-// --- Main domain routes (everything) ---
-const mainRoutes = [
-  { index: true, element: <Homepage /> },
-  { path: "admin/login", element: <Adminauth /> },
-  { path: "/about", element: <Aboutscreen /> },
-  { path: "/services", element: <Servicescreen /> },
-  { path: "/puuls", element: <PuulsScreen /> },
-  { path: "/thefruiit", element: <TheFruiitScreen /> },
-  { path: "/createinstitute", element: <CreateInstituteScreen /> },
-  { path: "/biizzed", ...biizzedRoutes },
-  { path: "/uduua", ...uduuaRoutes },
-  { path: "/events", ...eventRoutes },
-  { path: "/contact", element: <ContactUsScreen /> },
-  { path: "/work", element: <Work /> },
-  { path: "/start-project", element: <StartProjectForm /> },
-  { path: "/custom-form/login", element: <CustomFormLogin /> },
-  { path: "/custom-form/signup", element: <CustomFormSignup /> },
-  { path: "/custom-form/dashboard", element: <CustomFormDashboard /> },
-  { path: "/custom-form/create", element: <CustomFormCreate /> },
-  { path: "/custom-form/:id", element: <CustomFormDetail /> },
-  { path: "/form/:slug", element: <PublicFormView /> },
-  { path: "/custom-form/my-forms", element: <CustomFormMyForms /> },
-  { path: "/custom-form/:id/edit", element: <CustomFormEdit /> },
-  { path: "/custom-form/submissions", element: <CustomFormSubmissions /> },
-  { path: "/custom-form/:id/submissions/:submissionId", element: <CustomFormSubmissionDetail /> },
-  { path: "/custom-form/analytics", element: <CustomFormAnalytics /> },
-  { path: "/custom-form/templates", element: <CustomFormTemplates /> },
-  { path: "/custom-form/team", element: <CustomFormTeam /> },
+const router = createBrowserRouter([
   {
-    path: "admin",
-    element: <PrivateRoute />,
+    path: "/",
+    element: <App />,
     children: [
-      { path: "message", element: <AdminDashboard /> },
-      { path: "dashboard", element: <AdminDashboard /> },
-      { path: "messages/:id", element: <Viewmessage /> },
-      { path: "products", element: <AdminProducts /> },
-      { path: "products/:id", element: <AdminProductDetail /> },
-      { path: "orders", element: <AdminOrders /> },
-      { path: "products/new", element: <AdminAddProduct /> },
-      { path: "products/edit/:id", element: <AdminEditProduct /> },
-      { path: "magazines", element: <AdminMagazines /> },
-      { path: "magazines/new", element: <AdminAddMagazine /> },
-      { path: "magazines/:id", element: <AdminMagazineDetail /> },
-      { path: "magazines/edit/:id", element: <AdminEditMagazine /> },
-      { path: "articles", element: <AdminArticles /> },
-      { path: "articles/new", element: <AdminAddArticle /> },
-      { path: "articles/edit/:id", element: <AdminEditArticle /> },
-      { path: "events", element: <AdminEvents /> },
-      { path: "events/new", element: <AdminAddEvent /> },
-      { path: "events/edit/:id", element: <AdminEditEvent /> },
-      { path: "events/:id/registrations", element: <AdminEventRegistration /> },
-      { path: "forms", element: <AdminForms /> },
-      { path: "ads", element: <AdminAds /> },
-      { path: "ads/new", element: <AdminAddAd /> },
-      { path: "ads/edit/:id", element: <AdminEditAd /> },
-      { path: "ads/:id", element: <AdminAdDetail /> },
-      { path: "events/:id", element: <AdminEventDetail /> },
-      { path: "videos", element: <AdminVideos /> },
-      { path: "videos/new", element: <AdminAddVideos /> },
-      { path: "videos/edit/:id", element: <AdminEditVideo /> },
-      { path: "sellers", element: <AdminSellers /> },
-      { path: "sellers/:id", element: <AdminSellerDetail /> },
+      { index: true, element: <Homepage /> },
+      { path: "admin/login", element: <Adminauth /> },
+      { path: "/about", element: <Aboutscreen /> },
+      { path: "/services", element: <Servicescreen /> },
+      { path: "/puuls", element: <PuulsScreen /> },
+      { path: "/thefruiit", element: <TheFruiitScreen /> },
+      { path: "/createinstitute", element: <CreateInstituteScreen /> },
+
+      // ==================== BIZZZED ROUTES (Wrapped with BizzzedLayout) ====================
+      {
+        path: "/biizzed",
+        element: <BizzzedLayout />,
+        children: [
+          { index: true, element: <BizzzedScreen /> },
+          { path: "login", element: <BizzzedLogin /> },
+          { path: "signup", element: <BizzzedSignup /> },
+          { path: "feed", element: <BizzzedFeed /> },
+          { path: "create-video", element: <BizzzedCreateVideo /> },
+          { path: "create-article", element: <BizzzedCreateArticle /> },
+          { path: "create-magazine", element: <BizzzedCreateMagazine /> },
+          { path: "profile", element: <BizzzedProfile /> },
+          { path: "followers", element: <BizzzedFollowers /> },
+          { path: "videos", element: <BizzzedVideos /> },
+          { path: "videos/:id", element: <BizzzedVideoDetail /> },
+          { path: "magazines", element: <BizzzedMagazines /> },
+          { path: "articles", element: <BizzzedArticlesScreen /> },
+          { path: "articles/:slug", element: <BizzzedArticleDetails /> },
+          { path: ":slug", element: <MagazineStoryDetail /> },
+          { path: "search", element: <BizzzedSearch /> },
+          { path: "feed/resubscribe", element: <BizzzedResubscribeScreen /> },
+          { path: "settings", element: <BizzzedSettings /> },
+          {path: "notifications", element: <BizzzedNotifications />}
+        ],
+      },
+
+      // ==================== UDUUA ROUTES (Wrapped with UduuaLayout) ====================
+      {
+        path: "/uduua",
+        element: <UduuaLayout />,
+        children: [
+          { index: true, element: <UduuaScreen /> },
+          { path: "shop", element: <UduuaShop /> },
+          { path: "shop/signup", element: <UduuaSignup /> },
+          { path: "shop/login", element: <UduuaLogin /> },
+          { path: "shop/cart", element: <UduuaCart /> },
+          { path: "shop/product/:id", element: <UduuaProductDetail /> },
+          { path: "checkout", element: <UduuaCheckout /> },
+          { path: "shop/orders", element: <UduuaOrders /> },
+          { path: "shop/orders/:id", element: <UduuaOrderId /> },
+          { path: "shop/help", element: <UduuaHelp /> },
+          { path: "shop/orders/:id/confirm", element: <UduuaConfirmOrder /> },
+          {path: "shop/payment-verify", element: <UduuaPaymentVerify />},
+          {path: "shop/payment/:id", element: <UduuaPaymentPage />},
+
+          { path: "apply-seller", element: <UduuaApplySeller /> },
+          { path: "seller/add-product", element: <UduuaAddProduct /> },
+          { path: "seller/dashboard", element: <UduuaSellerDashboard /> },
+          {path: "seller/products", element: <UduuaSellerProducts />},
+          {path : "seller/orders", element: <UduuaSellerOrders />},
+          {path: "seller/wallet", element: <UduuaSellerWallet />},
+          {path: "seller/payment-history", element: <UduuaSellerPaymentHistory />},
+
+          { path: "services", element: <UduuaServices /> },
+        ],
+      },
+
+      { path: "/events", element: <EventsScreen /> },
+      { path: "/events/:id", element: <EventDetail /> },
+      { path: "/events/all-events", element: <AllEvents /> },
+      { path: "/events/:id/register", element: <EventRegistration /> },
+      { path: "/contact", element: <ContactUsScreen /> },
+      { path: "/work", element: <Work /> },
+      { path: "/start-project", element: <StartProjectForm /> },
+
+      { path: "/events/login", element: <EventLogin /> },
+      { path: "/events/signup", element: <EventSignup /> },
+
+      {
+        element: <UserPrivateRoute />,
+        children: [
+          { path: "/events/dashboard", element: <EventDashboard /> },
+          { path: "/events/dashboard/events", element: <EventDashboardEvents /> },
+          { path: "/events/dashboard/events/new", element: <EventDashboardCreateEvent /> },
+          { path: "/events/dashboard/registrations", element: <EventDashboardRegistrations /> },
+          { path: "/events/dashboard/wallet", element: <EventDashboardWallet /> },
+          { path: "/events/dashboard/analytics", element: <EventDashboardAnalytics /> },
+          { path: "/events/dashboard/events/:id", element: <EventDashboardEventDetail /> },
+          { path: "/events/dashboard/events/:id/registrations", element: <EventDashboardEventRegistrations /> },
+          { path: "/events/dashboard/events/:id/edit", element: <EventDashboardEditEvent /> },
+        ],
+      },
+
+      { path: "/custom-form/login", element: <CustomFormLogin /> },
+      { path: "/custom-form/signup", element: <CustomFormSignup /> },
+      { path: "/custom-form/dashboard", element: <CustomFormDashboard /> },
+      { path: "/custom-form/create", element: <CustomFormCreate /> },
+      { path: "/custom-form/:id", element: <CustomFormDetail /> },
+      { path: "/form/:slug", element: <PublicFormView /> },
+      { path: "/custom-form/my-forms", element: <CustomFormMyForms /> },
+      { path: "/custom-form/:id/edit", element: <CustomFormEdit /> },
+      { path: "/custom-form/submissions", element: <CustomFormSubmissions /> },
+      { path: "/custom-form/:id/submissions/:submissionId", element: <CustomFormSubmissionDetail /> },
+      { path: "/custom-form/analytics", element: <CustomFormAnalytics /> },
+      { path: "/custom-form/templates", element: <CustomFormTemplates /> },
+      { path: "/custom-form/team", element: <CustomFormTeam /> },
+
+      {
+        path: "admin",
+        element: <PrivateRoute />,
+        children: [
+          { path: "message", element: <AdminDashboard /> },
+          { path: "dashboard", element: <AdminDashboard /> },
+          { path: "messages/:id", element: <Viewmessage /> },
+          { path: "products", element: <AdminProducts /> },
+          { path: "products/:id", element: <AdminProductDetail /> },
+          { path: "orders", element: <AdminOrders /> },
+          { path: "products/new", element: <AdminAddProduct /> },
+          { path: "products/edit/:id", element: <AdminEditProduct /> },
+          { path: "magazines", element: <AdminMagazines /> },
+          { path: "magazines/new", element: <AdminAddMagazine /> },
+          { path: "magazines/:id", element: <AdminMagazineDetail /> },
+          { path: "magazines/edit/:id", element: <AdminEditMagazine /> },
+          { path: "articles", element: <AdminArticles /> },
+          { path: "articles/new", element: <AdminAddArticle /> },
+          { path: "articles/edit/:id", element: <AdminEditArticle /> },
+          { path: "events", element: <AdminEvents /> },
+          { path: "events/new", element: <AdminAddEvent /> },
+          { path: "events/edit/:id", element: <AdminEditEvent /> },
+          { path: "events/:id/registrations", element: <AdminEventRegistration /> },
+          { path: "forms", element: <AdminForms /> },
+          { path: "ads", element: <AdminAds /> },
+          { path: "ads/new", element: <AdminAddAd /> },
+          { path: "ads/edit/:id", element: <AdminEditAd /> },
+          { path: "ads/:id", element: <AdminAdDetail /> },
+          { path: "events/:id", element: <AdminEventDetail /> },
+          { path: "videos", element: <AdminVideos /> },
+          { path: "videos/new", element: <AdminAddVideos /> },
+          { path: "videos/edit/:id", element: <AdminEditVideo /> },
+          { path: "sellers", element: <AdminSellers /> },
+          { path: "sellers/:id", element: <AdminSellerDetail /> },
+        ],
+      },
     ],
   },
-];
-
-// ==================== BUILD ROUTER WITH BASENAME ====================
-let routes;
-let basename = '/';
-
-if (currentSubdomain === 'biizzed') {
-  basename = '/';
-  routes = [{ path: "/", ...biizzedRoutes }];
-} else if (currentSubdomain === 'uduua') {
-  basename = '/';
-  routes = [{ path: "/", ...uduuaRoutes }];
-} else if (currentSubdomain === 'events') {
-  basename = '/';
-  routes = [{ path: "/", ...eventRoutes }];
-} else {
-  // Main domain: everything
-  routes = [{ path: "/", element: <App />, children: mainRoutes }];
-}
-
-const router = createBrowserRouter(routes, { basename });
+]);
 
 const GOOGLE_CLIENT_ID =
   import.meta.env.VITE_GOOGLE_CLIENT_ID ||
@@ -333,6 +291,7 @@ const GOOGLE_CLIENT_ID =
 
 // Register service workers
 if ("serviceWorker" in navigator) {
+  // PWA service worker
   window.addEventListener("load", () => {
     navigator.serviceWorker
       .register("/sw.js")
@@ -340,12 +299,22 @@ if ("serviceWorker" in navigator) {
         console.log("PWA Service Worker registered:", registration);
       })
       .catch((error) => {
-        console.error("PWA Service Worker registration failed:", error);
+        console.log("PWA Service Worker registration failed:", error);
       });
   });
+
+  // Firebase Messaging service worker for background push
+  navigator.serviceWorker
+    .register("/firebase-messaging-sw.js")
+    .then((registration) => {
+      console.log("FCM Service Worker registered:", registration);
+    })
+    .catch((error) => {
+      console.error("FCM Service Worker registration failed:", error);
+    });
 }
 
-// Wrapper to activate web‑push subscription
+// Wrapper to activate push notification permission and token registration
 const AppWithNotifications = () => {
   usePushNotifications();
   return <RouterProvider router={router} />;

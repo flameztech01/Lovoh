@@ -1,20 +1,5 @@
 {
   "rewrites": [
-    {
-      "source": "/(.*)",
-      "has": [{ "type": "host", "value": "uduua.lovohcreate.com" }],
-      "destination": "/$1"
-    },
-    {
-      "source": "/(.*)",
-      "has": [{ "type": "host", "value": "biizzed.lovohcreate.com" }],
-      "destination": "/$1"
-    },
-    {
-      "source": "/(.*)",
-      "has": [{ "type": "host", "value": "event-room.lovohcreate.com" }],
-      "destination": "/$1"
-    },
     { "source": "/(.*)", "destination": "/" }
   ]
 }
