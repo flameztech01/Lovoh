@@ -134,8 +134,16 @@ import AdminForms from "./adminScreen/AdminForms.jsx";
 // ====== PUSH NOTIFICATIONS (web‑push) ======
 import usePushNotifications from "./hooks/usePushNotifications";
 
-// ==================== SUBDOMAIN DETECTION ====================
+// ==================== SUBDOMAIN DETECTION & WWW REDIRECT ====================
 const hostname = window.location.hostname;
+
+// Safe www redirect — only run once per session to prevent infinite loops
+if (hostname.startsWith('www.') && !sessionStorage.getItem('www_redirect_done')) {
+  sessionStorage.setItem('www_redirect_done', '1');
+  const newUrl = window.location.href.replace('www.', '');
+  window.location.replace(newUrl);
+  throw new Error('Redirecting to non-www...'); // Stop execution immediately
+}
 
 const getSubdomain = () => {
   if (hostname === 'uduua.lovohcreate.com') return 'uduua';
@@ -147,39 +155,30 @@ const getSubdomain = () => {
 const currentSubdomain = getSubdomain();
 console.log('Current subdomain:', currentSubdomain, '| Hostname:', hostname);
 
-// Redirect www.subdomain to non-www
-if (hostname.startsWith('www.')) {
-  window.location.replace(window.location.href.replace('www.', ''));
-}
-
 // ==================== SUBDOMAIN REDIRECT COMPONENT ====================
-// Strips /biizzed/ prefix when on biizzed subdomain, etc.
+// Strips /biizzed/ /uduua/ /events/ prefix when on respective subdomain
 const SubdomainRedirect = () => {
   const location = useLocation();
   const path = location.pathname;
   
-  // On biizzed subdomain, /biizzed/feed should redirect to /feed
   if (currentSubdomain === 'biizzed' && path.startsWith('/biizzed/')) {
     const newPath = path.replace('/biizzed/', '/');
     console.log('Subdomain redirect:', path, '→', newPath);
     return <Navigate to={newPath + location.search + location.hash} replace />;
   }
   
-  // On uduua subdomain, /uduua/shop should redirect to /shop
   if (currentSubdomain === 'uduua' && path.startsWith('/uduua/')) {
     const newPath = path.replace('/uduua/', '/');
     console.log('Subdomain redirect:', path, '→', newPath);
     return <Navigate to={newPath + location.search + location.hash} replace />;
   }
   
-  // On event subdomain, /events/... should redirect to /...
   if (currentSubdomain === 'events' && path.startsWith('/events/')) {
     const newPath = path.replace('/events/', '/');
     console.log('Subdomain redirect:', path, '→', newPath);
     return <Navigate to={newPath + location.search + location.hash} replace />;
   }
   
-  // No redirect needed
   return <Outlet />;
 };
 
@@ -323,7 +322,6 @@ const mainRoutes = [
 let routes;
 
 if (currentSubdomain === 'biizzed') {
-  // On biizzed subdomain: wrap with redirect + layout at root
   routes = [
     {
       element: <SubdomainRedirect />,
