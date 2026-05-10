@@ -2,37 +2,19 @@
   "rewrites": [
     {
       "source": "/(.*)",
-      "has": [
-        {
-          "type": "host",
-          "value": "uduua.lovohcreate.com"
-        }
-      ],
-      "destination": "/uduua/$1"
+      "has": [{ "type": "host", "value": "uduua.lovohcreate.com" }],
+      "destination": "/$1"
     },
     {
       "source": "/(.*)",
-      "has": [
-        {
-          "type": "host",
-          "value": "biizzed.lovohcreate.com"
-        }
-      ],
-      "destination": "/biizzed/$1"
+      "has": [{ "type": "host", "value": "biizzed.lovohcreate.com" }],
+      "destination": "/$1"
     },
     {
       "source": "/(.*)",
-      "has": [
-        {
-          "type": "host",
-          "value": "event-room.lovohcreate.com"
-        }
-      ],
-      "destination": "/events/$1"
+      "has": [{ "type": "host", "value": "event-room.lovohcreate.com" }],
+      "destination": "/$1"
     },
-    {
-      "source": "/(.*)",
-      "destination": "/"
-    }
+    { "source": "/(.*)", "destination": "/" }
   ]
 }
