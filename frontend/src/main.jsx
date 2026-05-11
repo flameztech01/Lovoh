@@ -147,34 +147,8 @@ const getSubdomain = () => {
 const currentSubdomain = getSubdomain();
 console.log('Current subdomain:', currentSubdomain, '| Hostname:', hostname);
 
-// ==================== AUTO-RELOAD ON SUBDOMAIN PREFIX MISMATCH ====================
-// If the URL contains the subdomain prefix (e.g. /uduua/shop on uduua subdomain),
-// we cannot fix it client-side because React Router has already loaded routes
-// without that prefix. Do a full reload so Vercel rewrite handles it.
-const path = window.location.pathname;
-
-let shouldReload = false;
-let cleanPath = path;
-
-if (currentSubdomain === 'biizzed' && path.startsWith('/biizzed/')) {
-  cleanPath = path.replace('/biizzed/', '/') + window.location.search + window.location.hash;
-  shouldReload = true;
-} else if (currentSubdomain === 'uduua' && path.startsWith('/uduua/')) {
-  cleanPath = path.replace('/uduua/', '/') + window.location.search + window.location.hash;
-  shouldReload = true;
-} else if (currentSubdomain === 'events' && path.startsWith('/events/')) {
-  cleanPath = path.replace('/events/', '/') + window.location.search + window.location.hash;
-  shouldReload = true;
-}
-
-if (shouldReload) {
-  console.log('Auto-reloading to clean URL:', cleanPath);
-  window.location.replace(cleanPath);
-}
-
-// ==================== INTERCEPT <Link> AND navigate() CALLS ====================
-// Patch history methods so future navigation with prefix gets rewritten
-// BEFORE React Router sees it. If a rewrite happens, trigger a reload.
+// ==================== INTERCEPT CLIENT-SIDE NAVIGATION ====================
+// Patch history.pushState so <Link> and navigate() with prefix trigger reload
 const rewriteUrl = (url) => {
   if (typeof url !== 'string') return url;
   if (currentSubdomain === 'biizzed' && url.startsWith('/biizzed/')) {
@@ -195,7 +169,6 @@ const originalReplaceState = window.history.replaceState;
 window.history.pushState = function (state, title, url) {
   const rewritten = rewriteUrl(url);
   if (rewritten !== url) {
-    // URL was rewritten — do a full reload so server handles it cleanly
     window.location.href = rewritten;
     return;
   }
