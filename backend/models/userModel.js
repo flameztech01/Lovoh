@@ -80,8 +80,17 @@ const userSchema = mongoose.Schema(
     },
     authMethod: {
       type: String,
-      enum: ["google", "local"],
+      enum: ["google", "local", "email"],
       default: "local",
+    },
+    // OTP fields for email verification
+    otp: {
+      type: String,
+      default: null,
+    },
+    otpExpiry: {
+      type: Date,
+      default: null,
     },
     paystackSubaccountCode: { type: String, default: "" },
     paystackRecipientCode: { type: String, default: "" },
@@ -156,7 +165,7 @@ const userSchema = mongoose.Schema(
     storySubscribeAt: Date,
     storyUnsubscribeAt: Date,
     
-    // Cart field - using updated schema
+    // Cart field
     cart: [cartItemSchema],
 
     // Seller application fields
@@ -204,7 +213,6 @@ const userSchema = mongoose.Schema(
     paystackSubaccountCode: { type: String, default: "" },
     hasPaystackAccount: { type: Boolean, default: false },
   },
-
   {
     timestamps: true,
   },
@@ -232,15 +240,13 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-// Updated Cart helper methods with seller info
+// Cart helper methods
 userSchema.methods.addToCart = function (product, quantity = 1) {
   const cartItemIndex = this.cart.findIndex(
     (item) => item.product.toString() === product._id.toString(),
   );
 
-  // Determine the correct price based on quantity
   const getItemPrice = (qty) => {
-    // Check bulk pricing tiers first
     if (product.bulkPricing && product.bulkPricing.length > 0) {
       const sortedPricing = [...product.bulkPricing].sort(
         (a, b) => b.minQuantity - a.minQuantity,
@@ -252,12 +258,10 @@ userSchema.methods.addToCart = function (product, quantity = 1) {
       }
     }
 
-    // Use bulk price for 2+ units
     if (qty >= 2 && product.bulkPrice) {
       return product.bulkPrice;
     }
 
-    // Apply discount if available
     const basePrice = product.retailPrice || product.price || 0;
     if (product.discount && product.discount > 0) {
       const now = new Date();
@@ -273,19 +277,17 @@ userSchema.methods.addToCart = function (product, quantity = 1) {
   const itemPrice = getItemPrice(quantity);
 
   if (cartItemIndex >= 0) {
-    // Update quantity if item exists
     const newQuantity = this.cart[cartItemIndex].quantity + quantity;
     this.cart[cartItemIndex].quantity = newQuantity;
     this.cart[cartItemIndex].price = getItemPrice(newQuantity);
   } else {
-    // Add new item with seller info
     this.cart.push({
       product: product._id,
       name: product.name,
       image: product.images?.[0] || "",
       price: itemPrice,
       quantity: quantity,
-      seller: product.seller, // Store seller reference
+      seller: product.seller,
       brandName: product.brandName,
     });
   }
@@ -312,7 +314,6 @@ userSchema.methods.updateCartItemQuantity = function (
   if (cartItem) {
     cartItem.quantity = quantity;
 
-    // Recalculate price if product is provided
     if (product) {
       const getItemPrice = (qty) => {
         if (product.bulkPricing && product.bulkPricing.length > 0) {

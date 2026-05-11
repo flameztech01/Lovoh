@@ -7,6 +7,8 @@ import asyncHandler from 'express-async-handler';
 import generateUserToken from "../utils/generateUserToken.js";
 import { OAuth2Client } from "google-auth-library";
 import { notifyFollowerEvent } from './notificationController.js';   // <-- new
+import bcrypt from 'bcryptjs';
+import { sendOTPEmail } from '../utils/sendOTPEmail.js'; // your email utility
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -146,6 +148,197 @@ const googleAuth = asyncHandler(async (req, res) => {
     token,
   });
 });
+
+
+
+
+const generateOTP = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
+
+// @desc    Register new user with email & password (OTP sent)
+// @route   POST /api/users/register
+// @access  Public
+// @desc    Register new user with email & password (OTP sent)
+// @route   POST /api/users/register
+// @access  Public
+const registerUser = asyncHandler(async (req, res) => {
+  const { name, username, email, password, phone } = req.body;  // <-- add name
+
+  if (!name || !username || !email || !password) {              // <-- validate name
+    res.status(400);
+    throw new Error('Name, username, email, and password are required');
+  }
+
+  // Check if user already exists
+  const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+  if (existingUser) {
+    res.status(400);
+    throw new Error('User with that email or username already exists');
+  }
+
+  // Generate OTP
+  const otp = generateOTP();
+  const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+
+  // CREATE user – password will be hashed automatically by the model's pre-save hook
+  const user = await User.create({
+    name,                   // <-- pass name
+    username,
+    email,
+    password,               // plain password
+    phone: phone || '',
+    isVerified: false,
+    authMethod: 'email',
+    otp,
+    otpExpiry,
+  });
+
+  // Send OTP email (fire and forget)
+  sendOTPEmail(user.email, otp).catch((err) =>
+    console.error('OTP email error:', err)
+  );
+
+  res.status(201).json({
+    message: 'Registration successful. Please check your email for the OTP.',
+    email: user.email,
+  });
+});
+
+// @desc    Verify email using OTP
+// @route   POST /api/users/verify-email
+// @access  Public
+const verifyEmail = asyncHandler(async (req, res) => {
+  const { email, otp } = req.body;
+
+  const user = await User.findOne({ email });
+  if (!user) {
+    res.status(404);
+    throw new Error('User not found');
+  }
+
+  if (user.isVerified) {
+    res.status(400);
+    throw new Error('Email already verified');
+  }
+
+  if (!user.otp || !user.otpExpiry) {
+    res.status(400);
+    throw new Error('No OTP found. Please request a new one.');
+  }
+
+  if (user.otp !== otp) {
+    res.status(400);
+    throw new Error('Invalid OTP');
+  }
+
+  if (user.otpExpiry < new Date()) {
+    res.status(400);
+    throw new Error('OTP has expired. Please request a new one.');
+  }
+
+  // Verify user
+  user.isVerified = true;
+  user.otp = undefined;
+  user.otpExpiry = undefined;
+  await user.save();
+
+  // Generate token and log in
+  const token = generateUserToken(res, user._id);
+
+  res.status(200).json({
+    _id: user._id,
+    name: user.name,
+    username: user.username,
+    email: user.email,
+    phone: user.phone,
+    profile: user.profile,
+    authMethod: user.authMethod,
+    token,
+  });
+});
+
+// @desc    Resend OTP to unverified user
+// @route   POST /api/users/resend-otp
+// @access  Public
+const resendOTP = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+
+  const user = await User.findOne({ email });
+  if (!user) {
+    res.status(404);
+    throw new Error('User not found');
+  }
+
+  if (user.isVerified) {
+    res.status(400);
+    throw new Error('Email is already verified');
+  }
+
+  // Generate new OTP
+  const otp = generateOTP();   // same generateOTP() shown above
+  user.otp = otp;
+  user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+  await user.save();
+
+  // Send email
+  sendOTPEmail(user.email, otp).catch((err) =>
+    console.error('OTP email error:', err)
+  );
+
+  res.status(200).json({
+    message: 'New OTP sent to your email',
+    email: user.email,
+  });
+});
+
+// @desc    Login with email & password
+// @route   POST /api/users/login
+// @access  Public
+const loginUser = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    res.status(400);
+    throw new Error('Email and password are required');
+  }
+
+  const user = await User.findOne({ email });
+  if (!user) {
+    res.status(401);
+    throw new Error('Invalid email or password');
+  }
+
+  if (user.authMethod !== 'email') {
+    res.status(401);
+    throw new Error('This account uses a different sign-in method');
+  }
+
+  if (!user.isVerified) {
+    res.status(403);
+    throw new Error('Email not verified. Please verify first.');
+  }
+
+  const isMatch = await bcrypt.compare(password, user.password);
+  if (!isMatch) {
+    res.status(401);
+    throw new Error('Invalid email or password');
+  }
+
+  const token = generateUserToken(res, user._id);
+
+  res.status(200).json({
+    _id: user._id,
+    name: user.name,
+    username: user.username,
+    email: user.email,
+    phone: user.phone,
+    profile: user.profile,
+    authMethod: user.authMethod,
+    token,
+  });
+});
+
 
 // @desc    Update user profile (name and profile picture)
 // @route   PUT /api/users/profile
@@ -476,6 +669,10 @@ const postMessage = asyncHandler(async (req, res, next) => {
 export {
   postMessage,
   googleAuth,
+  registerUser,
+  verifyEmail,
+  resendOTP,
+  loginUser,
   updateProfile,
   logout,
   deleteAccount,

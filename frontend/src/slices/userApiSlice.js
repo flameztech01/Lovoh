@@ -6,11 +6,47 @@ const USERS_URL = '/users';
 export const userApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
     // ==================== AUTH ====================
-    
+
     // Google Auth (Login/Signup)
     googleAuth: builder.mutation({
       query: (data) => ({
         url: `${USERS_URL}/auth/google`,
+        method: 'POST',
+        body: data,
+      }),
+    }),
+
+    // Register (email/password)
+    register: builder.mutation({
+      query: (data) => ({
+        url: `${USERS_URL}/register`,
+        method: 'POST',
+        body: data,
+      }),
+    }),
+
+    // Verify email with OTP
+    verifyEmail: builder.mutation({
+      query: (data) => ({
+        url: `${USERS_URL}/verify-email`,
+        method: 'POST',
+        body: data,
+      }),
+    }),
+
+    // Resend OTP
+    resendOTP: builder.mutation({
+      query: (data) => ({
+        url: `${USERS_URL}/resend-otp`,
+        method: 'POST',
+        body: data,
+      }),
+    }),
+
+    // Login (email/password)
+    login: builder.mutation({
+      query: (data) => ({
+        url: `${USERS_URL}/login`,
         method: 'POST',
         body: data,
       }),
@@ -122,21 +158,25 @@ export const userApiSlice = apiSlice.injectEndpoints({
 export const {
   // Auth
   useGoogleAuthMutation,
+  useRegisterMutation,
+  useVerifyEmailMutation,
+  useResendOTPMutation,
+  useLoginMutation,
   useLogoutMutation,
   useDeleteAccountMutation,
-  
+
   // Profile
   useGetProfileInfoQuery,
   useGetProfileByIdQuery,
   useUpdateProfileMutation,
-  
+
   // Social/Follow
   useFollowUserMutation,
   useUnfollowUserMutation,
   useGetFollowersQuery,
   useGetFollowingQuery,
   useGetUserSuggestionsQuery,
-  
+
   // Contact
   useSubmitContactMutation,
 } = userApiSlice;

@@ -13,6 +13,11 @@ import {
   getFollowers,
   getFollowing,
   getUserSuggestions,
+  // New imports
+  registerUser,
+  verifyEmail,
+  resendOTP,
+  loginUser,
 } from '../controllers/userController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
@@ -44,14 +49,20 @@ cloudinary.api
   .then(() => console.log("✅ Cloudinary connected successfully"))
   .catch((err) => console.error("❌ Cloudinary not connected:", err.message));
 
-// Public routes
+// ----- Public routes -----
 router.post('/auth/google', googleAuth);
 router.post('/contact', postMessage);
 router.get('/profile/:id', getProfileById);
 router.get('/followers/:id', getFollowers);
 router.get('/following/:id', getFollowing);
 
-// Protected routes
+// ----- New authentication routes (public) -----
+router.post('/register', registerUser);           // sign up with email/password
+router.post('/verify-email', verifyEmail);        // verify OTP
+router.post('/resend-otp', resendOTP);            // resend OTP
+router.post('/login', loginUser);                 // email/password login
+
+// ----- Protected routes -----
 router.get('/profile', protect, getProfileInfo);
 router.put('/profile', protect, upload.single('profile'), updateProfile);
 router.post('/logout', logout);
