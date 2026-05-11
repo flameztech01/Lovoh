@@ -3,7 +3,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.jsx";
-import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, Navigate, useLocation, Outlet } from "react-router-dom";
 import { Provider } from "react-redux";
 import store from "./store.js";
 import { Analytics } from "@vercel/analytics/react";
@@ -147,12 +147,151 @@ const getSubdomain = () => {
 const currentSubdomain = getSubdomain();
 console.log('Current subdomain:', currentSubdomain, '| Hostname:', hostname);
 
+// ==================== CLIENT-SIDE SUBDOMAIN REDIRECT ====================
+// Catches /biizzed/*, /uduua/*, /events/* on subdomains and redirects to /*
+const SubdomainRedirect = () => {
+  const location = useLocation();
+  const path = location.pathname;
+
+  if (currentSubdomain === 'biizzed' && path.startsWith('/biizzed/')) {
+    const newPath = path.replace('/biizzed/', '/') + location.search + location.hash;
+    console.log('Client redirect:', path, '→', newPath);
+    return <Navigate to={newPath} replace />;
+  }
+
+  if (currentSubdomain === 'uduua' && path.startsWith('/uduua/')) {
+    const newPath = path.replace('/uduua/', '/') + location.search + location.hash;
+    console.log('Client redirect:', path, '→', newPath);
+    return <Navigate to={newPath} replace />;
+  }
+
+  if (currentSubdomain === 'events' && path.startsWith('/events/')) {
+    const newPath = path.replace('/events/', '/') + location.search + location.hash;
+    console.log('Client redirect:', path, '→', newPath);
+    return <Navigate to={newPath} replace />;
+  }
+
+  return <Outlet />;
+};
+
 // ==================== ROUTE DEFINITIONS ====================
 
-// --- Biizzed routes (mounted at / on subdomain) ---
+// --- Biizzed routes ---
 const biizzedRoutes = [
   {
-    path: "/",
+    element: <SubdomainRedirect />,
+    children: [
+      {
+        path: "/",
+        element: <BizzzedLayout />,
+        children: [
+          { index: true, element: <BizzzedScreen /> },
+          { path: "login", element: <BizzzedLogin /> },
+          { path: "signup", element: <BizzzedSignup /> },
+          { path: "feed", element: <BizzzedFeed /> },
+          { path: "create-video", element: <BizzzedCreateVideo /> },
+          { path: "create-article", element: <BizzzedCreateArticle /> },
+          { path: "create-magazine", element: <BizzzedCreateMagazine /> },
+          { path: "profile", element: <BizzzedProfile /> },
+          { path: "followers", element: <BizzzedFollowers /> },
+          { path: "videos", element: <BizzzedVideos /> },
+          { path: "videos/:id", element: <BizzzedVideoDetail /> },
+          { path: "magazines", element: <BizzzedMagazines /> },
+          { path: "articles", element: <BizzzedArticlesScreen /> },
+          { path: "articles/:slug", element: <BizzzedArticleDetails /> },
+          { path: ":slug", element: <MagazineStoryDetail /> },
+          { path: "search", element: <BizzzedSearch /> },
+          { path: "feed/resubscribe", element: <BizzzedResubscribeScreen /> },
+          { path: "settings", element: <BizzzedSettings /> },
+          { path: "notifications", element: <BizzzedNotifications /> },
+        ],
+      },
+    ],
+  },
+];
+
+// --- Uduua routes ---
+const uduuaRoutes = [
+  {
+    element: <SubdomainRedirect />,
+    children: [
+      {
+        path: "/",
+        element: <UduuaLayout />,
+        children: [
+          { index: true, element: <UduuaScreen /> },
+          { path: "shop", element: <UduuaShop /> },
+          { path: "shop/signup", element: <UduuaSignup /> },
+          { path: "shop/login", element: <UduuaLogin /> },
+          { path: "shop/cart", element: <UduuaCart /> },
+          { path: "shop/product/:id", element: <UduuaProductDetail /> },
+          { path: "checkout", element: <UduuaCheckout /> },
+          { path: "shop/orders", element: <UduuaOrders /> },
+          { path: "shop/orders/:id", element: <UduuaOrderId /> },
+          { path: "shop/help", element: <UduuaHelp /> },
+          { path: "shop/orders/:id/confirm", element: <UduuaConfirmOrder /> },
+          { path: "shop/payment-verify", element: <UduuaPaymentVerify /> },
+          { path: "shop/payment/:id", element: <UduuaPaymentPage /> },
+          { path: "apply-seller", element: <UduuaApplySeller /> },
+          { path: "seller/add-product", element: <UduuaAddProduct /> },
+          { path: "seller/dashboard", element: <UduuaSellerDashboard /> },
+          { path: "seller/products", element: <UduuaSellerProducts /> },
+          { path: "seller/orders", element: <UduuaSellerOrders /> },
+          { path: "seller/wallet", element: <UduuaSellerWallet /> },
+          { path: "seller/payment-history", element: <UduuaSellerPaymentHistory /> },
+          { path: "services", element: <UduuaServices /> },
+        ],
+      },
+    ],
+  },
+];
+
+// --- Event routes ---
+const eventRoutes = [
+  {
+    element: <SubdomainRedirect />,
+    children: [
+      {
+        path: "/",
+        element: <App />,
+        children: [
+          { index: true, element: <EventsScreen /> },
+          { path: ":id", element: <EventDetail /> },
+          { path: "all-events", element: <AllEvents /> },
+          { path: ":id/register", element: <EventRegistration /> },
+          { path: "login", element: <EventLogin /> },
+          { path: "signup", element: <EventSignup /> },
+          {
+            element: <UserPrivateRoute />,
+            children: [
+              { path: "dashboard", element: <EventDashboard /> },
+              { path: "dashboard/events", element: <EventDashboardEvents /> },
+              { path: "dashboard/events/new", element: <EventDashboardCreateEvent /> },
+              { path: "dashboard/registrations", element: <EventDashboardRegistrations /> },
+              { path: "dashboard/wallet", element: <EventDashboardWallet /> },
+              { path: "dashboard/analytics", element: <EventDashboardAnalytics /> },
+              { path: "dashboard/events/:id", element: <EventDashboardEventDetail /> },
+              { path: "dashboard/events/:id/registrations", element: <EventDashboardEventRegistrations /> },
+              { path: "dashboard/events/:id/edit", element: <EventDashboardEditEvent /> },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+];
+
+// --- Main domain routes ---
+const mainRoutes = [
+  { index: true, element: <Homepage /> },
+  { path: "admin/login", element: <Adminauth /> },
+  { path: "/about", element: <Aboutscreen /> },
+  { path: "/services", element: <Servicescreen /> },
+  { path: "/puuls", element: <PuulsScreen /> },
+  { path: "/thefruiit", element: <TheFruiitScreen /> },
+  { path: "/createinstitute", element: <CreateInstituteScreen /> },
+  {
+    path: "/biizzed",
     element: <BizzzedLayout />,
     children: [
       { index: true, element: <BizzzedScreen /> },
@@ -176,12 +315,8 @@ const biizzedRoutes = [
       { path: "notifications", element: <BizzzedNotifications /> },
     ],
   },
-];
-
-// --- Uduua routes ---
-const uduuaRoutes = [
   {
-    path: "/",
+    path: "/uduua",
     element: <UduuaLayout />,
     children: [
       { index: true, element: <UduuaScreen /> },
@@ -207,53 +342,29 @@ const uduuaRoutes = [
       { path: "services", element: <UduuaServices /> },
     ],
   },
-];
-
-// --- Event routes ---
-const eventRoutes = [
-  {
-    path: "/",
-    element: <App />,
-    children: [
-      { index: true, element: <EventsScreen /> },
-      { path: ":id", element: <EventDetail /> },
-      { path: "all-events", element: <AllEvents /> },
-      { path: ":id/register", element: <EventRegistration /> },
-      { path: "login", element: <EventLogin /> },
-      { path: "signup", element: <EventSignup /> },
-      {
-        element: <UserPrivateRoute />,
-        children: [
-          { path: "dashboard", element: <EventDashboard /> },
-          { path: "dashboard/events", element: <EventDashboardEvents /> },
-          { path: "dashboard/events/new", element: <EventDashboardCreateEvent /> },
-          { path: "dashboard/registrations", element: <EventDashboardRegistrations /> },
-          { path: "dashboard/wallet", element: <EventDashboardWallet /> },
-          { path: "dashboard/analytics", element: <EventDashboardAnalytics /> },
-          { path: "dashboard/events/:id", element: <EventDashboardEventDetail /> },
-          { path: "dashboard/events/:id/registrations", element: <EventDashboardEventRegistrations /> },
-          { path: "dashboard/events/:id/edit", element: <EventDashboardEditEvent /> },
-        ],
-      },
-    ],
-  },
-];
-
-// --- Main domain routes (everything with /biizzed, /uduua, /events prefixes) ---
-const mainRoutes = [
-  { index: true, element: <Homepage /> },
-  { path: "admin/login", element: <Adminauth /> },
-  { path: "/about", element: <Aboutscreen /> },
-  { path: "/services", element: <Servicescreen /> },
-  { path: "/puuls", element: <PuulsScreen /> },
-  { path: "/thefruiit", element: <TheFruiitScreen /> },
-  { path: "/createinstitute", element: <CreateInstituteScreen /> },
-  { path: "/biizzed", element: <BizzzedLayout />, children: biizzedRoutes[0].children },
-  { path: "/uduua", element: <UduuaLayout />, children: uduuaRoutes[0].children },
-  { path: "/events", ...eventRoutes[0] },
+  { path: "/events", element: <EventsScreen /> },
+  { path: "/events/:id", element: <EventDetail /> },
+  { path: "/events/all-events", element: <AllEvents /> },
+  { path: "/events/:id/register", element: <EventRegistration /> },
   { path: "/contact", element: <ContactUsScreen /> },
   { path: "/work", element: <Work /> },
   { path: "/start-project", element: <StartProjectForm /> },
+  { path: "/events/login", element: <EventLogin /> },
+  { path: "/events/signup", element: <EventSignup /> },
+  {
+    element: <UserPrivateRoute />,
+    children: [
+      { path: "/events/dashboard", element: <EventDashboard /> },
+      { path: "/events/dashboard/events", element: <EventDashboardEvents /> },
+      { path: "/events/dashboard/events/new", element: <EventDashboardCreateEvent /> },
+      { path: "/events/dashboard/registrations", element: <EventDashboardRegistrations /> },
+      { path: "/events/dashboard/wallet", element: <EventDashboardWallet /> },
+      { path: "/events/dashboard/analytics", element: <EventDashboardAnalytics /> },
+      { path: "/events/dashboard/events/:id", element: <EventDashboardEventDetail /> },
+      { path: "/events/dashboard/events/:id/registrations", element: <EventDashboardEventRegistrations /> },
+      { path: "/events/dashboard/events/:id/edit", element: <EventDashboardEditEvent /> },
+    ],
+  },
   { path: "/custom-form/login", element: <CustomFormLogin /> },
   { path: "/custom-form/signup", element: <CustomFormSignup /> },
   { path: "/custom-form/dashboard", element: <CustomFormDashboard /> },
@@ -315,7 +426,6 @@ if (currentSubdomain === 'biizzed') {
 } else if (currentSubdomain === 'events') {
   routes = eventRoutes;
 } else {
-  // Main domain
   routes = [
     {
       path: "/",
