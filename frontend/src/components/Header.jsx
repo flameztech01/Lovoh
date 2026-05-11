@@ -2,6 +2,49 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 
+// ==================== SUBDOMAIN DETECTION ====================
+const hostname = window.location.hostname;
+
+const getSubdomain = () => {
+  if (hostname === 'uduua.lovohcreate.com') return 'uduua';
+  if (hostname === 'biizzed.lovohcreate.com') return 'biizzed';
+  if (hostname === 'event-room.lovohcreate.com') return 'events';
+  return 'main';
+};
+
+const currentSubdomain = getSubdomain();
+
+// Helper: get full URL for cross-subdomain navigation
+const getSubdomainUrl = (subdomain) => {
+  if (subdomain === 'biizzed') return 'https://biizzed.lovohcreate.com';
+  if (subdomain === 'uduua') return 'https://uduua.lovohcreate.com';
+  if (subdomain === 'events') return 'https://event-room.lovohcreate.com';
+  return 'https://lovohcreate.com';
+};
+
+// Helper: build correct link href based on current context
+const buildLink = (path) => {
+  // If we're on a subdomain, external links go to full domain
+  if (currentSubdomain !== 'main') {
+    // These are main-domain-only paths
+    const mainOnlyPaths = ['/about', '/services', '/work', '/contact', '/thefruiit', '/puuls', '/createinstitute', '/start-project'];
+    if (mainOnlyPaths.includes(path)) {
+      return `https://lovohcreate.com${path}`;
+    }
+    
+    // Switching to another subdomain
+    if (path === '/biizzed') return getSubdomainUrl('biizzed');
+    if (path === '/uduua') return getSubdomainUrl('uduua');
+    if (path === '/events') return getSubdomainUrl('events');
+  }
+  
+  // On main domain, use relative paths as before
+  return path;
+};
+
+// Helper: check if a link is external (needs full page navigation)
+const isExternalLink = (href) => href.startsWith('http');
+
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isWhatWeDoOpen, setIsWhatWeDoOpen] = useState(false);
@@ -41,7 +84,7 @@ const Header = () => {
     const timer = setTimeout(() => {
       setCurrentLogo(targetLogo);
       setIsTransitioning(false);
-    }, 150); // Half of transition duration
+    }, 150);
 
     return () => clearTimeout(timer);
   }, [location.pathname, currentLogo, getTargetLogo]);
@@ -57,7 +100,13 @@ const Header = () => {
 
   const handleLinkClick = useCallback((path) => {
     closeAllMenus();
-    navigate(path);
+    const href = buildLink(path);
+    
+    if (isExternalLink(href)) {
+      window.location.href = href;
+    } else {
+      navigate(path);
+    }
     scrollToTop();
   }, [closeAllMenus, navigate, scrollToTop]);
 
@@ -66,13 +115,11 @@ const Header = () => {
     closeAllMenus();
   }, [location.pathname, closeAllMenus]);
 
-  // DESKTOP: Click outside to close dropdown only (not main nav)
+  // DESKTOP: Click outside to close dropdown only
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (window.innerWidth < 768) return;
-      
       const isWhatWeDoClick = whatWeDoRef.current?.contains(event.target);
-      
       if (!isWhatWeDoClick) setIsWhatWeDoOpen(false);
     };
 
@@ -80,7 +127,7 @@ const Header = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // MOBILE: Click outside to close EVERYTHING (main menu + dropdowns)
+  // MOBILE: Click outside to close EVERYTHING
   useEffect(() => {
     if (!isMenuOpen) return;
 
@@ -140,6 +187,38 @@ const Header = () => {
     setIsWhatWeDoOpen(prev => !prev);
   }, []);
 
+  // Helper to render a nav link that works across subdomains
+  const NavLink = ({ to, children, className, isButton = false }) => {
+    const href = buildLink(to);
+    const external = isExternalLink(href);
+    
+    if (external) {
+      return (
+        <a 
+          href={href} 
+          className={className}
+          onClick={() => { closeAllMenus(); scrollToTop(); }}
+        >
+          {children}
+        </a>
+      );
+    }
+    
+    if (isButton) {
+      return (
+        <Link to={href} onClick={() => { closeAllMenus(); scrollToTop(); }} className={className}>
+          {children}
+        </Link>
+      );
+    }
+    
+    return (
+      <Link to={href} onClick={scrollToTop} className={className}>
+        {children}
+      </Link>
+    );
+  };
+
   return (
     <header className="fixed top-0 left-0 right-0 z-50 px-3 sm:px-5 lg:px-8 pt-4">
       <nav className="max-w-7xl mx-auto" ref={navContainerRef}>
@@ -155,7 +234,6 @@ const Header = () => {
                     isTransitioning ? 'opacity-0' : 'opacity-100'
                   }`}
                   onError={(e) => {
-                    // Fallback if brand logo not found
                     e.target.src = "/logo.png";
                   }}
                 />
@@ -164,12 +242,12 @@ const Header = () => {
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-2 lg:gap-3">
-              <Link to="/" onClick={scrollToTop} className="text-gray-700 hover:text-blue-700 px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 hover:bg-blue-50">
+              <NavLink to="/" className="text-gray-700 hover:text-blue-700 px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 hover:bg-blue-50">
                 Welcome
-              </Link>
-              <Link to="/about" onClick={scrollToTop} className="text-gray-700 hover:text-blue-700 px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 hover:bg-blue-50">
+              </NavLink>
+              <NavLink to="/about" className="text-gray-700 hover:text-blue-700 px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 hover:bg-blue-50">
                 About
-              </Link>
+              </NavLink>
 
               {/* What We Do Dropdown */}
               <div className="relative" ref={whatWeDoRef}>
@@ -182,20 +260,24 @@ const Header = () => {
                 {isWhatWeDoOpen && (
                   <div className="absolute top-full left-0 mt-3 w-56 bg-white rounded-3xl shadow-[0_20px_45px_rgba(0,0,0,0.10)] border border-blue-100 py-3 z-50">
                     {whatWeDoLinks.map((item) => (
-                      <Link key={item.name} to={item.path} onClick={() => handleLinkClick(item.path)} className="block mx-2 px-4 py-3 rounded-2xl hover:bg-blue-50 transition-all duration-200 font-medium text-gray-900">
+                      <NavLink 
+                        key={item.name} 
+                        to={item.path} 
+                        className="block mx-2 px-4 py-3 rounded-2xl hover:bg-blue-50 transition-all duration-200 font-medium text-gray-900"
+                      >
                         {item.name}
-                      </Link>
+                      </NavLink>
                     ))}
                   </div>
                 )}
               </div>
 
-              <Link to="/biizzed" onClick={scrollToTop} className="text-gray-700 hover:text-blue-700 px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 hover:bg-blue-50">Biizzed</Link>
-              <Link to="/uduua" onClick={scrollToTop} className="text-gray-700 hover:text-blue-700 px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 hover:bg-blue-50">Uduua</Link>
-              <Link to="/events" onClick={scrollToTop} className="text-gray-700 hover:text-blue-700 px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 hover:bg-blue-50">EventRoom</Link>
-              <Link to="/contact" onClick={scrollToTop} className="ml-2 bg-gradient-to-r from-blue-600 via-blue-700 to-blue-500 text-white px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg hover:scale-[1.02]">
+              <NavLink to="/biizzed" className="text-gray-700 hover:text-blue-700 px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 hover:bg-blue-50">Biizzed</NavLink>
+              <NavLink to="/uduua" className="text-gray-700 hover:text-blue-700 px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 hover:bg-blue-50">Uduua</NavLink>
+              <NavLink to="/events" className="text-gray-700 hover:text-blue-700 px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 hover:bg-blue-50">EventRoom</NavLink>
+              <NavLink to="/contact" isButton className="ml-2 bg-gradient-to-r from-blue-600 via-blue-700 to-blue-500 text-white px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg hover:scale-[1.02]">
                 Contact
-              </Link>
+              </NavLink>
             </div>
 
             {/* Mobile Menu Button */}
