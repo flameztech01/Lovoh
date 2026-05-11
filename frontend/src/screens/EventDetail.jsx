@@ -13,6 +13,22 @@ import { toast } from 'react-toastify';
 import AllEventsNavbar from '../components/AllEventsNavbar';
 import Footer from '../components/Footer';
 
+// ==================== ABSOLUTE URL HELPER ====================
+const getBaseUrl = () => {
+  const hostname = window.location.hostname;
+  if (hostname === 'event-room.lovohcreate.com') return 'https://event-room.lovohcreate.com';
+  if (hostname === 'biizzed.lovohcreate.com') return 'https://biizzed.lovohcreate.com';
+  if (hostname === 'uduua.lovohcreate.com') return 'https://uduua.lovohcreate.com';
+  return 'https://lovohcreate.com';
+};
+
+const toAbsoluteUrl = (url) => {
+  if (!url) return `${getBaseUrl()}/logo.png`;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith('/')) return `${getBaseUrl()}${url}`;
+  return `${getBaseUrl()}/${url}`;
+};
+
 const EventDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -44,6 +60,11 @@ const EventDetail = () => {
   useEffect(() => {
     if (!event) return;
 
+    const baseUrl = getBaseUrl();
+    const eventUrl = `${baseUrl}${window.location.pathname}${window.location.search}`;
+    const imageUrl = toAbsoluteUrl(event.images?.[0]);
+    const description = event.description?.replace(/<[^>]*>/g, '').slice(0, 160) || 'Check out this event on EventRoom';
+
     // Set page title
     document.title = `${event.title} | EventRoom`;
 
@@ -65,25 +86,38 @@ const EventDetail = () => {
 
     const addedTags = [];
 
-    addedTags.push(setMeta('description', event.description?.slice(0, 160)));
+    // Standard meta
+    addedTags.push(setMeta('description', description));
+
+    // Open Graph (Facebook, WhatsApp, LinkedIn, etc.)
+    addedTags.push(setMeta('og:type', 'website', true));
+    addedTags.push(setMeta('og:site_name', 'EventRoom', true));
     addedTags.push(setMeta('og:title', event.title, true));
-    addedTags.push(setMeta('og:description', event.description?.slice(0, 200), true));
-    addedTags.push(setMeta('og:image', event.images?.[0] || '/logo.png', true));
-    addedTags.push(setMeta('og:url', window.location.href, true));
+    addedTags.push(setMeta('og:description', description, true));
+    addedTags.push(setMeta('og:image', imageUrl, true));
+    addedTags.push(setMeta('og:image:width', '1200', true));
+    addedTags.push(setMeta('og:image:height', '630', true));
+    addedTags.push(setMeta('og:image:alt', event.title, true));
+    addedTags.push(setMeta('og:url', eventUrl, true));
+    addedTags.push(setMeta('og:locale', 'en_US', true));
+
+    // Twitter Card
     addedTags.push(setMeta('twitter:card', 'summary_large_image'));
+    addedTags.push(setMeta('twitter:site', '@lovohcreate', true));
     addedTags.push(setMeta('twitter:title', event.title));
-    addedTags.push(setMeta('twitter:description', event.description?.slice(0, 200)));
-    addedTags.push(setMeta('twitter:image', event.images?.[0] || '/logo.png'));
+    addedTags.push(setMeta('twitter:description', description));
+    addedTags.push(setMeta('twitter:image', imageUrl));
+    addedTags.push(setMeta('twitter:image:alt', event.title));
+
+    // WhatsApp specific (uses og tags but let's be thorough)
+    addedTags.push(setMeta('og:image:secure_url', imageUrl, true));
 
     // Cleanup: remove the tags we added when navigating away
     return () => {
-      addedTags.forEach(tag => tag.remove());
-      // Also remove the dynamic description meta if it matches the event
-      const descMeta = document.querySelector('meta[name="description"]');
-      if (descMeta && descMeta.content === event.description?.slice(0, 160)) {
-        descMeta.remove();
-      }
-      document.title = 'LovohCreate'; // restore default title (optional)
+      addedTags.forEach(tag => {
+        if (tag && tag.parentNode) tag.remove();
+      });
+      document.title = 'LovoCreate';
     };
   }, [event]);
   // ------------------------------------------------------------
@@ -210,16 +244,30 @@ const EventDetail = () => {
     }
   };
 
-  const handleShare = async () => {
-    const url = window.location.href;
-    const title = event?.title || 'Check out this event';
-    if (navigator.share) {
-      try { await navigator.share({ title, text: title, url }); }
-      catch (err) { if (err.name !== 'AbortError') handleCopy(); }
-    } else {
-      handleCopy();
+  const handleCopy = async () => {
+  // Use OG API URL for proper previews
+  const ogUrl = `https://event-room.lovohcreate.com/api/og/event/${id}`;
+  await navigator.clipboard.writeText(ogUrl);
+  setCopied(true); 
+  toast.success('Link copied!');
+  setTimeout(() => setCopied(false), 2000);
+};
+
+const handleShare = async () => {
+  const ogUrl = `https://event-room.lovohcreate.com/api/og/event/${id}`;
+  const title = event?.title || 'Check out this event';
+  
+  if (navigator.share) {
+    try { 
+      await navigator.share({ title, text: title, url: ogUrl }); 
     }
-  };
+    catch (err) { 
+      if (err.name !== 'AbortError') handleCopy(); 
+    }
+  } else {
+    handleCopy();
+  }
+};
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(window.location.href);
@@ -371,7 +419,7 @@ const EventDetail = () => {
 
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-4">{event.title}</h1>
 
-            {/* Details Grid - No Capacity */}
+            {/* Details Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-5 bg-gray-50 rounded-xl mb-6">
               <DetailItem icon={FaCalendarAlt} label="Date" value={formatDate(event.date)} />
               <DetailItem icon={FaClock} label="Time" value={timeRangeDisplay} />
