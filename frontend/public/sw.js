@@ -30,8 +30,8 @@ self.addEventListener('push', (event) => {
       self.registration.showNotification(title, {
         body,
         data,
-        icon: '/icon-192x192.png',   // update with your actual icon path
-        badge: '/icon-192x192.png',
+        icon: '/biizzed-logo.png',   // update with your actual icon path
+        badge: '/biizzed-logo.png',
       })
     );
   } catch (error) {
