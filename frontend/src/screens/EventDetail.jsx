@@ -1,4 +1,4 @@
-// screens/EventDetail.jsx - Public event detail page without capacity
+// screens/EventDetail.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import {
@@ -37,6 +37,56 @@ const EventDetail = () => {
       setSearchParams(searchParams, { replace: true });
     }
   }, [verificationData, urlReference, paymentStatus, refetch, searchParams, setSearchParams]);
+
+  // ------------------------------------------------------------
+  // Dynamic social meta tags – updates whenever event data loads
+  // ------------------------------------------------------------
+  useEffect(() => {
+    if (!event) return;
+
+    // Set page title
+    document.title = `${event.title} | EventRoom`;
+
+    // Helper to create or update a meta tag
+    const setMeta = (nameOrProperty, content, isProperty = false) => {
+      const selector = isProperty
+        ? `meta[property="${nameOrProperty}"]`
+        : `meta[name="${nameOrProperty}"]`;
+      let element = document.querySelector(selector);
+      if (!element) {
+        element = document.createElement('meta');
+        if (isProperty) element.setAttribute('property', nameOrProperty);
+        else element.setAttribute('name', nameOrProperty);
+        document.head.appendChild(element);
+      }
+      element.setAttribute('content', content);
+      return element;
+    };
+
+    const addedTags = [];
+
+    addedTags.push(setMeta('description', event.description?.slice(0, 160)));
+    addedTags.push(setMeta('og:title', event.title, true));
+    addedTags.push(setMeta('og:description', event.description?.slice(0, 200), true));
+    addedTags.push(setMeta('og:image', event.images?.[0] || '/logo.png', true));
+    addedTags.push(setMeta('og:url', window.location.href, true));
+    addedTags.push(setMeta('twitter:card', 'summary_large_image'));
+    addedTags.push(setMeta('twitter:title', event.title));
+    addedTags.push(setMeta('twitter:description', event.description?.slice(0, 200)));
+    addedTags.push(setMeta('twitter:image', event.images?.[0] || '/logo.png'));
+
+    // Cleanup: remove the tags we added when navigating away
+    return () => {
+      addedTags.forEach(tag => tag.remove());
+      // Also remove the dynamic description meta if it matches the event
+      const descMeta = document.querySelector('meta[name="description"]');
+      if (descMeta && descMeta.content === event.description?.slice(0, 160)) {
+        descMeta.remove();
+      }
+      document.title = 'LovohCreate'; // restore default title (optional)
+    };
+  }, [event]);
+  // ------------------------------------------------------------
 
   const formatDate = (date) => {
     if (!date) return 'TBD';
