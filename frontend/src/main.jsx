@@ -1,5 +1,5 @@
 // main.jsx
-import { StrictMode } from "react";
+import { StrictMode, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.jsx";
@@ -232,6 +232,33 @@ const useSilentSubdomainRewrite = () => {
       window.removeEventListener('popstate', handlePopState);
     };
   }, []);
+};
+
+// ==================== CLIENT-SIDE SUBDOMAIN REDIRECT ====================
+// Catches /biizzed/*, /uduua/*, /events/* on subdomains and redirects to /*
+const SubdomainRedirect = () => {
+  const location = useLocation();
+  const path = location.pathname;
+
+  if (currentSubdomain === 'biizzed' && path.startsWith('/biizzed/')) {
+    const newPath = path.replace('/biizzed/', '/') + location.search + location.hash;
+    console.log('Client redirect:', path, '→', newPath);
+    return <Navigate to={newPath} replace />;
+  }
+
+  if (currentSubdomain === 'uduua' && path.startsWith('/uduua/')) {
+    const newPath = path.replace('/uduua/', '/') + location.search + location.hash;
+    console.log('Client redirect:', path, '→', newPath);
+    return <Navigate to={newPath} replace />;
+  }
+
+  if (currentSubdomain === 'events' && path.startsWith('/events/')) {
+    const newPath = path.replace('/events/', '/') + location.search + location.hash;
+    console.log('Client redirect:', path, '→', newPath);
+    return <Navigate to={newPath} replace />;
+  }
+
+  return <Outlet />;
 };
 
 // ==================== ROUTE DEFINITIONS ====================
@@ -518,7 +545,7 @@ if ("serviceWorker" in navigator) {
 // Wrapper to activate web‑push subscription + silent URL rewriting
 const AppWithNotifications = () => {
   usePushNotifications();
-  useSilentSubdomainRewrite(); // <-- Add this
+  useSilentSubdomainRewrite();
   return <RouterProvider router={router} />;
 };
 
