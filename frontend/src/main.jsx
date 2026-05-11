@@ -147,95 +147,88 @@ const getSubdomain = () => {
 const currentSubdomain = getSubdomain();
 console.log('Current subdomain:', currentSubdomain, '| Hostname:', hostname);
 
-// ==================== SILENT URL REWRITER ====================
-// Intercepts navigation and silently strips subdomain prefixes before
-// React Router processes them. Uses replaceState so the user never sees
-// the URL change and no reload occurs.
-const useSilentSubdomainRewrite = () => {
-  const location = useLocation();
+// ==================== SILENT URL REWRITER (NO useLocation) ====================
+// Uses window.location only — safe to call outside Router context.
+// Call this once at app startup (before router) to patch history methods.
+const setupSilentSubdomainRewrite = () => {
+  const rewriteUrl = (url) => {
+    if (typeof url !== 'string') return url;
+    if (currentSubdomain === 'biizzed' && url.startsWith('/biizzed/')) {
+      return url.replace('/biizzed/', '/');
+    }
+    if (currentSubdomain === 'uduua' && url.startsWith('/uduua/')) {
+      return url.replace('/uduua/', '/');
+    }
+    if (currentSubdomain === 'events' && url.startsWith('/events/')) {
+      return url.replace('/events/', '/');
+    }
+    return url;
+  };
 
   // Handle initial page load
-  const path = location.pathname;
+  const path = window.location.pathname;
   let needsRewrite = false;
-  let newPath = path;
+  let newPath = path + window.location.search + window.location.hash;
 
   if (currentSubdomain === 'biizzed' && path.startsWith('/biizzed/')) {
-    newPath = path.replace('/biizzed/', '/') + location.search + location.hash;
+    newPath = path.replace('/biizzed/', '/') + window.location.search + window.location.hash;
     needsRewrite = true;
   } else if (currentSubdomain === 'uduua' && path.startsWith('/uduua/')) {
-    newPath = path.replace('/uduua/', '/') + location.search + location.hash;
+    newPath = path.replace('/uduua/', '/') + window.location.search + window.location.hash;
     needsRewrite = true;
   } else if (currentSubdomain === 'events' && path.startsWith('/events/')) {
-    newPath = path.replace('/events/', '/') + location.search + location.hash;
+    newPath = path.replace('/events/', '/') + window.location.search + window.location.hash;
     needsRewrite = true;
   }
 
-  // On initial load, if URL has the prefix, silently replace it
-  if (needsRewrite && window.location.pathname !== newPath.split('?')[0]) {
+  if (needsRewrite) {
     window.history.replaceState(null, '', newPath);
   }
 
-  // Intercept future navigation (back/forward, programmatic push)
-  useEffect(() => {
-    const originalPushState = window.history.pushState;
-    const originalReplaceState = window.history.replaceState;
+  // Patch history methods for all future navigation
+  const originalPushState = window.history.pushState;
+  const originalReplaceState = window.history.replaceState;
 
-    const rewriteUrl = (url) => {
-      if (typeof url !== 'string') return url;
-      if (currentSubdomain === 'biizzed' && url.startsWith('/biizzed/')) {
-        return url.replace('/biizzed/', '/');
-      }
-      if (currentSubdomain === 'uduua' && url.startsWith('/uduua/')) {
-        return url.replace('/uduua/', '/');
-      }
-      if (currentSubdomain === 'events' && url.startsWith('/events/')) {
-        return url.replace('/events/', '/');
-      }
-      return url;
-    };
+  window.history.pushState = function (state, title, url) {
+    const rewritten = rewriteUrl(url);
+    return originalPushState.call(this, state, title, rewritten);
+  };
 
-    window.history.pushState = function (state, title, url) {
-      const rewritten = rewriteUrl(url);
-      return originalPushState.call(this, state, title, rewritten);
-    };
+  window.history.replaceState = function (state, title, url) {
+    const rewritten = rewriteUrl(url);
+    return originalReplaceState.call(this, state, title, rewritten);
+  };
 
-    window.history.replaceState = function (state, title, url) {
-      const rewritten = rewriteUrl(url);
-      return originalReplaceState.call(this, state, title, rewritten);
-    };
+  // Handle back/forward buttons
+  const handlePopState = () => {
+    const currentPath = window.location.pathname;
+    let rewritten = null;
 
-    // Handle popstate (back/forward buttons)
-    const handlePopState = () => {
-      const currentPath = window.location.pathname;
-      let rewritten = currentPath;
-      
-      if (currentSubdomain === 'biizzed' && currentPath.startsWith('/biizzed/')) {
-        rewritten = currentPath.replace('/biizzed/', '/') + window.location.search + window.location.hash;
-      } else if (currentSubdomain === 'uduua' && currentPath.startsWith('/uduua/')) {
-        rewritten = currentPath.replace('/uduua/', '/') + window.location.search + window.location.hash;
-      } else if (currentSubdomain === 'events' && currentPath.startsWith('/events/')) {
-        rewritten = currentPath.replace('/events/', '/') + window.location.search + window.location.hash;
-      }
+    if (currentSubdomain === 'biizzed' && currentPath.startsWith('/biizzed/')) {
+      rewritten = currentPath.replace('/biizzed/', '/') + window.location.search + window.location.hash;
+    } else if (currentSubdomain === 'uduua' && currentPath.startsWith('/uduua/')) {
+      rewritten = currentPath.replace('/uduua/', '/') + window.location.search + window.location.hash;
+    } else if (currentSubdomain === 'events' && currentPath.startsWith('/events/')) {
+      rewritten = currentPath.replace('/events/', '/') + window.location.search + window.location.hash;
+    }
 
-      if (rewritten !== currentPath + window.location.search + window.location.hash) {
-        window.history.replaceState(null, '', rewritten);
-        // Dispatch a synthetic popstate to trigger React Router update
-        window.dispatchEvent(new PopStateEvent('popstate', { state: window.history.state }));
-      }
-    };
+    if (rewritten && rewritten !== currentPath + window.location.search + window.location.hash) {
+      window.history.replaceState(null, '', rewritten);
+    }
+  };
 
-    window.addEventListener('popstate', handlePopState);
+  window.addEventListener('popstate', handlePopState);
 
-    return () => {
-      window.history.pushState = originalPushState;
-      window.history.replaceState = originalReplaceState;
-      window.removeEventListener('popstate', handlePopState);
-    };
-  }, []);
+  // Return cleanup (not really needed for root-level but good practice)
+  return () => {
+    window.history.pushState = originalPushState;
+    window.history.replaceState = originalReplaceState;
+    window.removeEventListener('popstate', handlePopState);
+  };
 };
 
 // ==================== CLIENT-SIDE SUBDOMAIN REDIRECT ====================
-// Catches /biizzed/*, /uduua/*, /events/* on subdomains and redirects to /*
+// Fallback: catches /biizzed/*, /uduua/*, /events/* on subdomains
 const SubdomainRedirect = () => {
   const location = useLocation();
   const path = location.pathname;
@@ -542,10 +535,12 @@ if ("serviceWorker" in navigator) {
   });
 }
 
-// Wrapper to activate web‑push subscription + silent URL rewriting
+// Setup silent rewrite BEFORE router renders
+setupSilentSubdomainRewrite();
+
+// Wrapper to activate web‑push subscription
 const AppWithNotifications = () => {
   usePushNotifications();
-  useSilentSubdomainRewrite();
   return <RouterProvider router={router} />;
 };
 
