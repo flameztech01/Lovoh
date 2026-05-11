@@ -3,7 +3,7 @@
   "name": "Biizzed",
   "short_name": "Biizzed",
   "description": "Discover articles, magazines, and videos from creators worldwide",
-  "start_url": "/biizzed/feed",
+  "start_url": "/feed",
   "scope": "/biizzed",
   "display": "standalone",
   "background_color": "#ffffff",
