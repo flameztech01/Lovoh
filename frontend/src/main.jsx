@@ -1,9 +1,9 @@
 // main.jsx
-import { StrictMode, useEffect } from "react";
+import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.jsx";
-import { createBrowserRouter, RouterProvider, Navigate, useLocation, Outlet } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, Navigate, useLocation, Outlet, useNavigate } from "react-router-dom";
 import { Provider } from "react-redux";
 import store from "./store.js";
 import { Analytics } from "@vercel/analytics/react";
@@ -147,61 +147,32 @@ const getSubdomain = () => {
 const currentSubdomain = getSubdomain();
 console.log('Current subdomain:', currentSubdomain, '| Hostname:', hostname);
 
-// ==================== INTERCEPT CLIENT-SIDE NAVIGATION ====================
-const rewriteUrl = (url) => {
-  if (typeof url !== 'string') return url;
-  if (currentSubdomain === 'biizzed' && url.startsWith('/biizzed/')) {
-    return url.replace('/biizzed/', '/');
+// ==================== AUTO-RELOAD COMPONENT ====================
+// This catches any unmatched route with subdomain prefix and reloads
+const AutoReloadOnPrefix = () => {
+  const location = useLocation();
+  const path = location.pathname;
+
+  let cleanPath = null;
+
+  if (currentSubdomain === 'biizzed' && path.startsWith('/biizzed/')) {
+    cleanPath = path.replace('/biizzed/', '/') + location.search + location.hash;
+  } else if (currentSubdomain === 'uduua' && path.startsWith('/uduua/')) {
+    cleanPath = path.replace('/uduua/', '/') + location.search + location.hash;
+  } else if (currentSubdomain === 'events' && path.startsWith('/events/')) {
+    cleanPath = path.replace('/events/', '/') + location.search + location.hash;
   }
-  if (currentSubdomain === 'uduua' && url.startsWith('/uduua/')) {
-    return url.replace('/uduua/', '/');
+
+  if (cleanPath) {
+    window.location.replace(cleanPath);
+    return null; // Nothing renders, browser is already navigating
   }
-  if (currentSubdomain === 'events' && url.startsWith('/events/')) {
-    return url.replace('/events/', '/');
-  }
-  return url;
+
+  // If we get here, it's truly a 404 — show nothing or your actual 404 page
+  return null;
 };
 
-const originalPushState = window.history.pushState;
-const originalReplaceState = window.history.replaceState;
-
-window.history.pushState = function (state, title, url) {
-  const rewritten = rewriteUrl(url);
-  if (rewritten !== url) {
-    window.location.href = rewritten;
-    return;
-  }
-  return originalPushState.call(this, state, title, rewritten);
-};
-
-window.history.replaceState = function (state, title, url) {
-  const rewritten = rewriteUrl(url);
-  if (rewritten !== url) {
-    window.location.replace(rewritten);
-    return;
-  }
-  return originalReplaceState.call(this, state, title, rewritten);
-};
-
-// Handle back/forward buttons
-window.addEventListener('popstate', () => {
-  const currentPath = window.location.pathname;
-  let rewritten = null;
-
-  if (currentSubdomain === 'biizzed' && currentPath.startsWith('/biizzed/')) {
-    rewritten = currentPath.replace('/biizzed/', '/') + window.location.search + window.location.hash;
-  } else if (currentSubdomain === 'uduua' && currentPath.startsWith('/uduua/')) {
-    rewritten = currentPath.replace('/uduua/', '/') + window.location.search + window.location.hash;
-  } else if (currentSubdomain === 'events' && currentPath.startsWith('/events/')) {
-    rewritten = currentPath.replace('/events/', '/') + window.location.search + window.location.hash;
-  }
-
-  if (rewritten && rewritten !== currentPath + window.location.search + window.location.hash) {
-    window.location.replace(rewritten);
-  }
-});
-
-// ==================== CLIENT-SIDE SUBDOMAIN REDIRECT (FALLBACK) ====================
+// ==================== CLIENT-SIDE SUBDOMAIN REDIRECT ====================
 const SubdomainRedirect = () => {
   const location = useLocation();
   const path = location.pathname;
@@ -257,6 +228,8 @@ const biizzedRoutes = [
           { path: "feed/resubscribe", element: <BizzzedResubscribeScreen /> },
           { path: "settings", element: <BizzzedSettings /> },
           { path: "notifications", element: <BizzzedNotifications /> },
+          // Catch-all: any remaining path with prefix gets reloaded
+          { path: "*", element: <AutoReloadOnPrefix /> },
         ],
       },
     ],
@@ -293,6 +266,8 @@ const uduuaRoutes = [
           { path: "seller/wallet", element: <UduuaSellerWallet /> },
           { path: "seller/payment-history", element: <UduuaSellerPaymentHistory /> },
           { path: "services", element: <UduuaServices /> },
+          // Catch-all: any remaining path with prefix gets reloaded
+          { path: "*", element: <AutoReloadOnPrefix /> },
         ],
       },
     ],
@@ -328,6 +303,8 @@ const eventRoutes = [
               { path: "dashboard/events/:id/edit", element: <EventDashboardEditEvent /> },
             ],
           },
+          // Catch-all: any remaining path with prefix gets reloaded
+          { path: "*", element: <AutoReloadOnPrefix /> },
         ],
       },
     ],
@@ -508,24 +485,9 @@ if ("serviceWorker" in navigator) {
   });
 }
 
-// ==================== REMOVE LOADING OVERLAY ====================
-const removeLoadingOverlay = () => {
-  const overlay = document.getElementById('loading-overlay');
-  if (overlay) {
-    overlay.classList.add('hidden');
-    setTimeout(() => overlay.remove(), 350);
-  }
-};
-
-// Wrapper to activate web‑push subscription + remove overlay
+// Wrapper to activate web‑push subscription
 const AppWithNotifications = () => {
   usePushNotifications();
-  
-  // Remove overlay once router is ready
-  useEffect(() => {
-    removeLoadingOverlay();
-  }, []);
-  
   return <RouterProvider router={router} />;
 };
 
