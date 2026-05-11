@@ -313,18 +313,28 @@ const updateEvent = asyncHandler(async (req, res) => {
     ticketTypes, enableMultipleTickets, maxTicketsPerOrder,
   } = req.body;
 
+  // FIXED: Handle files from .any() - req.files is a flat array
+  let allFiles = [];
+  if (req.files && Array.isArray(req.files)) {
+    allFiles = req.files;
+  }
+
+  const eventImageFiles = allFiles.filter(f => f.fieldname === 'images');
+  const speakerImageFiles = allFiles.filter(f => f.fieldname.startsWith('speakerImages'));
+
   // Handle speakers
   if (speakers) {
     try {
       let parsedSpeakers = typeof speakers === 'string' ? JSON.parse(speakers) : speakers;
       
-      if (req.files && req.files.speakerImages && req.files.speakerImages.length > 0) {
-        const speakerImageFiles = req.files.speakerImages;
+      // Handle new speaker image uploads
+      if (speakerImageFiles.length > 0) {
         speakerImageFiles.forEach((file) => {
           const match = file.fieldname.match(/\[(\d+)\]/);
           if (match) {
             const index = parseInt(match[1]);
             if (parsedSpeakers[index]) {
+              // Delete old speaker image from cloudinary
               const oldSpeaker = event.speakers[index];
               if (oldSpeaker && oldSpeaker.image && oldSpeaker.image.includes('cloudinary')) {
                 try {
@@ -336,17 +346,19 @@ const updateEvent = asyncHandler(async (req, res) => {
             }
           }
         });
-      } else {
-        for (let i = 0; i < parsedSpeakers.length; i++) {
-          const existingSpeaker = event.speakers[i];
-          if (existingSpeaker && existingSpeaker.image) {
-            if (!parsedSpeakers[i].image || parsedSpeakers[i].image === '') {
-              parsedSpeakers[i].image = existingSpeaker.image;
-            }
+      }
+      
+      // Preserve existing speaker images for speakers not being updated
+      for (let i = 0; i < parsedSpeakers.length; i++) {
+        const existingSpeaker = event.speakers[i];
+        if (existingSpeaker && existingSpeaker.image) {
+          if (!parsedSpeakers[i].image || parsedSpeakers[i].image === '') {
+            parsedSpeakers[i].image = existingSpeaker.image;
           }
         }
       }
       
+      // Delete removed speaker images from cloudinary
       for (const oldSpeaker of event.speakers) {
         if (oldSpeaker.image && oldSpeaker.image.includes('cloudinary')) {
           const stillExists = parsedSpeakers.some(s => s.image === oldSpeaker.image);
@@ -362,28 +374,33 @@ const updateEvent = asyncHandler(async (req, res) => {
     } catch (error) { console.error('Speaker parsing error:', error); }
   }
 
+  // Handle ticket types
   if (ticketTypes) {
     try {
       event.ticketTypes = typeof ticketTypes === 'string' ? JSON.parse(ticketTypes) : ticketTypes;
     } catch (error) { console.error('Ticket types parsing error:', error); }
   }
 
-  if (req.files && req.files.images && req.files.images.length > 0) {
-    const newImages = req.files.images.map(file => file.path);
-    const imagesToKeep = keepImages
-      ? (Array.isArray(keepImages) ? keepImages : JSON.parse(keepImages))
-      : [];
-    for (const oldImage of event.images) {
-      if (!imagesToKeep.includes(oldImage)) {
-        try {
-          const publicId = oldImage.split('/').pop().split('.')[0];
-          await cloudinary.uploader.destroy(`The_Brave_Events/${publicId}`);
-        } catch (err) { console.error('Error deleting old image:', err); }
-      }
+  // FIXED: Handle event images - always process keepImages, even if no new uploads
+  const imagesToKeep = keepImages
+    ? (Array.isArray(keepImages) ? keepImages : JSON.parse(keepImages))
+    : [];
+
+  // Delete old images not in keepImages
+  for (const oldImage of event.images) {
+    if (!imagesToKeep.includes(oldImage)) {
+      try {
+        const publicId = oldImage.split('/').pop().split('.')[0];
+        await cloudinary.uploader.destroy(`The_Brave_Events/${publicId}`);
+      } catch (err) { console.error('Error deleting old image:', err); }
     }
-    event.images = [...imagesToKeep, ...newImages];
   }
 
+  // Add new event images
+  const newImages = eventImageFiles.map(file => file.path);
+  event.images = [...imagesToKeep, ...newImages];
+
+  // Update other fields
   if (title) event.title = title.trim();
   if (description) event.description = description;
   if (eventType) event.eventType = eventType;
