@@ -9,6 +9,29 @@ import {
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 
+// ==================== SUBDOMAIN DETECTION ====================
+const hostname = window.location.hostname;
+
+const getSubdomain = () => {
+  if (hostname === 'uduua.lovohcreate.com') return 'uduua';
+  if (hostname === 'biizzed.lovohcreate.com') return 'biizzed';
+  if (hostname === 'event-room.lovohcreate.com') return 'events';
+  return 'main';
+};
+
+const currentSubdomain = getSubdomain();
+const isBiizzedSubdomain = currentSubdomain === 'biizzed';
+
+// Helper: build correct path based on current domain context
+const buildPath = (path) => {
+  // On biizzed subdomain, routes have NO /biizzed/ prefix
+  if (isBiizzedSubdomain && path.startsWith('/biizzed/')) {
+    return path.replace('/biizzed/', '/');
+  }
+  // On main domain, keep the /biizzed/ prefix
+  return path;
+};
+
 const BizzzedBottomBar = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -16,7 +39,10 @@ const BizzzedBottomBar = () => {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  const isActive = (path) => location.pathname === path;
+  const isActive = (path) => {
+    const cleanPath = buildPath(path);
+    return location.pathname === cleanPath;
+  };
 
   const tabs = [
     { id: "home", icon: FaHome, label: "Home", path: "/biizzed/feed" },
@@ -44,7 +70,7 @@ const BizzzedBottomBar = () => {
   const handleCreateClick = () => {
     if (!userInfo) {
       toast.info('Login to create content');
-      navigate('/biizzed/login?redirect=/biizzed/feed');
+      navigate(buildPath('/biizzed/login?redirect=/biizzed/feed'));
       return;
     }
     setShowCreateModal(true);
@@ -52,7 +78,7 @@ const BizzzedBottomBar = () => {
 
   const handleCreateOption = (type) => {
     setShowCreateModal(false);
-    navigate(`/biizzed/create-${type}`);
+    navigate(buildPath(`/biizzed/create-${type}`));
   };
 
   const handleFilterSelect = (filterId) => {
@@ -66,8 +92,12 @@ const BizzzedBottomBar = () => {
       case "clips": url = "/biizzed/videos"; break;
       default: break;
     }
-    navigate(url);
+    navigate(buildPath(url));
     setShowFilterModal(false);
+  };
+
+  const handleTabClick = (path) => {
+    navigate(buildPath(path));
   };
 
   return (
@@ -91,7 +121,7 @@ const BizzzedBottomBar = () => {
             }
 
             return (
-              <button key={tab.id} onClick={() => navigate(tab.path)}
+              <button key={tab.id} onClick={() => handleTabClick(tab.path)}
                 className="flex flex-col items-center justify-center gap-0.5">
                 <tab.icon className={`text-xl ${active ? "text-[#1B3766]" : "text-gray-400"}`} />
                 <span className={`text-[10px] font-medium ${active ? "text-[#1B3766]" : "text-gray-500"}`}>{tab.label}</span>

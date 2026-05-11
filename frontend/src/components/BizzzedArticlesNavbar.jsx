@@ -24,6 +24,29 @@ import {
 } from "react-icons/fa";
 import { useGetNotificationsQuery } from "../slices/notificationApiSlice";
 
+// ==================== SUBDOMAIN DETECTION ====================
+const hostname = window.location.hostname;
+
+const getSubdomain = () => {
+  if (hostname === 'uduua.lovohcreate.com') return 'uduua';
+  if (hostname === 'biizzed.lovohcreate.com') return 'biizzed';
+  if (hostname === 'event-room.lovohcreate.com') return 'events';
+  return 'main';
+};
+
+const currentSubdomain = getSubdomain();
+const isBiizzedSubdomain = currentSubdomain === 'biizzed';
+
+// Helper: build correct path based on current domain context
+const buildPath = (path) => {
+  // On biizzed subdomain, routes have NO /biizzed/ prefix
+  if (isBiizzedSubdomain && path.startsWith('/biizzed/')) {
+    return path.replace('/biizzed/', '/');
+  }
+  // On main domain, keep the /biizzed/ prefix
+  return path;
+};
+
 const BizzzedArticlesNavbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -51,16 +74,16 @@ const BizzzedArticlesNavbar = () => {
 
   useEffect(() => {
     const path = location.pathname;
-    if (path.includes("/biizzed/magazines")) setActiveTab("magazines");
-    else if (path.includes("/biizzed/articles")) setActiveTab("articles");
-    else if (path.includes("/biizzed/videos")) setActiveTab("videos");
+    if (path.includes("/magazines") || path.includes("/biizzed/magazines")) setActiveTab("magazines");
+    else if (path.includes("/articles") || path.includes("/biizzed/articles")) setActiveTab("articles");
+    else if (path.includes("/videos") || path.includes("/biizzed/videos")) setActiveTab("videos");
     else setActiveTab("feed");
   }, [location.pathname]);
 
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchTerm.trim()) {
-      navigate(`/biizzed/search?q=${encodeURIComponent(searchTerm.trim())}`);
+      navigate(buildPath(`/biizzed/search?q=${encodeURIComponent(searchTerm.trim())}`));
     }
     setShowSearch(false);
     setSearchTerm("");
@@ -70,30 +93,30 @@ const BizzzedArticlesNavbar = () => {
     setActiveTab(tab);
     switch (tab) {
       case "feed":
-        navigate("/biizzed/feed");
+        navigate(buildPath("/biizzed/feed"));
         break;
       case "articles":
-        navigate("/biizzed/articles");
+        navigate(buildPath("/biizzed/articles"));
         break;
       case "magazines":
-        navigate("/biizzed/magazines");
+        navigate(buildPath("/biizzed/magazines"));
         break;
       case "videos":
-        navigate("/biizzed/videos");
+        navigate(buildPath("/biizzed/videos"));
         break;
       default:
-        navigate("/biizzed");
+        navigate(buildPath("/biizzed"));
     }
   };
 
   const handleCreateOption = (type) => {
     if (!userInfo) {
-      navigate(`/biizzed/login?redirect=/biizzed/create-${type}`);
+      navigate(buildPath(`/biizzed/login?redirect=/biizzed/create-${type}`));
       setShowCreateModal(false);
       return;
     }
     setShowCreateModal(false);
-    navigate(`/biizzed/create-${type}`);
+    navigate(buildPath(`/biizzed/create-${type}`));
   };
 
   const createOptions = [
@@ -140,7 +163,7 @@ const BizzzedArticlesNavbar = () => {
               >
                 {/* <FaArrowLeft className="text-sm" /> */}
               </button>
-              <Link to="/biizzed" className="flex items-center gap-2">
+              <Link to={buildPath("/biizzed")} className="flex items-center gap-2">
                 <img src="/biizzed.png" alt="Bizzzed" className="h-7 w-auto" />
               </Link>
             </div>
@@ -162,9 +185,9 @@ const BizzzedArticlesNavbar = () => {
 
               {userInfo ? (
                 <>
-                  {/* Notification Bell - now linked and shows green dot only when unread */}
+                  {/* Notification Bell */}
                   <Link
-                    to="/biizzed/notifications"
+                    to={buildPath("/biizzed/notifications")}
                     className="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-600 transition-colors relative"
                   >
                     <FaBell className="text-sm" />
@@ -173,7 +196,7 @@ const BizzzedArticlesNavbar = () => {
                     )}
                   </Link>
                   <Link
-                    to="/biizzed/profile"
+                    to={buildPath("/biizzed/profile")}
                     className="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-600 transition-colors"
                   >
                     {userInfo?.profile ? (
@@ -191,13 +214,13 @@ const BizzzedArticlesNavbar = () => {
                 <>
                   {/* Not Logged In - Show Login/Signup */}
                   <Link
-                    to="/biizzed/login"
+                    to={buildPath("/biizzed/login")}
                     className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#1B3766] border border-[#1B3766] rounded-full hover:bg-[#1B3766] hover:text-white transition-colors"
                   >
                     <FaSignInAlt className="text-[10px]" /> Login
                   </Link>
                   <Link
-                    to="/biizzed/signup"
+                    to={buildPath("/biizzed/signup")}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-[#1B3766] text-white rounded-full hover:bg-[#142952] transition-colors"
                   >
                     <FaUserPlus className="text-[10px]" />
@@ -287,7 +310,7 @@ const BizzzedArticlesNavbar = () => {
                   You'll need an account to publish
                 </p>
                 <Link
-                  to="/biizzed/signup"
+                  to={buildPath("/biizzed/signup")}
                   onClick={() => setShowCreateModal(false)}
                   className="inline-block px-4 py-1.5 bg-[#1B3766] text-white rounded-full text-xs font-medium hover:bg-[#142952] transition-colors"
                 >
@@ -360,7 +383,7 @@ const BizzzedArticlesNavbar = () => {
                       key={cat}
                       onClick={() => {
                         navigate(
-                          `/biizzed/articles?category=${encodeURIComponent(cat)}`
+                          buildPath(`/biizzed/articles?category=${encodeURIComponent(cat)}`)
                         );
                         setShowSearch(false);
                       }}
