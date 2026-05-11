@@ -1,5 +1,5 @@
 // main.jsx
-import { StrictMode } from "react";
+import { StrictMode, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.jsx";
@@ -147,34 +147,7 @@ const getSubdomain = () => {
 const currentSubdomain = getSubdomain();
 console.log('Current subdomain:', currentSubdomain, '| Hostname:', hostname);
 
-// ==================== URL CLEANUP (BEFORE REACT MOUNTS) ====================
-// Check if URL has subdomain prefix on subdomain. If yes, reload immediately.
-// If no, proceed to render. This prevents any "not found" flash.
-const path = window.location.pathname;
-
-let needsReload = false;
-let cleanPath = path;
-
-if (currentSubdomain === 'biizzed' && path.startsWith('/biizzed/')) {
-  cleanPath = path.replace('/biizzed/', '/') + window.location.search + window.location.hash;
-  needsReload = true;
-} else if (currentSubdomain === 'uduua' && path.startsWith('/uduua/')) {
-  cleanPath = path.replace('/uduua/', '/') + window.location.search + window.location.hash;
-  needsReload = true;
-} else if (currentSubdomain === 'events' && path.startsWith('/events/')) {
-  cleanPath = path.replace('/events/', '/') + window.location.search + window.location.hash;
-  needsReload = true;
-}
-
-if (needsReload) {
-  // Hard reload immediately — React never mounts, user sees nothing but browser default blank
-  window.location.replace(cleanPath);
-  // Stop execution — nothing below runs
-  throw new Error('Reloading to clean URL...');
-}
-
-// ==================== INTERCEPT FUTURE NAVIGATION ====================
-// Patch history.pushState so <Link> and navigate() with prefix trigger reload
+// ==================== INTERCEPT CLIENT-SIDE NAVIGATION ====================
 const rewriteUrl = (url) => {
   if (typeof url !== 'string') return url;
   if (currentSubdomain === 'biizzed' && url.startsWith('/biizzed/')) {
@@ -535,9 +508,24 @@ if ("serviceWorker" in navigator) {
   });
 }
 
-// Wrapper to activate web‑push subscription
+// ==================== REMOVE LOADING OVERLAY ====================
+const removeLoadingOverlay = () => {
+  const overlay = document.getElementById('loading-overlay');
+  if (overlay) {
+    overlay.classList.add('hidden');
+    setTimeout(() => overlay.remove(), 350);
+  }
+};
+
+// Wrapper to activate web‑push subscription + remove overlay
 const AppWithNotifications = () => {
   usePushNotifications();
+  
+  // Remove overlay once router is ready
+  useEffect(() => {
+    removeLoadingOverlay();
+  }, []);
+  
   return <RouterProvider router={router} />;
 };
 

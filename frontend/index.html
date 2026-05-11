@@ -19,7 +19,7 @@
     
     <title>LovoCreate</title>
     
-    <!-- ==================== SUBDOMAIN URL CLEANUP (runs before React) ==================== -->
+    <!-- ==================== SUBDOMAIN URL CLEANUP (runs before everything) ==================== -->
     <script>
       (function() {
         const hostname = window.location.hostname;
@@ -43,8 +43,43 @@
       })();
     </script>
     <!-- ==================== END URL CLEANUP ==================== -->
+    
+    <!-- ==================== LOADING OVERLAY (prevents not-found flash) ==================== -->
+    <style>
+      #loading-overlay {
+        position: fixed;
+        inset: 0;
+        background: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 99999;
+        transition: opacity 0.3s ease;
+      }
+      #loading-overlay.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .loader-spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid #e5e7eb;
+        border-top-color: #1B3766;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
+    <!-- ==================== END LOADING OVERLAY ==================== -->
   </head>
   <body>
+    <!-- Loading overlay covers everything until React removes it -->
+    <div id="loading-overlay">
+      <div class="loader-spinner"></div>
+    </div>
+    
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
