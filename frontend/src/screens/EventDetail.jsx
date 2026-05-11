@@ -16,7 +16,7 @@ import Footer from '../components/Footer';
 // ==================== ABSOLUTE URL HELPER ====================
 const getBaseUrl = () => {
   const hostname = window.location.hostname;
-  if (hostname === 'event-room.lovohcreate.com') return 'https://event-room.lovohcreate.com';
+  if (hostname === 'eventroom.lovohcreate.com') return 'https://eventroom.lovohcreate.com';
   if (hostname === 'biizzed.lovohcreate.com') return 'https://biizzed.lovohcreate.com';
   if (hostname === 'uduua.lovohcreate.com') return 'https://uduua.lovohcreate.com';
   return 'https://lovohcreate.com';
