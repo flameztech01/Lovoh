@@ -8,7 +8,7 @@ const hostname = window.location.hostname;
 const getSubdomain = () => {
   if (hostname === 'uduua.lovohcreate.com') return 'uduua';
   if (hostname === 'biizzed.lovohcreate.com') return 'biizzed';
-  if (hostname === 'event-room.lovohcreate.com') return 'events';
+  if (hostname === 'eventroom.lovohcreate.com') return 'events';
   return 'main';
 };
 
