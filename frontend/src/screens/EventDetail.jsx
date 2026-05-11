@@ -7,7 +7,7 @@ import {
   FaCalendarDay, FaCalendarCheck, FaTag, FaLink, FaCheck,
   FaShare, FaTicketAlt, FaCopy, FaUser, FaMapPin, FaGlobe,
   FaStar, FaLayerGroup, FaChair, FaVideo, FaChevronLeft, FaChevronRight,
-  FaTimes, FaDownload,FaSearchPlus,
+  FaTimes, FaDownload, FaSearchPlus,
 } from 'react-icons/fa';
 import { useGetEventByIdQuery, useVerifyPaymentQuery } from '../slices/eventApiSlice';
 import { toast } from 'react-toastify';
@@ -118,11 +118,6 @@ const EventDetail = () => {
     return new Date(date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   };
 
-  const formatShortDate = (date) => {
-    if (!date) return 'TBD';
-    return new Date(date).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' });
-  };
-
   const formatTime = (time) => {
     if (!time) return '';
     try {
@@ -135,58 +130,9 @@ const EventDetail = () => {
     }
   };
 
-  const parseDuration = (duration) => {
-    if (!duration) return null;
-    
-    const str = duration.toString().trim().toLowerCase();
-    const minutesMatch = str.match(/^(\d+)\s*min(?:ute)?s?$/);
-    if (minutesMatch) return { value: parseInt(minutesMatch[1]), unit: 'minutes' };
-    const hoursMatch = str.match(/^(\d+)\s*h(?:ou)?r?s?$/);
-    if (hoursMatch) return { value: parseInt(hoursMatch[1]), unit: 'hours' };
-    const decimalMatch = str.match(/^(\d+\.?\d*)$/);
-    if (decimalMatch) return { value: parseFloat(decimalMatch[1]), unit: 'hours' };
-    const combinedMatch = str.match(/(\d+)\s*h(?:ou)?r?s?\s*(?:and\s*)?(\d+)?\s*min(?:ute)?s?/);
-    if (combinedMatch) {
-      const hours = parseInt(combinedMatch[1]) || 0;
-      const minutes = parseInt(combinedMatch[2]) || 0;
-      return { value: hours + (minutes / 60), unit: 'hours' };
-    }
-    return null;
-  };
-
-  const calculateEndTime = (time, duration) => {
-    if (!time || !duration) return null;
-    const parsed = parseDuration(duration);
-    if (!parsed) return null;
-    const [hours, minutes] = time.split(':');
-    const startDate = new Date();
-    startDate.setHours(parseInt(hours), parseInt(minutes) || 0, 0, 0);
-    let durationMs;
-    if (parsed.unit === 'minutes') durationMs = parsed.value * 60 * 1000;
-    else durationMs = parsed.value * 60 * 60 * 1000;
-    const endDate = new Date(startDate.getTime() + durationMs);
-    return endDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-  };
-
-  const formatTimeRange = (time, duration) => {
-    const startTime = formatTime(time);
-    const endTime = calculateEndTime(time, duration);
-    if (startTime && endTime) return `${startTime} — ${endTime}`;
-    return startTime || 'TBD';
-  };
-
   const formatPrice = (price) => {
     if (!price || price === 0) return 'Free';
     return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(price);
-  };
-
-  const getEventStatus = () => {
-    if (!event) return { label: 'Unknown', color: 'bg-gray-100 text-gray-600', icon: FaCheckCircle };
-    if (event.isDisabled) return { label: 'Cancelled', color: 'bg-red-100 text-red-800', icon: FaCheckCircle };
-    if (event.status === 'postponed') return { label: 'Postponed', color: 'bg-yellow-100 text-yellow-800', icon: FaCalendarDay };
-    const isPast = new Date(event.date) < new Date();
-    if (isPast || event.status === 'passed') return { label: 'Past Event', color: 'bg-gray-100 text-gray-600', icon: FaCalendarCheck };
-    return { label: 'Upcoming', color: 'bg-green-100 text-green-800', icon: FaCalendarDay };
   };
 
   const getPriceRange = () => {
@@ -199,6 +145,139 @@ const EventDetail = () => {
       return `${formatPrice(min)} - ${formatPrice(max)}`;
     }
     return formatPrice(event.price);
+  };
+
+  // Build a short detail string for sharing
+  const getShareDetails = useCallback(() => {
+    if (!event) return '';
+    const date = formatDate(event.date);
+    const time = formatTime(event.time);
+    const venue = event.venue || event.location || 'TBD';
+    const price = getPriceRange() || 'Free';
+    const baseUrl = getBaseUrl();
+    const eventUrl = `${baseUrl}${window.location.pathname}`;
+
+    return `📅 ${event.title}\n${date} · ${time}\n📍 ${venue}\n💵 ${price}\n🔗 ${eventUrl}`;
+  }, [event]);
+
+  // Universal share helper that tries to share image + text + link
+  const shareWithImage = async (imageUrl, title, bodyText, url) => {
+    // First, try sharing the image as a file (supported on Android Chrome & some Samsung browsers)
+    try {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const file = new File([blob], `${title?.replace(/[^a-z0-9]/gi,'_') || 'event'}_poster.jpg`, { type: blob.type });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title,
+          text: bodyText,
+          url,
+        });
+        return;
+      }
+    } catch (err) {
+      // If sharing files fails (e.g., desktop browsers), we fall through to text-only share
+      if (err.name !== 'AbortError') {
+        console.log('File share not supported, falling back to text share', err);
+      } else {
+        // User cancelled the share
+        return;
+      }
+    }
+
+    // Fallback: share text + url (no file)
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, text: bodyText, url });
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          toast.error('Sharing failed');
+        }
+      }
+    } else {
+      // Very last resort: copy the URL to clipboard
+      await navigator.clipboard.writeText(url);
+      toast.success('Link copied to clipboard');
+    }
+  };
+
+  // Share from the main action button (uses first event image)
+  const handleShareEvent = async () => {
+    if (!event) return;
+    const imageUrl = toAbsoluteUrl(event.images?.[0]); // fallback to logo.png if none
+    const details = getShareDetails();
+    const baseUrl = getBaseUrl();
+    const eventUrl = `${baseUrl}${window.location.pathname}`;
+    await shareWithImage(imageUrl, event.title, details, eventUrl);
+  };
+
+  // Share from the lightbox (uses currently shown image)
+  const shareCurrentPoster = async () => {
+    if (!event || !event.images?.length) return;
+    const imageUrl = event.images[currentImageIndex];
+    const details = getShareDetails();
+    const baseUrl = getBaseUrl();
+    const eventUrl = `${baseUrl}${window.location.pathname}`;
+    await shareWithImage(imageUrl, event.title, details, eventUrl);
+  };
+
+  const downloadImage = async (url) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `${event?.title || 'event'}_poster.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+      toast.success('Poster downloaded');
+    } catch (err) {
+      toast.error('Download failed – right-click to save');
+    }
+  };
+
+  const handleCopy = async () => {
+    const ogUrl = `https://eventroom.lovohcreate.com/api/og/event/${id}`;
+    await navigator.clipboard.writeText(ogUrl);
+    setCopied(true);
+    toast.success('Link copied!');
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const getEventStatus = () => {
+    if (!event) return { label: 'Unknown', color: 'bg-gray-100 text-gray-600', icon: FaCheckCircle };
+    if (event.isDisabled) return { label: 'Cancelled', color: 'bg-red-100 text-red-800', icon: FaCheckCircle };
+    if (event.status === 'postponed') return { label: 'Postponed', color: 'bg-yellow-100 text-yellow-800', icon: FaCalendarDay };
+    const isPast = new Date(event.date) < new Date();
+    if (isPast || event.status === 'passed') return { label: 'Past Event', color: 'bg-gray-100 text-gray-600', icon: FaCalendarCheck };
+    return { label: 'Upcoming', color: 'bg-green-100 text-green-800', icon: FaCalendarDay };
+  };
+
+  const formatTimeRange = (time, duration) => {
+    const start = formatTime(time);
+    if (!duration || !time) return start || 'TBD';
+    // simplified duration parsing (reuse from original)
+    const calcEnd = () => {
+      const [h, m] = time.split(':');
+      const startDate = new Date();
+      startDate.setHours(parseInt(h), parseInt(m) || 0, 0, 0);
+      let durMs = 0;
+      const str = duration.toString().trim().toLowerCase();
+      let mins = str.match(/^(\d+)\s*min/);
+      let hrs = str.match(/^(\d+)\s*h/);
+      if (mins) durMs = parseInt(mins[1]) * 60000;
+      else if (hrs) durMs = parseInt(hrs[1]) * 3600000;
+      else return null;
+      return new Date(startDate.getTime() + durMs);
+    };
+    const endDate = calcEnd();
+    const end = endDate ? endDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : null;
+    return end ? `${start} — ${end}` : start || 'TBD';
   };
 
   const hasTicketTypes = event?.ticketTypes?.length > 0;
@@ -233,69 +312,6 @@ const EventDetail = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [lightboxOpen, nextImage, prevImage]);
-
-  const downloadImage = async (url) => {
-    try {
-      const response = await fetch(url);
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = `${event?.title || 'event'}_poster.jpg`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(blobUrl);
-      toast.success('Poster downloaded');
-    } catch (err) {
-      toast.error('Download failed – right-click to save');
-    }
-  };
-
-  const sharePoster = async (url) => {
-    if (navigator.share) {
-      try {
-        const response = await fetch(url);
-        const blob = await response.blob();
-        const file = new File([blob], `${event?.title || 'event'}_poster.jpg`, { type: blob.type });
-        await navigator.share({
-          title: event?.title || 'Event Poster',
-          files: [file],
-        });
-        return;
-      } catch (err) {
-        if (err.name !== 'AbortError') {
-          // fallback: share the URL
-          handleShareOgUrl();
-        }
-      }
-    } else {
-      handleShareOgUrl();
-    }
-  };
-
-  const handleCopy = async () => {
-    const ogUrl = `https://eventroom.lovohcreate.com/api/og/event/${id}`;
-    await navigator.clipboard.writeText(ogUrl);
-    setCopied(true); 
-    toast.success('Link copied!');
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleShareOgUrl = async () => {
-    const ogUrl = `https://eventroom.lovohcreate.com/api/og/event/${id}`;
-    const title = event?.title || 'Check out this event';
-    if (navigator.share) {
-      try { 
-        await navigator.share({ title, text: title, url: ogUrl }); 
-      }
-      catch (err) { 
-        if (err.name !== 'AbortError') handleCopy(); 
-      }
-    } else {
-      handleCopy();
-    }
-  };
 
   if (isLoading) return (
     <div className="min-h-screen bg-gray-50">
@@ -356,7 +372,7 @@ const EventDetail = () => {
         )}
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          {/* Images Slider – now clickable to open lightbox */}
+          {/* Images Slider – clickable to open lightbox */}
           {hasImages && (
             <div className="relative">
               <div 
@@ -421,7 +437,7 @@ const EventDetail = () => {
           )}
 
           <div className="p-5 sm:p-8">
-            {/* Badges (unchanged) */}
+            {/* Badges */}
             <div className="flex flex-wrap gap-2 mb-5">
               <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${status.color}`}>
                 <StatusIcon className="text-xs" /> {status.label}
@@ -461,7 +477,7 @@ const EventDetail = () => {
 
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-4">{event.title}</h1>
 
-            {/* Details Grid (unchanged) */}
+            {/* Details Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-5 bg-gray-50 rounded-xl mb-6">
               <DetailItem icon={FaCalendarAlt} label="Date" value={formatDate(event.date)} />
               <DetailItem icon={FaClock} label="Time" value={timeRangeDisplay} />
@@ -479,7 +495,7 @@ const EventDetail = () => {
               )}
             </div>
 
-            {/* Action Buttons (unchanged) */}
+            {/* Action Buttons – updated share button */}
             <div className="flex flex-col sm:flex-row gap-3 mb-6">
               {canRegister ? (
                 <Link to={`/events/${id}/register`}
@@ -498,7 +514,7 @@ const EventDetail = () => {
                 <button onClick={handleCopy} className="p-2.5 text-gray-400 hover:text-gray-700 hover:bg-gray-50 rounded-lg transition" title="Copy link">
                   {copied ? <FaCheck className="text-green-500" /> : <FaLink />}
                 </button>
-                <button onClick={handleShareOgUrl} className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-200 transition-all">
+                <button onClick={handleShareEvent} className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-200 transition-all">
                   <FaShare className="text-xs" /> Share
                 </button>
               </div>
@@ -511,7 +527,7 @@ const EventDetail = () => {
               </div>
             )}
 
-            {/* Description (unchanged) */}
+            {/* Description */}
             <div className="border-t border-gray-100 pt-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">About This Event</h3>
               <div className="text-gray-700 leading-relaxed prose prose-sm max-w-none
@@ -520,7 +536,7 @@ const EventDetail = () => {
                 dangerouslySetInnerHTML={{ __html: event.description }} />
             </div>
 
-            {/* Ticket Types Detail (unchanged) */}
+            {/* Ticket Types Detail */}
             {hasTicketTypes && (
               <div className="border-t border-gray-100 pt-6 mt-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -547,7 +563,7 @@ const EventDetail = () => {
               </div>
             )}
 
-            {/* Speakers (unchanged) */}
+            {/* Speakers */}
             {event.speakers?.length > 0 && (
               <div className="border-t border-gray-100 pt-6 mt-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -583,7 +599,7 @@ const EventDetail = () => {
               </div>
             )}
 
-            {/* Tags (unchanged) */}
+            {/* Tags */}
             {event.tags?.length > 0 && (
               <div className="border-t border-gray-100 pt-6 mt-6">
                 <p className="text-xs text-gray-500 mb-2">Tags</p>
@@ -661,7 +677,7 @@ const EventDetail = () => {
               <FaDownload /> Download
             </button>
             <button
-              onClick={() => sharePoster(event.images[currentImageIndex])}
+              onClick={shareCurrentPoster}
               className="flex items-center gap-2 px-5 py-2.5 bg-white text-gray-800 rounded-full font-medium hover:bg-gray-100 transition shadow-lg"
             >
               <FaShare /> Share
