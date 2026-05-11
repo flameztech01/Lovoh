@@ -43,8 +43,8 @@ const createEvent = asyncHandler(async (req, res) => {
     ticketTypes, enableMultipleTickets, maxTicketsPerOrder,
   } = req.body;
 
-  // Basic validation
-  if (!title || !description || !eventType || !category || !date || !time || !location) {
+  // Basic validation – location is only required for in‑person events
+  if (!title || !description || !eventType || !category || !date || !time) {
     // Clean up uploaded files on error
     if (req.files) {
       const files = Array.isArray(req.files) ? req.files : Object.values(req.files).flat();
@@ -54,6 +54,15 @@ const createEvent = asyncHandler(async (req, res) => {
     }
     res.status(400);
     throw new Error('Please provide all required fields');
+  }
+
+  // Virtual event check – location is optional
+  const isVirtualEvent = isVirtual === 'true' || isVirtual === true;
+  const eventLocation = isVirtualEvent ? (location?.trim() || 'Online') : location;
+
+  if (!eventLocation && !isVirtualEvent) {
+    res.status(400);
+    throw new Error('Location is required for in‑person events');
   }
 
   // Parse ticket types
@@ -112,7 +121,6 @@ const createEvent = asyncHandler(async (req, res) => {
   let speakerImageFiles = [];
 
   if (req.files) {
-    // Using .any() gives a flat array
     const allFiles = Array.isArray(req.files) ? req.files : [];
     eventImages = allFiles.filter(f => f.fieldname === 'images');
     speakerImageFiles = allFiles.filter(f => f.fieldname.startsWith('speakerImages'));
@@ -145,9 +153,9 @@ const createEvent = asyncHandler(async (req, res) => {
     date: eventDate,
     time,
     duration: duration || '',
-    location,
-    venue: venue || location,
-    isVirtual: isVirtual === 'true' || isVirtual === true,
+    location: eventLocation,
+    venue: venue || eventLocation,
+    isVirtual: isVirtualEvent,
     meetingLink: meetingLink || '',
     images: eventImageUrls,
     speakers: parsedSpeakers,
@@ -197,13 +205,11 @@ const getEvents = asyncHandler(async (req, res) => {
 
   const skip = (Number(page) - 1) * Number(limit);
 
-  // Use aggregation with $lookup
   const pipeline = [
     { $match: query },
     { $sort: { date: 1 } },
     { $skip: skip },
     { $limit: Number(limit) },
-    // Lookup in users collection
     {
       $lookup: {
         from: 'users',
@@ -212,7 +218,6 @@ const getEvents = asyncHandler(async (req, res) => {
         as: 'userCreator'
       }
     },
-    // Lookup in admins collection
     {
       $lookup: {
         from: 'admins',
@@ -221,7 +226,6 @@ const getEvents = asyncHandler(async (req, res) => {
         as: 'adminCreator'
       }
     },
-    // Combine the results based on creatorType
     {
       $addFields: {
         createdBy: {
@@ -233,7 +237,6 @@ const getEvents = asyncHandler(async (req, res) => {
         }
       }
     },
-    // Only return needed fields from createdBy
     {
       $addFields: {
         'createdBy.name': { $ifNull: ['$createdBy.name', 'Unknown'] },
@@ -241,7 +244,6 @@ const getEvents = asyncHandler(async (req, res) => {
         'createdBy.profile': { $ifNull: ['$createdBy.profile', ''] }
       }
     },
-    // Remove the lookup arrays
     {
       $project: {
         userCreator: 0,
@@ -253,7 +255,6 @@ const getEvents = asyncHandler(async (req, res) => {
   const events = await Event.aggregate(pipeline);
   const total = await Event.countDocuments(query);
 
-  // Update passed events
   const now = new Date();
   for (const event of events) {
     if (event.date < now && event.status === 'upcoming') {
@@ -273,24 +274,20 @@ const getEvents = asyncHandler(async (req, res) => {
 const getMyEvents = asyncHandler(async (req, res) => {
   const events = await Event.find({ createdBy: req.user._id })
     .sort({ createdAt: -1 })
-    .lean(); // Use lean() to avoid populate issues
-  
+    .lean();
   res.json(events);
 });
 
 const getEventById = asyncHandler(async (req, res) => {
   const event = await Event.findById(req.params.id).lean();
-
   if (!event || event.isDisabled) {
     res.status(404);
     throw new Error('Event not found');
   }
-
   const confirmedCount = await EventRegistration.countDocuments({
     event: event._id,
     status: 'confirmed',
   });
-
   res.json({ ...event, currentAttendees: confirmedCount });
 });
 
@@ -298,15 +295,12 @@ const getEventById = asyncHandler(async (req, res) => {
 
 const updateEvent = asyncHandler(async (req, res) => {
   const event = await Event.findById(req.params.id);
-
   if (!event) {
     res.status(404);
     throw new Error('Event not found');
   }
-
   const isOwner = event.createdBy.toString() === req.user._id.toString();
   const isAdmin = req.user.role === 'admin';
-
   if (!isOwner && !isAdmin) {
     res.status(403);
     throw new Error('Not authorized to update this event');
@@ -324,37 +318,28 @@ const updateEvent = asyncHandler(async (req, res) => {
     try {
       let parsedSpeakers = typeof speakers === 'string' ? JSON.parse(speakers) : speakers;
       
-      // Assign newly uploaded speaker images
       if (req.files && req.files.speakerImages && req.files.speakerImages.length > 0) {
         const speakerImageFiles = req.files.speakerImages;
-        
         speakerImageFiles.forEach((file) => {
-          // Extract index from fieldname (e.g., "speakerImages[0]" -> 0)
           const match = file.fieldname.match(/\[(\d+)\]/);
           if (match) {
             const index = parseInt(match[1]);
             if (parsedSpeakers[index]) {
-              // Delete old speaker image if exists
               const oldSpeaker = event.speakers[index];
               if (oldSpeaker && oldSpeaker.image && oldSpeaker.image.includes('cloudinary')) {
                 try {
                   const publicId = oldSpeaker.image.split('/').pop().split('.')[0];
                   cloudinary.uploader.destroy(`The_Brave_Events/speakers/${publicId}`);
-                } catch (err) {
-                  console.error('Error deleting old speaker image:', err);
-                }
+                } catch (err) { console.error('Error deleting old speaker image:', err); }
               }
-              // Set new image URL from Cloudinary
               parsedSpeakers[index].image = file.path;
             }
           }
         });
       } else {
-        // No new uploads - preserve existing images for speakers if they didn't change
         for (let i = 0; i < parsedSpeakers.length; i++) {
           const existingSpeaker = event.speakers[i];
           if (existingSpeaker && existingSpeaker.image) {
-            // If the speaker data has no image or empty image, keep the old one
             if (!parsedSpeakers[i].image || parsedSpeakers[i].image === '') {
               parsedSpeakers[i].image = existingSpeaker.image;
             }
@@ -362,7 +347,6 @@ const updateEvent = asyncHandler(async (req, res) => {
         }
       }
       
-      // Delete old speaker images that are no longer used
       for (const oldSpeaker of event.speakers) {
         if (oldSpeaker.image && oldSpeaker.image.includes('cloudinary')) {
           const stillExists = parsedSpeakers.some(s => s.image === oldSpeaker.image);
@@ -370,57 +354,42 @@ const updateEvent = asyncHandler(async (req, res) => {
             try {
               const publicId = oldSpeaker.image.split('/').pop().split('.')[0];
               await cloudinary.uploader.destroy(`The_Brave_Events/speakers/${publicId}`);
-            } catch (err) {
-              console.error('Error deleting old speaker image:', err);
-            }
+            } catch (err) { console.error('Error deleting old speaker image:', err); }
           }
         }
       }
-      
       event.speakers = parsedSpeakers;
-    } catch (error) {
-      console.error('Speaker parsing error:', error);
-    }
+    } catch (error) { console.error('Speaker parsing error:', error); }
   }
 
-  // Handle ticket types
   if (ticketTypes) {
     try {
       event.ticketTypes = typeof ticketTypes === 'string' ? JSON.parse(ticketTypes) : ticketTypes;
-    } catch (error) {
-      console.error('Ticket types parsing error:', error);
-    }
+    } catch (error) { console.error('Ticket types parsing error:', error); }
   }
 
-  // Handle event images
   if (req.files && req.files.images && req.files.images.length > 0) {
     const newImages = req.files.images.map(file => file.path);
     const imagesToKeep = keepImages
       ? (Array.isArray(keepImages) ? keepImages : JSON.parse(keepImages))
       : [];
-
-    // Delete old images that are not being kept
     for (const oldImage of event.images) {
       if (!imagesToKeep.includes(oldImage)) {
         try {
           const publicId = oldImage.split('/').pop().split('.')[0];
           await cloudinary.uploader.destroy(`The_Brave_Events/${publicId}`);
-        } catch (err) {
-          console.error('Error deleting old image:', err);
-        }
+        } catch (err) { console.error('Error deleting old image:', err); }
       }
     }
     event.images = [...imagesToKeep, ...newImages];
   }
 
-  // Update other fields
   if (title) event.title = title.trim();
   if (description) event.description = description;
   if (eventType) event.eventType = eventType;
   if (category) event.category = category;
   if (date) { 
     event.date = new Date(date); 
-    // Only update status if not manually set to postponed/cancelled
     if (event.status !== 'postponed' && event.status !== 'cancelled') {
       event.status = event.date < new Date() ? 'passed' : 'upcoming';
     }
@@ -446,7 +415,6 @@ const updateEvent = asyncHandler(async (req, res) => {
 const deleteEvent = asyncHandler(async (req, res) => {
   const event = await Event.findById(req.params.id);
   if (!event) { res.status(404); throw new Error('Event not found'); }
-
   const isOwner = event.createdBy.toString() === req.user._id.toString();
   const isAdmin = req.user.role === 'admin';
   if (!isOwner && !isAdmin) { res.status(403); throw new Error('Not authorized to delete this event'); }
@@ -457,7 +425,6 @@ const deleteEvent = asyncHandler(async (req, res) => {
       await cloudinary.uploader.destroy(`The_Brave_Events/${publicId}`);
     } catch (error) {}
   }
-
   await EventRegistration.deleteMany({ event: event._id });
   await Event.deleteOne({ _id: req.params.id });
   res.json({ message: 'Event removed successfully' });
@@ -468,9 +435,7 @@ const deleteEvent = asyncHandler(async (req, res) => {
 const reportEvent = asyncHandler(async (req, res) => {
   const event = await Event.findById(req.params.id);
   if (!event) { res.status(404); throw new Error('Event not found'); }
-
   event.reportCount = (event.reportCount || 0) + 1;
-
   if (event.reportCount >= 5 && !event.isDisabled) {
     event.isDisabled = true;
     event.disabledAt = Date.now();
@@ -478,7 +443,6 @@ const reportEvent = asyncHandler(async (req, res) => {
     const creator = await User.findById(event.createdBy);
     if (creator) { await sendEventReportNotice(creator.email, event.title, event.reportCount); }
   }
-
   await event.save();
   res.json({ message: 'Event reported', reportCount: event.reportCount, isDisabled: event.isDisabled });
 });
@@ -486,16 +450,13 @@ const reportEvent = asyncHandler(async (req, res) => {
 const toggleEventStatus = asyncHandler(async (req, res) => {
   const event = await Event.findById(req.params.id);
   if (!event) { res.status(404); throw new Error('Event not found'); }
-
   const { reason } = req.body;
   event.isDisabled = !event.isDisabled;
   if (event.isDisabled) { event.disabledAt = Date.now(); event.disabledReason = reason || 'Disabled by admin'; }
   else { event.disabledAt = null; event.disabledReason = ''; event.reportCount = 0; }
-
   await event.save();
   const creator = await User.findById(event.createdBy);
   if (creator) { await sendEventReportNotice(creator.email, event.title, 0, event.isDisabled ? 'disabled' : 'enabled'); }
-
   res.json({ message: event.isDisabled ? 'Event disabled' : 'Event enabled', event });
 });
 
@@ -520,7 +481,6 @@ const registerForEvent = asyncHandler(async (req, res) => {
   if (event.status === 'passed' || new Date(event.date) < new Date()) { res.status(400); throw new Error('Event has already passed'); }
   if (event.registrationDeadline && new Date(event.registrationDeadline) < new Date()) { res.status(400); throw new Error('Registration deadline has passed'); }
 
-  // Determine ticket type
   let selectedTicketType = null;
   let ticketPrice = event.price || 0;
   let seatsPerTicket = 1;
@@ -531,30 +491,25 @@ const registerForEvent = asyncHandler(async (req, res) => {
     ticketPrice = selectedTicketType.price;
     seatsPerTicket = selectedTicketType.seatsPerTicket || 1;
 
-    // Check ticket type capacity
     if (selectedTicketType.capacity > 0 && (selectedTicketType.soldCount + quantity) > selectedTicketType.capacity) {
       res.status(400);
       throw new Error(`Only ${selectedTicketType.capacity - selectedTicketType.soldCount} ${selectedTicketType.name} tickets remaining`);
     }
   }
 
-  // Check quantity limits
   const totalQuantity = quantity + (additionalAttendees?.length || 0);
   if (event.enableMultipleTickets && event.maxTicketsPerOrder && totalQuantity > event.maxTicketsPerOrder) {
     res.status(400);
     throw new Error(`Maximum ${event.maxTicketsPerOrder} tickets per order`);
   }
 
-  // Check total capacity
   const confirmedCount = await EventRegistration.countDocuments({ event: event._id, status: 'confirmed' });
   const totalSeats = quantity * seatsPerTicket + (additionalAttendees?.length || 0) * seatsPerTicket;
-  
   if (event.maxAttendees > 0 && (confirmedCount + totalSeats) > event.maxAttendees) {
     res.status(400);
     throw new Error('Not enough seats available');
   }
 
-  // Check existing registration
   const existingRegistration = await EventRegistration.findOne({
     event: event._id,
     email: email.toLowerCase().trim(),
@@ -600,11 +555,11 @@ const registerForEvent = asyncHandler(async (req, res) => {
     // Send confirmation email(s)
     await sendRegistrationConfirmation(email, name, event.title, event.date, event.time, event.venue || event.location, registration, event);
 
-    // Send individual tickets
+    // Send individual tickets – CHANGED: added `event` as last argument
     if (sendIndividualTickets && registration.additionalAttendees?.length > 0) {
       for (const att of registration.additionalAttendees) {
         if (att.email) {
-          await sendTicketToAttendee(att.email, att.name, event.title, event.date, event.time, event.venue || event.location, att.ticketId, att.seatNumber);
+          await sendTicketToAttendee(att.email, att.name, event.title, event.date, event.time, event.venue || event.location, att.ticketId, att.seatNumber, event);
         }
       }
     }
@@ -705,7 +660,6 @@ const verifyEventPayment = asyncHandler(async (req, res) => {
       if (!registration) { res.status(404); throw new Error('Registration not found'); }
       if (registration.status === 'confirmed') { return res.json({ message: 'Payment already confirmed', registration }); }
 
-      // Generate seat numbers for all tickets
       const totalTickets = registration.quantity || 1;
       const currentConfirmed = await EventRegistration.countDocuments({
         event: registration.event,
@@ -724,7 +678,6 @@ const verifyEventPayment = asyncHandler(async (req, res) => {
       registration.paidAmount = amount / 100;
       registration.seatNumber = seats[0];
 
-      // Assign seats to additional attendees
       if (registration.additionalAttendees?.length > 0) {
         registration.additionalAttendees.forEach((att, idx) => {
           att.seatNumber = seats[idx + 1] || `${seatPrefix}${String(currentConfirmed + idx + 2).padStart(3, '0')}`;
@@ -737,7 +690,6 @@ const verifyEventPayment = asyncHandler(async (req, res) => {
         const confirmedCount = await EventRegistration.countDocuments({ event: event._id, status: 'confirmed' });
         event.currentAttendees = confirmedCount;
 
-        // Update ticket type sold count
         if (event.ticketTypes && event.ticketTypes[registration.ticketTypeIndex]) {
           event.ticketTypes[registration.ticketTypeIndex].soldCount += (registration.quantity || 1);
         }
@@ -765,11 +717,11 @@ const verifyEventPayment = asyncHandler(async (req, res) => {
         // Send confirmation email(s)
         await sendPaymentConfirmation(registration.email, registration.name, event.title, totalAmount, registration, event);
 
-        // Send individual tickets to additional attendees
+        // Send individual tickets – CHANGED: added `event` as last argument
         if (registration.sendIndividualTickets && registration.additionalAttendees?.length > 0) {
           for (const att of registration.additionalAttendees) {
             if (att.email) {
-              await sendTicketToAttendee(att.email, att.name, event.title, event.date, event.time, event.venue || event.location, att.ticketId, att.seatNumber);
+              await sendTicketToAttendee(att.email, att.name, event.title, event.date, event.time, event.venue || event.location, att.ticketId, att.seatNumber, event);
             }
           }
         }
@@ -797,10 +749,7 @@ const verifyEventPayment = asyncHandler(async (req, res) => {
 const checkInAttendee = asyncHandler(async (req, res) => {
   const { ticketId } = req.params;
 
-  // Check primary ticket
   let registration = await EventRegistration.findOne({ ticketId }).populate('event', 'title date createdBy');
-  
-  // Check additional attendees
   if (!registration) {
     registration = await EventRegistration.findOne({ 'additionalAttendees.ticketId': ticketId }).populate('event', 'title date createdBy');
     if (registration) {
@@ -836,7 +785,6 @@ const verifyTicket = asyncHandler(async (req, res) => {
   const { ticketId } = req.params;
 
   let registration = await EventRegistration.findOne({ ticketId }).populate('event', 'title date time venue location');
-  
   if (!registration) {
     registration = await EventRegistration.findOne({ 'additionalAttendees.ticketId': ticketId }).populate('event', 'title date time venue location');
     if (registration) {

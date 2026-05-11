@@ -1,4 +1,4 @@
-// screens/EventDashboardCreateEvent.jsx - With Speakers field
+// screens/EventDashboardCreateEvent.jsx
 import React, { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -58,7 +58,7 @@ const EventDashboardCreateEvent = () => {
   const [speakers, setSpeakers] = useState([]);
   const [speakerFiles, setSpeakerFiles] = useState({});
 
-  // Ticket Types
+  // ---------- Ticket Types ----------
   const addTicketType = () => {
     setTicketTypes([...ticketTypes, { name: '', price: '', capacity: '', seatsPerTicket: 1, description: '' }]);
   };
@@ -69,7 +69,7 @@ const EventDashboardCreateEvent = () => {
     setTicketTypes(updated);
   };
 
-  // Speakers
+  // ---------- Speakers ----------
   const addSpeaker = () => {
     setSpeakers([...speakers, { name: '', title: '', company: '', bio: '', imagePreview: '' }]);
   };
@@ -77,6 +77,7 @@ const EventDashboardCreateEvent = () => {
     setSpeakerFiles(prev => {
       const updated = { ...prev };
       delete updated[index];
+      // Reindex keys
       const reindexed = {};
       Object.keys(updated).sort((a, b) => Number(a) - Number(b)).forEach((key, i) => { reindexed[i] = updated[key]; });
       return reindexed;
@@ -103,7 +104,7 @@ const EventDashboardCreateEvent = () => {
     updateSpeaker(index, 'imagePreview', '');
   };
 
-  // Rich text
+  // ---------- Rich text helpers ----------
   const execCommand = (command, value = null) => {
     document.execCommand(command, false, value);
     updateActiveFormats();
@@ -174,18 +175,29 @@ const EventDashboardCreateEvent = () => {
     setImagePreviews(prev => prev.filter((_, i) => i !== index));
   };
 
+  // ---------- Form submission ----------
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Basic checks
     if (!formData.title.trim()) { toast.error("Event title is required"); return; }
     if (!description || description === "<br>" || description.trim().length < 20) { toast.error("Please add a detailed event description"); return; }
     if (!formData.category) { toast.error("Category is required"); return; }
     if (!formData.eventType) { toast.error("Event type is required"); return; }
     if (!formData.date) { toast.error("Event date is required"); return; }
     if (!formData.time) { toast.error("Event time is required"); return; }
-    if (!formData.location && !formData.venue) { toast.error("Location is required"); return; }
+
+    // Location validation: only required if NOT virtual
+    if (!formData.isVirtual) {
+      if (!formData.location.trim() && !formData.venue.trim()) {
+        toast.error("Location is required for in‑person events");
+        return;
+      }
+    }
+
     if (images.length === 0) { toast.error("At least one event image is required"); return; }
 
+    // Price validation for paid events
     if (formData.isPaid) {
       if (hasTicketTypes && ticketTypes.length > 0) {
         for (const tt of ticketTypes) {
@@ -205,8 +217,17 @@ const EventDashboardCreateEvent = () => {
     submitData.append("date", formData.date);
     submitData.append("time", formData.time);
     submitData.append("duration", formData.duration || "");
-    submitData.append("location", formData.location || "");
-    submitData.append("venue", formData.venue || formData.location || "");
+
+    // Location handling for virtual events
+    if (formData.isVirtual) {
+      // If virtual and location/venue are empty, send "Online" as default
+      submitData.append("location", formData.location?.trim() || formData.venue?.trim() || "Online");
+      submitData.append("venue", formData.venue?.trim() || formData.location?.trim() || "Online");
+    } else {
+      submitData.append("location", formData.location?.trim() || formData.venue?.trim() || "");
+      submitData.append("venue", formData.venue?.trim() || formData.location?.trim() || "");
+    }
+
     submitData.append("isVirtual", formData.isVirtual);
     submitData.append("meetingLink", formData.meetingLink || "");
     submitData.append("isPaid", formData.isPaid);
@@ -321,7 +342,7 @@ const EventDashboardCreateEvent = () => {
 
             {/* Location */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-              <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2"><FaMapMarkerAlt className="text-[#1B3766]" /> Location <span className="text-red-500">*</span></h3>
+              <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2"><FaMapMarkerAlt className="text-[#1B3766]" /> Location <span className={`${!formData.isVirtual ? 'text-red-500' : 'text-gray-400'} text-xs`}> {formData.isVirtual ? '(optional)' : '*'}</span></h3>
               <div className="space-y-4">
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div><label className="block text-xs font-medium text-gray-600 mb-1">Venue</label><input type="text" name="venue" value={formData.venue} onChange={handleChange} placeholder="e.g., Eko Convention Centre" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-sm" /></div>
@@ -385,7 +406,7 @@ const EventDashboardCreateEvent = () => {
             </div>
           </div>
 
-          {/* Right Column */}
+          {/* Right Column (same as before, unchanged) */}
           <div className="lg:col-span-2 space-y-6">
             {/* Images */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">

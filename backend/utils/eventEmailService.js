@@ -98,6 +98,16 @@ const generateTicketSummary = (registration) => {
 
 export const sendRegistrationConfirmation = async (email, name, eventTitle, eventDate, eventTime, venue, registration, event) => {
   const subject = `🎉 You're registered for ${eventTitle}!`;
+  const isVirtual = event?.isVirtual;
+  const meetingLink = event?.meetingLink;
+
+  const locationBlock = isVirtual
+    ? `
+      <p style="margin:5px 0"><strong>🌐 Online Event</strong></p>
+      ${meetingLink ? `<p style="margin:5px 0"><strong>🔗 Meeting Link:</strong> <a href="${meetingLink}" style="color:#1B3766">${meetingLink}</a></p>` : ''}
+    `
+    : (venue ? `<p style="margin:5px 0"><strong>📍 Venue:</strong> ${venue}</p>` : '');
+
   const html = `
     <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,0.1)">
       <div style="background:linear-gradient(135deg,#1B3766,#254899);padding:30px;text-align:center">
@@ -111,7 +121,7 @@ export const sendRegistrationConfirmation = async (email, name, eventTitle, even
         <div style="background:#f8f9fa;border-radius:8px;padding:20px;margin:20px 0">
           <p style="margin:5px 0"><strong>📅 Date:</strong> ${new Date(eventDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
           <p style="margin:5px 0"><strong>⏰ Time:</strong> ${eventTime || 'TBD'}</p>
-          ${venue ? `<p style="margin:5px 0"><strong>📍 Venue:</strong> ${venue}</p>` : ''}
+          ${locationBlock}
         </div>
 
         ${generateTicketSummary(registration)}
@@ -158,6 +168,17 @@ export const sendNewRegistrationToCreator = async (creatorEmail, eventTitle, att
 
 export const sendPaymentConfirmation = async (email, name, eventTitle, amount, registration, event) => {
   const subject = `✅ Payment Confirmed - ${eventTitle}`;
+  const isVirtual = event?.isVirtual;
+  const meetingLink = event?.meetingLink;
+  const venue = event?.venue || event?.location;
+
+  const locationBlock = isVirtual
+    ? `
+      <p style="margin:5px 0"><strong>🌐 Online Event</strong></p>
+      ${meetingLink ? `<p style="margin:5px 0"><strong>🔗 Meeting Link:</strong> <a href="${meetingLink}" style="color:#1B3766">${meetingLink}</a></p>` : ''}
+    `
+    : (venue ? `<p style="margin:5px 0"><strong>📍 Venue:</strong> ${venue}</p>` : '');
+
   const html = `
     <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif">
       <div style="background:linear-gradient(135deg,#059669,#10b981);padding:30px;text-align:center">
@@ -166,6 +187,12 @@ export const sendPaymentConfirmation = async (email, name, eventTitle, amount, r
       <div style="padding:30px;background:#fff">
         <p style="font-size:16px">Hi ${name},</p>
         <p style="font-size:16px">Your payment of <strong>₦${amount.toLocaleString()}</strong> for <strong>${eventTitle}</strong> has been confirmed.</p>
+        
+        <div style="background:#f8f9fa;border-radius:8px;padding:20px;margin:20px 0">
+          <p style="margin:5px 0"><strong>📅 Date:</strong> ${new Date(event.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+          <p style="margin:5px 0"><strong>⏰ Time:</strong> ${event.time || 'TBD'}</p>
+          ${locationBlock}
+        </div>
         
         ${generateTicketSummary(registration)}
         ${generateAttendeesList(registration)}
@@ -205,8 +232,18 @@ export const sendPaymentToCreator = async (creatorEmail, eventTitle, attendeeNam
 
 // ==================== INDIVIDUAL TICKET TO ATTENDEE ====================
 
-export const sendTicketToAttendee = async (email, name, eventTitle, eventDate, eventTime, venue, ticketId, seatNumber) => {
+export const sendTicketToAttendee = async (email, name, eventTitle, eventDate, eventTime, venue, ticketId, seatNumber, event) => {
   const subject = `🎟️ Your Ticket for ${eventTitle}`;
+  const isVirtual = event?.isVirtual;
+  const meetingLink = event?.meetingLink;
+
+  const locationBlock = isVirtual
+    ? `
+      <p style="margin:5px 0"><strong>🌐 Online Event</strong></p>
+      ${meetingLink ? `<p style="margin:5px 0"><strong>🔗 Meeting Link:</strong> <a href="${meetingLink}" style="color:#1B3766">${meetingLink}</a></p>` : ''}
+    `
+    : (venue ? `<p style="margin:5px 0"><strong>📍 Venue:</strong> ${venue}</p>` : '');
+
   const html = `
     <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,0.1)">
       <div style="background:linear-gradient(135deg,#1B3766,#254899);padding:30px;text-align:center">
@@ -220,7 +257,7 @@ export const sendTicketToAttendee = async (email, name, eventTitle, eventDate, e
         <div style="background:#f8f9fa;border-radius:8px;padding:20px;margin:20px 0">
           <p style="margin:5px 0"><strong>📅 Date:</strong> ${new Date(eventDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
           <p style="margin:5px 0"><strong>⏰ Time:</strong> ${eventTime || 'TBD'}</p>
-          ${venue ? `<p style="margin:5px 0"><strong>📍 Venue:</strong> ${venue}</p>` : ''}
+          ${locationBlock}
         </div>
         
         <div style="background:#1B3766;border-radius:12px;padding:20px;margin:20px 0;text-align:center">
