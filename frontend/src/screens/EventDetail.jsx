@@ -269,11 +269,7 @@ const handleShare = async () => {
   }
 };
 
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(window.location.href);
-    setCopied(true); toast.success('Link copied!');
-    setTimeout(() => setCopied(false), 2000);
-  };
+
 
   if (isLoading) return (
     <div className="min-h-screen bg-gray-50">
