@@ -12,8 +12,8 @@ export default async function handler(req, res) {
     }
 
     const imageUrl = event.images?.[0] 
-      ? (event.images[0].startsWith('http') ? event.images[0] : `https://event-room.lovohcreate.com${event.images[0]}`)
-      : 'https://event-room.lovohcreate.com/logo.png';
+      ? (event.images[0].startsWith('http') ? event.images[0] : `https://eventroom.lovohcreate.com${event.images[0]}`)
+      : 'https://eventroom.lovohcreate.com/logo.png';
 
     const description = event.description 
       ? event.description.replace(/<[^>]*>/g, '').slice(0, 160)
@@ -36,7 +36,7 @@ export default async function handler(req, res) {
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="${event.title}">
   <meta property="og:image:secure_url" content="${imageUrl}">
-  <meta property="og:url" content="https://event-room.lovohcreate.com/events/${id}">
+  <meta property="og:url" content="https://eventroom.lovohcreate.com/events/${id}">
   <meta property="og:locale" content="en_US">
   
   <!-- Twitter -->
@@ -46,7 +46,7 @@ export default async function handler(req, res) {
   <meta name="twitter:image" content="${imageUrl}">
   
   <!-- Redirect to actual app -->
-  <meta http-equiv="refresh" content="0;url=https://event-room.lovohcreate.com/events/${id}">
+  <meta http-equiv="refresh" content="0;url=https://eventroom.lovohcreate.com/events/${id}">
   
   <style>
     body { margin: 0; font-family: system-ui, -apple-system, sans-serif; }
@@ -62,7 +62,7 @@ export default async function handler(req, res) {
     <img src="${imageUrl}" alt="${event.title}">
     <h1>${event.title}</h1>
     <p>${description}</p>
-    <a href="https://event-room.lovohcreate.com/events/${id}">View Event</a>
+    <a href="https://eventroom.lovohcreate.com/events/${id}">View Event</a>
   </div>
 </body>
 </html>`);

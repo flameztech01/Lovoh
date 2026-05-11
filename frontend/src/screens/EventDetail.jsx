@@ -246,7 +246,7 @@ const EventDetail = () => {
 
   const handleCopy = async () => {
   // Use OG API URL for proper previews
-  const ogUrl = `https://event-room.lovohcreate.com/api/og/event/${id}`;
+  const ogUrl = `https://eventroom.lovohcreate.com/api/og/event/${id}`;
   await navigator.clipboard.writeText(ogUrl);
   setCopied(true); 
   toast.success('Link copied!');
@@ -254,7 +254,7 @@ const EventDetail = () => {
 };
 
 const handleShare = async () => {
-  const ogUrl = `https://event-room.lovohcreate.com/api/og/event/${id}`;
+  const ogUrl = `https://eventroom.lovohcreate.com/api/og/event/${id}`;
   const title = event?.title || 'Check out this event';
   
   if (navigator.share) {
