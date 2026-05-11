@@ -1,5 +1,5 @@
 // screens/EventDetail.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import {
   FaCalendarAlt, FaClock, FaMapMarkerAlt, FaDollarSign, FaUsers,
@@ -7,6 +7,7 @@ import {
   FaCalendarDay, FaCalendarCheck, FaTag, FaLink, FaCheck,
   FaShare, FaTicketAlt, FaCopy, FaUser, FaMapPin, FaGlobe,
   FaStar, FaLayerGroup, FaChair, FaVideo, FaChevronLeft, FaChevronRight,
+  FaTimes, FaDownload,FaSearchPlus,
 } from 'react-icons/fa';
 import { useGetEventByIdQuery, useVerifyPaymentQuery } from '../slices/eventApiSlice';
 import { toast } from 'react-toastify';
@@ -36,6 +37,7 @@ const EventDetail = () => {
   const [copied, setCopied] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   const { data: event, isLoading, refetch } = useGetEventByIdQuery(id);
 
@@ -65,10 +67,8 @@ const EventDetail = () => {
     const imageUrl = toAbsoluteUrl(event.images?.[0]);
     const description = event.description?.replace(/<[^>]*>/g, '').slice(0, 160) || 'Check out this event on EventRoom';
 
-    // Set page title
     document.title = `${event.title} | EventRoom`;
 
-    // Helper to create or update a meta tag
     const setMeta = (nameOrProperty, content, isProperty = false) => {
       const selector = isProperty
         ? `meta[property="${nameOrProperty}"]`
@@ -85,11 +85,7 @@ const EventDetail = () => {
     };
 
     const addedTags = [];
-
-    // Standard meta
     addedTags.push(setMeta('description', description));
-
-    // Open Graph (Facebook, WhatsApp, LinkedIn, etc.)
     addedTags.push(setMeta('og:type', 'website', true));
     addedTags.push(setMeta('og:site_name', 'EventRoom', true));
     addedTags.push(setMeta('og:title', event.title, true));
@@ -100,19 +96,14 @@ const EventDetail = () => {
     addedTags.push(setMeta('og:image:alt', event.title, true));
     addedTags.push(setMeta('og:url', eventUrl, true));
     addedTags.push(setMeta('og:locale', 'en_US', true));
-
-    // Twitter Card
     addedTags.push(setMeta('twitter:card', 'summary_large_image'));
     addedTags.push(setMeta('twitter:site', '@lovohcreate', true));
     addedTags.push(setMeta('twitter:title', event.title));
     addedTags.push(setMeta('twitter:description', description));
     addedTags.push(setMeta('twitter:image', imageUrl));
     addedTags.push(setMeta('twitter:image:alt', event.title));
-
-    // WhatsApp specific (uses og tags but let's be thorough)
     addedTags.push(setMeta('og:image:secure_url', imageUrl, true));
 
-    // Cleanup: remove the tags we added when navigating away
     return () => {
       addedTags.forEach(tag => {
         if (tag && tag.parentNode) tag.remove();
@@ -148,43 +139,31 @@ const EventDetail = () => {
     if (!duration) return null;
     
     const str = duration.toString().trim().toLowerCase();
-    
     const minutesMatch = str.match(/^(\d+)\s*min(?:ute)?s?$/);
     if (minutesMatch) return { value: parseInt(minutesMatch[1]), unit: 'minutes' };
-    
     const hoursMatch = str.match(/^(\d+)\s*h(?:ou)?r?s?$/);
     if (hoursMatch) return { value: parseInt(hoursMatch[1]), unit: 'hours' };
-    
     const decimalMatch = str.match(/^(\d+\.?\d*)$/);
     if (decimalMatch) return { value: parseFloat(decimalMatch[1]), unit: 'hours' };
-    
     const combinedMatch = str.match(/(\d+)\s*h(?:ou)?r?s?\s*(?:and\s*)?(\d+)?\s*min(?:ute)?s?/);
     if (combinedMatch) {
       const hours = parseInt(combinedMatch[1]) || 0;
       const minutes = parseInt(combinedMatch[2]) || 0;
       return { value: hours + (minutes / 60), unit: 'hours' };
     }
-    
     return null;
   };
 
   const calculateEndTime = (time, duration) => {
     if (!time || !duration) return null;
-    
     const parsed = parseDuration(duration);
     if (!parsed) return null;
-    
     const [hours, minutes] = time.split(':');
     const startDate = new Date();
     startDate.setHours(parseInt(hours), parseInt(minutes) || 0, 0, 0);
-    
     let durationMs;
-    if (parsed.unit === 'minutes') {
-      durationMs = parsed.value * 60 * 1000;
-    } else {
-      durationMs = parsed.value * 60 * 60 * 1000;
-    }
-    
+    if (parsed.unit === 'minutes') durationMs = parsed.value * 60 * 1000;
+    else durationMs = parsed.value * 60 * 60 * 1000;
     const endDate = new Date(startDate.getTime() + durationMs);
     return endDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
   };
@@ -192,10 +171,7 @@ const EventDetail = () => {
   const formatTimeRange = (time, duration) => {
     const startTime = formatTime(time);
     const endTime = calculateEndTime(time, duration);
-    
-    if (startTime && endTime) {
-      return `${startTime} — ${endTime}`;
-    }
+    if (startTime && endTime) return `${startTime} — ${endTime}`;
     return startTime || 'TBD';
   };
 
@@ -226,50 +202,100 @@ const EventDetail = () => {
   };
 
   const hasTicketTypes = event?.ticketTypes?.length > 0;
-  const totalSeats = (event?.currentAttendees) || 0;
   const isPastEvent = event ? (new Date(event.date) < new Date() || event.status === 'passed') : false;
   const canRegister = !isPastEvent && !event?.isDisabled && event?.status !== 'postponed';
   const hasImages = event?.images?.length > 0;
   const timeRangeDisplay = event ? formatTimeRange(event.time, event.duration) : 'TBD';
 
-  const nextImage = () => {
+  const nextImage = useCallback(() => {
     if (event?.images?.length) {
       setCurrentImageIndex((prev) => (prev + 1) % event.images.length);
     }
-  };
+  }, [event]);
 
-  const prevImage = () => {
+  const prevImage = useCallback(() => {
     if (event?.images?.length) {
       setCurrentImageIndex((prev) => (prev - 1 + event.images.length) % event.images.length);
+    }
+  }, [event]);
+
+  const openLightbox = () => setLightboxOpen(true);
+  const closeLightbox = () => setLightboxOpen(false);
+
+  // Handle keyboard navigation in lightbox
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!lightboxOpen) return;
+      if (e.key === 'Escape') closeLightbox();
+      if (e.key === 'ArrowRight') nextImage();
+      if (e.key === 'ArrowLeft') prevImage();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [lightboxOpen, nextImage, prevImage]);
+
+  const downloadImage = async (url) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `${event?.title || 'event'}_poster.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+      toast.success('Poster downloaded');
+    } catch (err) {
+      toast.error('Download failed – right-click to save');
+    }
+  };
+
+  const sharePoster = async (url) => {
+    if (navigator.share) {
+      try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const file = new File([blob], `${event?.title || 'event'}_poster.jpg`, { type: blob.type });
+        await navigator.share({
+          title: event?.title || 'Event Poster',
+          files: [file],
+        });
+        return;
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          // fallback: share the URL
+          handleShareOgUrl();
+        }
+      }
+    } else {
+      handleShareOgUrl();
     }
   };
 
   const handleCopy = async () => {
-  // Use OG API URL for proper previews
-  const ogUrl = `https://eventroom.lovohcreate.com/api/og/event/${id}`;
-  await navigator.clipboard.writeText(ogUrl);
-  setCopied(true); 
-  toast.success('Link copied!');
-  setTimeout(() => setCopied(false), 2000);
-};
+    const ogUrl = `https://eventroom.lovohcreate.com/api/og/event/${id}`;
+    await navigator.clipboard.writeText(ogUrl);
+    setCopied(true); 
+    toast.success('Link copied!');
+    setTimeout(() => setCopied(false), 2000);
+  };
 
-const handleShare = async () => {
-  const ogUrl = `https://eventroom.lovohcreate.com/api/og/event/${id}`;
-  const title = event?.title || 'Check out this event';
-  
-  if (navigator.share) {
-    try { 
-      await navigator.share({ title, text: title, url: ogUrl }); 
+  const handleShareOgUrl = async () => {
+    const ogUrl = `https://eventroom.lovohcreate.com/api/og/event/${id}`;
+    const title = event?.title || 'Check out this event';
+    if (navigator.share) {
+      try { 
+        await navigator.share({ title, text: title, url: ogUrl }); 
+      }
+      catch (err) { 
+        if (err.name !== 'AbortError') handleCopy(); 
+      }
+    } else {
+      handleCopy();
     }
-    catch (err) { 
-      if (err.name !== 'AbortError') handleCopy(); 
-    }
-  } else {
-    handleCopy();
-  }
-};
-
-
+  };
 
   if (isLoading) return (
     <div className="min-h-screen bg-gray-50">
@@ -330,25 +356,42 @@ const handleShare = async () => {
         )}
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          {/* Images Slider */}
+          {/* Images Slider – now clickable to open lightbox */}
           {hasImages && (
             <div className="relative">
-              <div className="relative w-full h-56 sm:h-80 md:h-96 overflow-hidden bg-gray-100">
+              <div 
+                onClick={openLightbox}
+                role="button"
+                tabIndex={0}
+                className="relative w-full h-56 sm:h-80 md:h-96 overflow-hidden bg-gray-100 cursor-zoom-in group"
+                aria-label="View full poster"
+              >
                 <img 
                   src={event.images[currentImageIndex]} 
                   alt={`${event.title} - Image ${currentImageIndex + 1}`} 
-                  className="w-full h-full object-cover transition-opacity duration-300"
+                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
                 
+                {/* "View poster" overlay */}
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="bg-black/60 text-white text-sm px-4 py-2 rounded-full flex items-center gap-2">
+                    <FaSearchPlus className="text-xs" /> View full poster
+                  </div>
+                </div>
+
                 {event.images.length > 1 && (
                   <>
-                    <button onClick={prevImage}
-                      className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-lg transition-all z-10">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); prevImage(); }}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-lg transition-all z-10"
+                    >
                       <FaChevronLeft className="text-gray-700" />
                     </button>
-                    <button onClick={nextImage}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-lg transition-all z-10">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); nextImage(); }}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-lg transition-all z-10"
+                    >
                       <FaChevronRight className="text-gray-700" />
                     </button>
                   </>
@@ -357,10 +400,13 @@ const handleShare = async () => {
                 {event.images.length > 1 && (
                   <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
                     {event.images.map((_, idx) => (
-                      <button key={idx} onClick={() => setCurrentImageIndex(idx)}
+                      <button 
+                        key={idx} 
+                        onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(idx); }}
                         className={`w-2.5 h-2.5 rounded-full transition-all ${
                           idx === currentImageIndex ? 'bg-white scale-110' : 'bg-white/50 hover:bg-white/75'
-                        }`} />
+                        }`} 
+                      />
                     ))}
                   </div>
                 )}
@@ -375,7 +421,7 @@ const handleShare = async () => {
           )}
 
           <div className="p-5 sm:p-8">
-            {/* Badges */}
+            {/* Badges (unchanged) */}
             <div className="flex flex-wrap gap-2 mb-5">
               <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${status.color}`}>
                 <StatusIcon className="text-xs" /> {status.label}
@@ -415,7 +461,7 @@ const handleShare = async () => {
 
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-4">{event.title}</h1>
 
-            {/* Details Grid */}
+            {/* Details Grid (unchanged) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-5 bg-gray-50 rounded-xl mb-6">
               <DetailItem icon={FaCalendarAlt} label="Date" value={formatDate(event.date)} />
               <DetailItem icon={FaClock} label="Time" value={timeRangeDisplay} />
@@ -433,7 +479,7 @@ const handleShare = async () => {
               )}
             </div>
 
-            {/* Action Buttons */}
+            {/* Action Buttons (unchanged) */}
             <div className="flex flex-col sm:flex-row gap-3 mb-6">
               {canRegister ? (
                 <Link to={`/events/${id}/register`}
@@ -452,7 +498,7 @@ const handleShare = async () => {
                 <button onClick={handleCopy} className="p-2.5 text-gray-400 hover:text-gray-700 hover:bg-gray-50 rounded-lg transition" title="Copy link">
                   {copied ? <FaCheck className="text-green-500" /> : <FaLink />}
                 </button>
-                <button onClick={handleShare} className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-200 transition-all">
+                <button onClick={handleShareOgUrl} className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-200 transition-all">
                   <FaShare className="text-xs" /> Share
                 </button>
               </div>
@@ -465,7 +511,7 @@ const handleShare = async () => {
               </div>
             )}
 
-            {/* Description */}
+            {/* Description (unchanged) */}
             <div className="border-t border-gray-100 pt-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">About This Event</h3>
               <div className="text-gray-700 leading-relaxed prose prose-sm max-w-none
@@ -474,7 +520,7 @@ const handleShare = async () => {
                 dangerouslySetInnerHTML={{ __html: event.description }} />
             </div>
 
-            {/* Ticket Types Detail */}
+            {/* Ticket Types Detail (unchanged) */}
             {hasTicketTypes && (
               <div className="border-t border-gray-100 pt-6 mt-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -501,7 +547,7 @@ const handleShare = async () => {
               </div>
             )}
 
-            {/* Speakers */}
+            {/* Speakers (unchanged) */}
             {event.speakers?.length > 0 && (
               <div className="border-t border-gray-100 pt-6 mt-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -537,7 +583,7 @@ const handleShare = async () => {
               </div>
             )}
 
-            {/* Tags */}
+            {/* Tags (unchanged) */}
             {event.tags?.length > 0 && (
               <div className="border-t border-gray-100 pt-6 mt-6">
                 <p className="text-xs text-gray-500 mb-2">Tags</p>
@@ -553,6 +599,82 @@ const handleShare = async () => {
           </div>
         </div>
       </div>
+
+      {/* ==================== LIGHTBOX MODAL ==================== */}
+      {lightboxOpen && hasImages && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 backdrop-blur-sm"
+          onClick={closeLightbox}
+        >
+          {/* Close button */}
+          <button 
+            onClick={closeLightbox}
+            className="absolute top-4 right-4 text-white/80 hover:text-white text-2xl z-10"
+            aria-label="Close lightbox"
+          >
+            <FaTimes />
+          </button>
+
+          {/* Main image container */}
+          <div 
+            className="relative max-w-5xl max-h-full flex items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img 
+              src={event.images[currentImageIndex]} 
+              alt={`${event.title} poster`} 
+              className="max-h-[85vh] max-w-full object-contain rounded-lg"
+            />
+
+            {/* Navigation arrows for multiple images */}
+            {event.images.length > 1 && (
+              <>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); prevImage(); }}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/80 hover:bg-white rounded-full flex items-center justify-center shadow-lg transition"
+                >
+                  <FaChevronLeft className="text-gray-700" />
+                </button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); nextImage(); }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/80 hover:bg-white rounded-full flex items-center justify-center shadow-lg transition"
+                >
+                  <FaChevronRight className="text-gray-700" />
+                </button>
+              </>
+            )}
+
+            {/* Image counter */}
+            {event.images.length > 1 && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 text-white text-sm px-3 py-1 rounded-full">
+                {currentImageIndex + 1} / {event.images.length}
+              </div>
+            )}
+          </div>
+
+          {/* Action buttons: Download & Share poster */}
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-3">
+            <button
+              onClick={() => downloadImage(event.images[currentImageIndex])}
+              className="flex items-center gap-2 px-5 py-2.5 bg-white text-gray-800 rounded-full font-medium hover:bg-gray-100 transition shadow-lg"
+            >
+              <FaDownload /> Download
+            </button>
+            <button
+              onClick={() => sharePoster(event.images[currentImageIndex])}
+              className="flex items-center gap-2 px-5 py-2.5 bg-white text-gray-800 rounded-full font-medium hover:bg-gray-100 transition shadow-lg"
+            >
+              <FaShare /> Share
+            </button>
+          </div>
+
+          {/* Mobile-friendly hints */}
+          <div className="absolute bottom-20 text-white/50 text-xs text-center">
+            Tap outside or press Esc to close
+          </div>
+        </div>
+      )}
+
       <Footer />
     </div>
   );
