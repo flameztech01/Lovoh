@@ -1,5 +1,5 @@
 // main.jsx
-import { StrictMode, useEffect } from "react";
+import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.jsx";
@@ -147,88 +147,89 @@ const getSubdomain = () => {
 const currentSubdomain = getSubdomain();
 console.log('Current subdomain:', currentSubdomain, '| Hostname:', hostname);
 
-// ==================== SILENT URL REWRITER (NO useLocation) ====================
-// Uses window.location only — safe to call outside Router context.
-// Call this once at app startup (before router) to patch history methods.
-const setupSilentSubdomainRewrite = () => {
-  const rewriteUrl = (url) => {
-    if (typeof url !== 'string') return url;
-    if (currentSubdomain === 'biizzed' && url.startsWith('/biizzed/')) {
-      return url.replace('/biizzed/', '/');
-    }
-    if (currentSubdomain === 'uduua' && url.startsWith('/uduua/')) {
-      return url.replace('/uduua/', '/');
-    }
-    if (currentSubdomain === 'events' && url.startsWith('/events/')) {
-      return url.replace('/events/', '/');
-    }
-    return url;
-  };
+// ==================== AUTO-RELOAD ON SUBDOMAIN PREFIX MISMATCH ====================
+// If the URL contains the subdomain prefix (e.g. /uduua/shop on uduua subdomain),
+// we cannot fix it client-side because React Router has already loaded routes
+// without that prefix. Do a full reload so Vercel rewrite handles it.
+const path = window.location.pathname;
 
-  // Handle initial page load
-  const path = window.location.pathname;
-  let needsRewrite = false;
-  let newPath = path + window.location.search + window.location.hash;
+let shouldReload = false;
+let cleanPath = path;
 
-  if (currentSubdomain === 'biizzed' && path.startsWith('/biizzed/')) {
-    newPath = path.replace('/biizzed/', '/') + window.location.search + window.location.hash;
-    needsRewrite = true;
-  } else if (currentSubdomain === 'uduua' && path.startsWith('/uduua/')) {
-    newPath = path.replace('/uduua/', '/') + window.location.search + window.location.hash;
-    needsRewrite = true;
-  } else if (currentSubdomain === 'events' && path.startsWith('/events/')) {
-    newPath = path.replace('/events/', '/') + window.location.search + window.location.hash;
-    needsRewrite = true;
+if (currentSubdomain === 'biizzed' && path.startsWith('/biizzed/')) {
+  cleanPath = path.replace('/biizzed/', '/') + window.location.search + window.location.hash;
+  shouldReload = true;
+} else if (currentSubdomain === 'uduua' && path.startsWith('/uduua/')) {
+  cleanPath = path.replace('/uduua/', '/') + window.location.search + window.location.hash;
+  shouldReload = true;
+} else if (currentSubdomain === 'events' && path.startsWith('/events/')) {
+  cleanPath = path.replace('/events/', '/') + window.location.search + window.location.hash;
+  shouldReload = true;
+}
+
+if (shouldReload) {
+  console.log('Auto-reloading to clean URL:', cleanPath);
+  window.location.replace(cleanPath);
+}
+
+// ==================== INTERCEPT <Link> AND navigate() CALLS ====================
+// Patch history methods so future navigation with prefix gets rewritten
+// BEFORE React Router sees it. If a rewrite happens, trigger a reload.
+const rewriteUrl = (url) => {
+  if (typeof url !== 'string') return url;
+  if (currentSubdomain === 'biizzed' && url.startsWith('/biizzed/')) {
+    return url.replace('/biizzed/', '/');
   }
-
-  if (needsRewrite) {
-    window.history.replaceState(null, '', newPath);
+  if (currentSubdomain === 'uduua' && url.startsWith('/uduua/')) {
+    return url.replace('/uduua/', '/');
   }
-
-  // Patch history methods for all future navigation
-  const originalPushState = window.history.pushState;
-  const originalReplaceState = window.history.replaceState;
-
-  window.history.pushState = function (state, title, url) {
-    const rewritten = rewriteUrl(url);
-    return originalPushState.call(this, state, title, rewritten);
-  };
-
-  window.history.replaceState = function (state, title, url) {
-    const rewritten = rewriteUrl(url);
-    return originalReplaceState.call(this, state, title, rewritten);
-  };
-
-  // Handle back/forward buttons
-  const handlePopState = () => {
-    const currentPath = window.location.pathname;
-    let rewritten = null;
-
-    if (currentSubdomain === 'biizzed' && currentPath.startsWith('/biizzed/')) {
-      rewritten = currentPath.replace('/biizzed/', '/') + window.location.search + window.location.hash;
-    } else if (currentSubdomain === 'uduua' && currentPath.startsWith('/uduua/')) {
-      rewritten = currentPath.replace('/uduua/', '/') + window.location.search + window.location.hash;
-    } else if (currentSubdomain === 'events' && currentPath.startsWith('/events/')) {
-      rewritten = currentPath.replace('/events/', '/') + window.location.search + window.location.hash;
-    }
-
-    if (rewritten && rewritten !== currentPath + window.location.search + window.location.hash) {
-      window.history.replaceState(null, '', rewritten);
-    }
-  };
-
-  window.addEventListener('popstate', handlePopState);
-
-  // Return cleanup (not really needed for root-level but good practice)
-  return () => {
-    window.history.pushState = originalPushState;
-    window.history.replaceState = originalReplaceState;
-    window.removeEventListener('popstate', handlePopState);
-  };
+  if (currentSubdomain === 'events' && url.startsWith('/events/')) {
+    return url.replace('/events/', '/');
+  }
+  return url;
 };
 
-// ==================== CLIENT-SIDE SUBDOMAIN REDIRECT ====================
-// Fallback: catches /biizzed/*, /uduua/*, /events/* on subdomains
+const originalPushState = window.history.pushState;
+const originalReplaceState = window.history.replaceState;
+
+window.history.pushState = function (state, title, url) {
+  const rewritten = rewriteUrl(url);
+  if (rewritten !== url) {
+    // URL was rewritten — do a full reload so server handles it cleanly
+    window.location.href = rewritten;
+    return;
+  }
+  return originalPushState.call(this, state, title, rewritten);
+};
+
+window.history.replaceState = function (state, title, url) {
+  const rewritten = rewriteUrl(url);
+  if (rewritten !== url) {
+    window.location.replace(rewritten);
+    return;
+  }
+  return originalReplaceState.call(this, state, title, rewritten);
+};
+
+// Handle back/forward buttons
+window.addEventListener('popstate', () => {
+  const currentPath = window.location.pathname;
+  let rewritten = null;
+
+  if (currentSubdomain === 'biizzed' && currentPath.startsWith('/biizzed/')) {
+    rewritten = currentPath.replace('/biizzed/', '/') + window.location.search + window.location.hash;
+  } else if (currentSubdomain === 'uduua' && currentPath.startsWith('/uduua/')) {
+    rewritten = currentPath.replace('/uduua/', '/') + window.location.search + window.location.hash;
+  } else if (currentSubdomain === 'events' && currentPath.startsWith('/events/')) {
+    rewritten = currentPath.replace('/events/', '/') + window.location.search + window.location.hash;
+  }
+
+  if (rewritten && rewritten !== currentPath + window.location.search + window.location.hash) {
+    window.location.replace(rewritten);
+  }
+});
+
+// ==================== CLIENT-SIDE SUBDOMAIN REDIRECT (FALLBACK) ====================
 const SubdomainRedirect = () => {
   const location = useLocation();
   const path = location.pathname;
@@ -534,9 +535,6 @@ if ("serviceWorker" in navigator) {
       });
   });
 }
-
-// Setup silent rewrite BEFORE router renders
-setupSilentSubdomainRewrite();
 
 // Wrapper to activate web‑push subscription
 const AppWithNotifications = () => {
