@@ -14,13 +14,43 @@ import { toast } from 'react-toastify';
 import AllEventsNavbar from '../components/AllEventsNavbar';
 import Footer from '../components/Footer';
 
-// ==================== ABSOLUTE URL HELPER ====================
+// ==================== SUBDOMAIN & BASE URL HELPERS ====================
+const getSubdomain = () => {
+  const hostname = window.location.hostname;
+  if (hostname === 'eventroom.lovohcreate.com') return 'events';
+  if (hostname === 'biizzed.lovohcreate.com') return 'biizzed';
+  if (hostname === 'uduua.lovohcreate.com') return 'uduua';
+  return 'main';
+};
+
+const currentSubdomain = getSubdomain();
+
 const getBaseUrl = () => {
   const hostname = window.location.hostname;
   if (hostname === 'eventroom.lovohcreate.com') return 'https://eventroom.lovohcreate.com';
   if (hostname === 'biizzed.lovohcreate.com') return 'https://biizzed.lovohcreate.com';
   if (hostname === 'uduua.lovohcreate.com') return 'https://uduua.lovohcreate.com';
   return 'https://lovohcreate.com';
+};
+
+// ==================== SMART BACK PATH HELPER ====================
+const getEventsListPath = () => {
+  // On eventroom subdomain, events list is at root "/"
+  // On main domain, events list is at "/events"
+  if (currentSubdomain === 'events') return '/';
+  return '/events';
+};
+
+// ==================== SMART EVENT DETAIL PATH HELPER ====================
+const getEventDetailPath = (eventId) => {
+  if (currentSubdomain === 'events') return `/${eventId}`;
+  return `/events/${eventId}`;
+};
+
+// ==================== SMART EVENT REGISTER PATH HELPER ====================
+const getEventRegisterPath = (eventId) => {
+  if (currentSubdomain === 'events') return `/${eventId}/register`;
+  return `/events/${eventId}/register`;
 };
 
 const toAbsoluteUrl = (url) => {
@@ -162,7 +192,6 @@ const EventDetail = () => {
 
   // Universal share helper that tries to share image + text + link
   const shareWithImage = async (imageUrl, title, bodyText, url) => {
-    // First, try sharing the image as a file (supported on Android Chrome & some Samsung browsers)
     try {
       const response = await fetch(imageUrl);
       const blob = await response.blob();
@@ -178,16 +207,13 @@ const EventDetail = () => {
         return;
       }
     } catch (err) {
-      // If sharing files fails (e.g., desktop browsers), we fall through to text-only share
       if (err.name !== 'AbortError') {
         console.log('File share not supported, falling back to text share', err);
       } else {
-        // User cancelled the share
         return;
       }
     }
 
-    // Fallback: share text + url (no file)
     if (navigator.share) {
       try {
         await navigator.share({ title, text: bodyText, url });
@@ -197,7 +223,6 @@ const EventDetail = () => {
         }
       }
     } else {
-      // Very last resort: copy the URL to clipboard
       await navigator.clipboard.writeText(url);
       toast.success('Link copied to clipboard');
     }
@@ -206,7 +231,7 @@ const EventDetail = () => {
   // Share from the main action button (uses first event image)
   const handleShareEvent = async () => {
     if (!event) return;
-    const imageUrl = toAbsoluteUrl(event.images?.[0]); // fallback to logo.png if none
+    const imageUrl = toAbsoluteUrl(event.images?.[0]);
     const details = getShareDetails();
     const baseUrl = getBaseUrl();
     const eventUrl = `${baseUrl}${window.location.pathname}`;
@@ -261,7 +286,6 @@ const EventDetail = () => {
   const formatTimeRange = (time, duration) => {
     const start = formatTime(time);
     if (!duration || !time) return start || 'TBD';
-    // simplified duration parsing (reuse from original)
     const calcEnd = () => {
       const [h, m] = time.split(':');
       const startDate = new Date();
@@ -313,6 +337,16 @@ const EventDetail = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [lightboxOpen, nextImage, prevImage]);
 
+  // ==================== SMART BACK NAVIGATION ====================
+  const handleBack = () => {
+    // If there's history, go back. Otherwise go to events list.
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate(getEventsListPath());
+    }
+  };
+
   if (isLoading) return (
     <div className="min-h-screen bg-gray-50">
       <AllEventsNavbar />
@@ -335,7 +369,7 @@ const EventDetail = () => {
         </div>
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Event Not Found</h1>
         <p className="text-gray-500 mb-6">This event may have been removed or doesn't exist.</p>
-        <Link to="/events" className="inline-flex items-center gap-2 px-6 py-2 bg-[#1B3766] text-white rounded-xl">
+        <Link to={getEventsListPath()} className="inline-flex items-center gap-2 px-6 py-2 bg-[#1B3766] text-white rounded-xl">
           <FaArrowLeft /> Browse Events
         </Link>
       </div>
@@ -351,7 +385,11 @@ const EventDetail = () => {
       <AllEventsNavbar />
       
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-20 sm:pt-24">
-        <button onClick={() => navigate('/events')} className="flex items-center gap-2 text-gray-600 hover:text-[#1B3766] mb-6 transition-colors text-sm group">
+        {/* ==================== FIXED BACK BUTTON ==================== */}
+        <button 
+          onClick={handleBack} 
+          className="flex items-center gap-2 text-gray-600 hover:text-[#1B3766] mb-6 transition-colors text-sm group"
+        >
           <FaArrowLeft className="text-xs group-hover:-translate-x-1 transition-transform" /> Back to Events
         </button>
 
@@ -498,7 +536,7 @@ const EventDetail = () => {
             {/* Action Buttons – updated share button */}
             <div className="flex flex-col sm:flex-row gap-3 mb-6">
               {canRegister ? (
-                <Link to={`/events/${id}/register`}
+                <Link to={getEventRegisterPath(id)}
                   className="flex-1 py-3.5 bg-[#1B3766] text-white rounded-xl font-semibold text-lg hover:bg-[#142952] transition-all shadow-lg hover:shadow-xl text-center">
                   {event.isPaid 
                     ? `Register from ${hasTicketTypes ? formatPrice(Math.min(...event.ticketTypes.map(t => t.price))) : formatPrice(event.price)}` 
