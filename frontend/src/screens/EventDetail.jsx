@@ -7,7 +7,7 @@ import {
   FaCalendarDay, FaCalendarCheck, FaTag, FaLink, FaCheck,
   FaShare, FaTicketAlt, FaCopy, FaUser, FaMapPin, FaGlobe,
   FaStar, FaLayerGroup, FaChair, FaVideo, FaChevronLeft, FaChevronRight,
-  FaTimes, FaDownload, FaSearchPlus,
+  FaTimes, FaDownload, FaSearchPlus, FaExpand,
 } from 'react-icons/fa';
 import { useGetEventByIdQuery, useVerifyPaymentQuery } from '../slices/eventApiSlice';
 import { toast } from 'react-toastify';
@@ -33,21 +33,11 @@ const getBaseUrl = () => {
   return 'https://lovohcreate.com';
 };
 
-// ==================== SMART BACK PATH HELPER ====================
 const getEventsListPath = () => {
-  // On eventroom subdomain, events list is at root "/"
-  // On main domain, events list is at "/events"
   if (currentSubdomain === 'events') return '/';
   return '/events';
 };
 
-// ==================== SMART EVENT DETAIL PATH HELPER ====================
-const getEventDetailPath = (eventId) => {
-  if (currentSubdomain === 'events') return `/${eventId}`;
-  return `/events/${eventId}`;
-};
-
-// ==================== SMART EVENT REGISTER PATH HELPER ====================
 const getEventRegisterPath = (eventId) => {
   if (currentSubdomain === 'events') return `/${eventId}/register`;
   return `/events/${eventId}/register`;
@@ -86,9 +76,6 @@ const EventDetail = () => {
     }
   }, [verificationData, urlReference, paymentStatus, refetch, searchParams, setSearchParams]);
 
-  // ------------------------------------------------------------
-  // Dynamic social meta tags – updates whenever event data loads
-  // ------------------------------------------------------------
   useEffect(() => {
     if (!event) return;
 
@@ -141,7 +128,6 @@ const EventDetail = () => {
       document.title = 'LovoCreate';
     };
   }, [event]);
-  // ------------------------------------------------------------
 
   const formatDate = (date) => {
     if (!date) return 'TBD';
@@ -177,7 +163,6 @@ const EventDetail = () => {
     return formatPrice(event.price);
   };
 
-  // Build a short detail string for sharing
   const getShareDetails = useCallback(() => {
     if (!event) return '';
     const date = formatDate(event.date);
@@ -190,7 +175,6 @@ const EventDetail = () => {
     return `📅 ${event.title}\n${date} · ${time}\n📍 ${venue}\n💵 ${price}\n🔗 ${eventUrl}`;
   }, [event]);
 
-  // Universal share helper that tries to share image + text + link
   const shareWithImage = async (imageUrl, title, bodyText, url) => {
     try {
       const response = await fetch(imageUrl);
@@ -228,7 +212,6 @@ const EventDetail = () => {
     }
   };
 
-  // Share from the main action button (uses first event image)
   const handleShareEvent = async () => {
     if (!event) return;
     const imageUrl = toAbsoluteUrl(event.images?.[0]);
@@ -238,7 +221,6 @@ const EventDetail = () => {
     await shareWithImage(imageUrl, event.title, details, eventUrl);
   };
 
-  // Share from the lightbox (uses currently shown image)
   const shareCurrentPoster = async () => {
     if (!event || !event.images?.length) return;
     const imageUrl = event.images[currentImageIndex];
@@ -325,7 +307,6 @@ const EventDetail = () => {
   const openLightbox = () => setLightboxOpen(true);
   const closeLightbox = () => setLightboxOpen(false);
 
-  // Handle keyboard navigation in lightbox
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (!lightboxOpen) return;
@@ -337,9 +318,7 @@ const EventDetail = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [lightboxOpen, nextImage, prevImage]);
 
-  // ==================== SMART BACK NAVIGATION ====================
   const handleBack = () => {
-    // If there's history, go back. Otherwise go to events list.
     if (window.history.length > 1) {
       navigate(-1);
     } else {
@@ -385,7 +364,6 @@ const EventDetail = () => {
       <AllEventsNavbar />
       
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-20 sm:pt-24">
-        {/* ==================== FIXED BACK BUTTON ==================== */}
         <button 
           onClick={handleBack} 
           className="flex items-center gap-2 text-gray-600 hover:text-[#1B3766] mb-6 transition-colors text-sm group"
@@ -393,7 +371,6 @@ const EventDetail = () => {
           <FaArrowLeft className="text-xs group-hover:-translate-x-1 transition-transform" /> Back to Events
         </button>
 
-        {/* Payment Verification */}
         {isVerifying && (
           <div className="bg-blue-50 rounded-2xl p-6 border border-blue-200 text-center mb-6">
             <FaSpinner className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-3" />
@@ -410,7 +387,6 @@ const EventDetail = () => {
         )}
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          {/* Images Slider – clickable to open lightbox */}
           {hasImages && (
             <div className="relative">
               <div 
@@ -427,10 +403,24 @@ const EventDetail = () => {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
                 
-                {/* "View poster" overlay */}
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                {/* Desktop: "View poster" overlay on hover */}
+                <div className="absolute inset-0 items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hidden sm:flex">
                   <div className="bg-black/60 text-white text-sm px-4 py-2 rounded-full flex items-center gap-2">
                     <FaSearchPlus className="text-xs" /> View full poster
+                  </div>
+                </div>
+
+                {/* Mobile: Always visible expand icon */}
+                <div className="absolute top-3 right-3 sm:hidden z-10">
+                  <div className="bg-black/50 backdrop-blur-sm text-white p-2 rounded-full">
+                    <FaExpand className="text-sm" />
+                  </div>
+                </div>
+
+                {/* Mobile: "Tap to expand" hint at bottom */}
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 sm:hidden z-10">
+                  <div className="bg-black/50 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-full flex items-center gap-1.5">
+                    <FaExpand className="text-[10px]" /> Tap to view full poster
                   </div>
                 </div>
 
@@ -466,7 +456,7 @@ const EventDetail = () => {
                 )}
 
                 {event.images.length > 1 && (
-                  <div className="absolute top-4 right-4 bg-black/50 text-white text-xs px-2.5 py-1 rounded-full z-10">
+                  <div className="absolute top-4 right-4 bg-black/50 text-white text-xs px-2.5 py-1 rounded-full z-10 hidden sm:block">
                     {currentImageIndex + 1} / {event.images.length}
                   </div>
                 )}
@@ -475,7 +465,6 @@ const EventDetail = () => {
           )}
 
           <div className="p-5 sm:p-8">
-            {/* Badges */}
             <div className="flex flex-wrap gap-2 mb-5">
               <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${status.color}`}>
                 <StatusIcon className="text-xs" /> {status.label}
@@ -515,7 +504,6 @@ const EventDetail = () => {
 
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-4">{event.title}</h1>
 
-            {/* Details Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-5 bg-gray-50 rounded-xl mb-6">
               <DetailItem icon={FaCalendarAlt} label="Date" value={formatDate(event.date)} />
               <DetailItem icon={FaClock} label="Time" value={timeRangeDisplay} />
@@ -533,7 +521,6 @@ const EventDetail = () => {
               )}
             </div>
 
-            {/* Action Buttons – updated share button */}
             <div className="flex flex-col sm:flex-row gap-3 mb-6">
               {canRegister ? (
                 <Link to={getEventRegisterPath(id)}
@@ -558,14 +545,12 @@ const EventDetail = () => {
               </div>
             </div>
 
-            {/* Registration Deadline Warning */}
             {event.registrationDeadline && canRegister && (
               <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200 mb-6">
                 <p className="text-sm text-yellow-800">⏰ Registration closes on <strong>{formatDate(event.registrationDeadline)}</strong></p>
               </div>
             )}
 
-            {/* Description */}
             <div className="border-t border-gray-100 pt-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">About This Event</h3>
               <div className="text-gray-700 leading-relaxed prose prose-sm max-w-none
@@ -574,7 +559,6 @@ const EventDetail = () => {
                 dangerouslySetInnerHTML={{ __html: event.description }} />
             </div>
 
-            {/* Ticket Types Detail */}
             {hasTicketTypes && (
               <div className="border-t border-gray-100 pt-6 mt-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -601,7 +585,6 @@ const EventDetail = () => {
               </div>
             )}
 
-            {/* Speakers */}
             {event.speakers?.length > 0 && (
               <div className="border-t border-gray-100 pt-6 mt-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -637,7 +620,6 @@ const EventDetail = () => {
               </div>
             )}
 
-            {/* Tags */}
             {event.tags?.length > 0 && (
               <div className="border-t border-gray-100 pt-6 mt-6">
                 <p className="text-xs text-gray-500 mb-2">Tags</p>
@@ -654,13 +636,11 @@ const EventDetail = () => {
         </div>
       </div>
 
-      {/* ==================== LIGHTBOX MODAL ==================== */}
       {lightboxOpen && hasImages && (
         <div 
           className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 backdrop-blur-sm"
           onClick={closeLightbox}
         >
-          {/* Close button */}
           <button 
             onClick={closeLightbox}
             className="absolute top-4 right-4 text-white/80 hover:text-white text-2xl z-10"
@@ -669,7 +649,6 @@ const EventDetail = () => {
             <FaTimes />
           </button>
 
-          {/* Main image container */}
           <div 
             className="relative max-w-5xl max-h-full flex items-center justify-center"
             onClick={(e) => e.stopPropagation()}
@@ -680,7 +659,6 @@ const EventDetail = () => {
               className="max-h-[85vh] max-w-full object-contain rounded-lg"
             />
 
-            {/* Navigation arrows for multiple images */}
             {event.images.length > 1 && (
               <>
                 <button 
@@ -698,7 +676,6 @@ const EventDetail = () => {
               </>
             )}
 
-            {/* Image counter */}
             {event.images.length > 1 && (
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 text-white text-sm px-3 py-1 rounded-full">
                 {currentImageIndex + 1} / {event.images.length}
@@ -706,7 +683,6 @@ const EventDetail = () => {
             )}
           </div>
 
-          {/* Action buttons: Download & Share poster */}
           <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-3">
             <button
               onClick={() => downloadImage(event.images[currentImageIndex])}
@@ -722,7 +698,6 @@ const EventDetail = () => {
             </button>
           </div>
 
-          {/* Mobile-friendly hints */}
           <div className="absolute bottom-20 text-white/50 text-xs text-center">
             Tap outside or press Esc to close
           </div>
