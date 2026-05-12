@@ -8,6 +8,7 @@ import {
   FaShare, FaTicketAlt, FaCopy, FaUser, FaMapPin, FaGlobe,
   FaStar, FaLayerGroup, FaChair, FaVideo, FaChevronLeft, FaChevronRight,
   FaTimes, FaDownload, FaSearchPlus, FaExpand,
+  FaWifi, FaExclamationTriangle, FaPhone, FaEnvelope,
 } from 'react-icons/fa';
 import { useGetEventByIdQuery, useVerifyPaymentQuery } from '../slices/eventApiSlice';
 import { toast } from 'react-toastify';
@@ -50,6 +51,133 @@ const toAbsoluteUrl = (url) => {
   return `${getBaseUrl()}/${url}`;
 };
 
+// ==================== SKELETON COMPONENTS ====================
+const ImageSkeleton = () => (
+  <div className="relative w-full h-56 sm:h-80 md:h-96 overflow-hidden bg-gray-200 animate-pulse">
+    <div className="absolute inset-0 bg-gradient-to-t from-gray-300/40 to-transparent" />
+    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+      <div className="w-2.5 h-2.5 rounded-full bg-gray-300" />
+      <div className="w-2.5 h-2.5 rounded-full bg-gray-300" />
+      <div className="w-2.5 h-2.5 rounded-full bg-gray-300" />
+    </div>
+  </div>
+);
+
+const DetailSkeleton = () => (
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-5 bg-gray-50 rounded-xl mb-6 animate-pulse">
+    <div className="flex items-start gap-3">
+      <div className="w-5 h-5 bg-gray-200 rounded mt-0.5" />
+      <div className="space-y-1 flex-1">
+        <div className="h-3 w-12 bg-gray-200 rounded" />
+        <div className="h-4 w-32 bg-gray-200 rounded" />
+      </div>
+    </div>
+    <div className="flex items-start gap-3">
+      <div className="w-5 h-5 bg-gray-200 rounded mt-0.5" />
+      <div className="space-y-1 flex-1">
+        <div className="h-3 w-12 bg-gray-200 rounded" />
+        <div className="h-4 w-24 bg-gray-200 rounded" />
+      </div>
+    </div>
+    <div className="flex items-start gap-3 sm:col-span-2">
+      <div className="w-5 h-5 bg-gray-200 rounded mt-0.5" />
+      <div className="space-y-1 flex-1">
+        <div className="h-3 w-12 bg-gray-200 rounded" />
+        <div className="h-4 w-48 bg-gray-200 rounded" />
+      </div>
+    </div>
+  </div>
+);
+
+const ButtonSkeleton = () => (
+  <div className="flex flex-col sm:flex-row gap-3 mb-6 animate-pulse">
+    <div className="flex-1 h-14 bg-gray-200 rounded-xl" />
+    <div className="flex items-center gap-2 justify-center">
+      <div className="w-10 h-10 bg-gray-200 rounded-lg" />
+      <div className="h-10 w-24 bg-gray-200 rounded-xl" />
+    </div>
+  </div>
+);
+
+const ContentSkeleton = () => (
+  <div className="space-y-4 animate-pulse">
+    <div className="h-6 w-48 bg-gray-200 rounded" />
+    <div className="space-y-2">
+      <div className="h-4 w-full bg-gray-200 rounded" />
+      <div className="h-4 w-full bg-gray-200 rounded" />
+      <div className="h-4 w-3/4 bg-gray-200 rounded" />
+    </div>
+  </div>
+);
+// =========================================================
+
+// ==================== ERROR COMPONENT ====================
+const ErrorState = ({ error, onRetry }) => {
+  const isNetworkError = !error?.status || error?.status === 'FETCH_ERROR' || error?.error?.includes('fetch') || error?.error?.includes('network');
+
+  return (
+    <div className="min-h-[60vh] flex items-center justify-center px-4">
+      <div className="text-center max-w-md mx-auto">
+        <div className="w-20 h-20 mx-auto bg-red-50 rounded-full flex items-center justify-center mb-6">
+          {isNetworkError ? (
+            <FaWifi className="text-3xl text-red-400" />
+          ) : (
+            <FaExclamationTriangle className="text-3xl text-red-400" />
+          )}
+        </div>
+
+        <h2 className="text-xl font-bold text-gray-900 mb-2">
+          {isNetworkError ? 'Connection Issue' : 'Something Went Wrong'}
+        </h2>
+
+        <p className="text-gray-500 text-sm mb-2 leading-relaxed">
+          {isNetworkError
+            ? "We couldn't load this event. Please check your internet connection and try again."
+            : "We encountered an error while loading this event. Our team has been notified."}
+        </p>
+
+        {error?.data?.message && (
+          <p className="text-red-500 text-xs mb-4 bg-red-50 px-3 py-2 rounded-lg inline-block">
+            {error.data.message}
+          </p>
+        )}
+
+        <div className="space-y-3 mb-6">
+          <button
+            onClick={onRetry}
+            className="w-full sm:w-auto px-6 py-2.5 bg-[#1B3766] text-white rounded-xl font-semibold text-sm hover:bg-[#142952] transition-all shadow-md"
+          >
+            Try Again
+          </button>
+        </div>
+
+        <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+          <p className="text-xs text-gray-500 mb-3 font-medium">Need help? Contact support:</p>
+          <div className="space-y-2">
+            <a
+              href="mailto:support@lovohcreate.com"
+              className="flex items-center justify-center gap-2 text-sm text-[#1B3766] hover:underline"
+            >
+              <FaEnvelope className="text-xs" />
+              support@lovohcreate.com
+            </a>
+            <a
+              href="https://wa.me/2348058586759"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 text-sm text-green-600 hover:underline"
+            >
+              <FaPhone className="text-xs" />
+              WhatsApp: 08058586759
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+// =========================================================
+
 const EventDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -59,7 +187,7 @@ const EventDetail = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
-  const { data: event, isLoading, refetch } = useGetEventByIdQuery(id);
+  const { data: event, isLoading, error, refetch } = useGetEventByIdQuery(id);
 
   const urlReference = searchParams.get('reference') || searchParams.get('trxref');
   const { data: verificationData, isFetching: isVerifying } = useVerifyPaymentQuery(
@@ -326,35 +454,78 @@ const EventDetail = () => {
     }
   };
 
-  if (isLoading) return (
-    <div className="min-h-screen bg-gray-50">
-      <AllEventsNavbar />
-      <div className="flex justify-center items-center h-96 pt-16">
-        <div className="text-center">
-          <FaSpinner className="w-12 h-12 text-[#1B3766] animate-spin mx-auto mb-4" />
-          <p className="text-gray-500">Loading event...</p>
+  // ==================== LOADING STATE ====================
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <AllEventsNavbar />
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-20 sm:pt-24">
+          <button className="flex items-center gap-2 text-gray-400 mb-6 text-sm">
+            <div className="w-4 h-4 bg-gray-200 rounded" />
+            <div className="w-24 h-4 bg-gray-200 rounded" />
+          </button>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <ImageSkeleton />
+
+            <div className="p-5 sm:p-8 space-y-6">
+              {/* Badges skeleton */}
+              <div className="flex flex-wrap gap-2">
+                <div className="h-7 w-20 bg-gray-200 rounded-full" />
+                <div className="h-7 w-24 bg-gray-200 rounded-full" />
+                <div className="h-7 w-16 bg-gray-200 rounded-full" />
+                <div className="h-7 w-28 bg-gray-200 rounded-full" />
+              </div>
+
+              {/* Title skeleton */}
+              <div className="space-y-2">
+                <div className="h-8 w-3/4 bg-gray-200 rounded" />
+                <div className="h-8 w-1/2 bg-gray-200 rounded hidden sm:block" />
+              </div>
+
+              <DetailSkeleton />
+              <ButtonSkeleton />
+              <ContentSkeleton />
+            </div>
+          </div>
         </div>
+        <Footer />
       </div>
-      <Footer />
-    </div>
-  );
-  
-  if (!event) return (
-    <div className="min-h-screen bg-gray-50">
-      <AllEventsNavbar />
-      <div className="max-w-4xl mx-auto px-4 py-20 pt-24 text-center">
-        <div className="w-20 h-20 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
-          <FaCalendarAlt className="text-3xl text-gray-400" />
+    );
+  }
+
+  // ==================== ERROR STATE ====================
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <AllEventsNavbar />
+        <div className="pt-20 sm:pt-24">
+          <ErrorState error={error} onRetry={refetch} />
         </div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Event Not Found</h1>
-        <p className="text-gray-500 mb-6">This event may have been removed or doesn't exist.</p>
-        <Link to={getEventsListPath()} className="inline-flex items-center gap-2 px-6 py-2 bg-[#1B3766] text-white rounded-xl">
-          <FaArrowLeft /> Browse Events
-        </Link>
+        <Footer />
       </div>
-      <Footer />
-    </div>
-  );
+    );
+  }
+
+  // ==================== NOT FOUND STATE ====================
+  if (!event) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <AllEventsNavbar />
+        <div className="max-w-4xl mx-auto px-4 py-20 pt-24 text-center">
+          <div className="w-20 h-20 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
+            <FaCalendarAlt className="text-3xl text-gray-400" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Event Not Found</h1>
+          <p className="text-gray-500 mb-6">This event may have been removed or doesn't exist.</p>
+          <Link to={getEventsListPath()} className="inline-flex items-center gap-2 px-6 py-2 bg-[#1B3766] text-white rounded-xl">
+            <FaArrowLeft /> Browse Events
+          </Link>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   const status = getEventStatus();
   const StatusIcon = status.icon;

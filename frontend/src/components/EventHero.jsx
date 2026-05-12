@@ -3,7 +3,62 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { useGetEventsQuery } from '../slices/eventApiSlice';
-import { FaPlus, FaArrowRight, FaTicketAlt, FaUserFriends, FaStar, FaGlobe, FaUsers } from 'react-icons/fa';
+import { FaPlus, FaArrowRight, FaTicketAlt, FaUserFriends, FaStar, FaGlobe, FaUsers, FaCalendarAlt } from 'react-icons/fa';
+
+// ==================== SUBDOMAIN HELPERS ====================
+const getSubdomain = () => {
+  const hostname = window.location.hostname;
+  if (hostname === 'eventroom.lovohcreate.com') return 'events';
+  if (hostname === 'biizzed.lovohcreate.com') return 'biizzed';
+  if (hostname === 'uduua.lovohcreate.com') return 'uduua';
+  return 'main';
+};
+
+const currentSubdomain = getSubdomain();
+
+const getEventDetailPath = (slug) => {
+  if (currentSubdomain === 'events') return `/${slug}`;
+  return `/events/${slug}`;
+};
+
+const getDashboardPath = () => {
+  if (currentSubdomain === 'events') return '/dashboard';
+  return '/events/dashboard';
+};
+
+const getLoginPath = () => {
+  if (currentSubdomain === 'events') return '/login?redirect=/dashboard';
+  return '/events/login?redirect=/events/dashboard';
+};
+// =========================================================
+
+// ==================== FEATURED CARD SKELETON ====================
+const FeaturedCardSkeleton = () => (
+  <div className="relative bg-white/10 backdrop-blur-md rounded-2xl overflow-hidden border border-white/20 shadow-xl max-w-md mx-auto lg:mx-0 animate-pulse">
+    <div className="relative h-48 xs:h-56 sm:h-64 overflow-hidden bg-gray-700">
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+      <div className="absolute top-3 sm:top-4 left-3 sm:left-4">
+        <div className="bg-white/20 w-20 h-6 rounded-full" />
+      </div>
+      <div className="absolute top-3 sm:top-4 right-3 sm:right-4 flex flex-col gap-1.5 items-end">
+        <div className="bg-white/20 w-16 h-5 rounded-full" />
+        <div className="bg-white/20 w-14 h-5 rounded-full" />
+      </div>
+    </div>
+    <div className="p-4 sm:p-5 space-y-3">
+      <div className="h-6 w-3/4 bg-white/10 rounded" />
+      <div className="space-y-2">
+        <div className="h-4 w-full bg-white/10 rounded" />
+        <div className="h-4 w-2/3 bg-white/10 rounded" />
+      </div>
+      <div className="flex items-center justify-between pt-2">
+        <div className="h-6 w-16 bg-white/10 rounded" />
+        <div className="h-8 w-24 bg-white/10 rounded-lg" />
+      </div>
+    </div>
+  </div>
+);
+// =========================================================
 
 const EventHero = () => {
   const navigate = useNavigate();
@@ -55,20 +110,9 @@ const EventHero = () => {
   };
 
   const handleCreateEvent = () => {
-    if (userInfo) { navigate('/events/dashboard'); }
-    else { navigate('/events/login?redirect=/events/dashboard'); }
+    if (userInfo) { navigate(getDashboardPath()); }
+    else { navigate(getLoginPath()); }
   };
-
-  if (isLoading) {
-    return (
-      <section className="relative w-full min-h-screen flex items-center justify-center overflow-hidden bg-[#1B3766]">
-        <div className="text-center px-4">
-          <div className="w-12 h-12 border-4 border-[#79FFFF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-white">Loading events...</p>
-        </div>
-      </section>
-    );
-  }
 
   return (
     <section className="relative w-full min-h-screen flex items-center overflow-hidden">
@@ -88,7 +132,7 @@ const EventHero = () => {
       
       <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-8 md:py-8">
         <div className="grid lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-16 items-center">
-          {/* Left Column - Mobile optimized */}
+          {/* Left Column - ALWAYS VISIBLE (static content, no loading) */}
           <div className="text-center lg:text-left">
             <div className="inline-flex items-center gap-2 bg-[#79FFFF]/20 backdrop-blur-sm border border-[#79FFFF]/30 rounded-full px-3 sm:px-4 py-1.5 mb-4 sm:mb-6 mx-auto lg:mx-0 w-fit animate-fadeInUp">
               <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[#79FFFF] rounded-full animate-pulse"></div>
@@ -136,10 +180,12 @@ const EventHero = () => {
             </div>
           </div>
 
-          {/* Right Column - Featured Event Card - Mobile optimized */}
-          {featuredEvent && (
-            <div className="animate-fadeInUp animation-delay-200 mt-8 lg:mt-0">
-              <Link to={`/events/${featuredEvent.slug}`} className="block group">
+          {/* Right Column - Featured Event Card (shows skeleton while loading) */}
+          <div className="animate-fadeInUp animation-delay-200 mt-8 lg:mt-0">
+            {isLoading ? (
+              <FeaturedCardSkeleton />
+            ) : featuredEvent ? (
+              <Link to={getEventDetailPath(featuredEvent.slug)} className="block group">
                 <div className="relative bg-white/10 backdrop-blur-md rounded-2xl overflow-hidden border border-white/20 shadow-xl hover:bg-white/15 transition-all duration-500 hover:scale-[1.02] max-w-md mx-auto lg:mx-0">
                   <div className="relative h-48 xs:h-56 sm:h-64 overflow-hidden">
                     <img src={featuredEvent.image} alt={featuredEvent.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
@@ -209,8 +255,19 @@ const EventHero = () => {
                   </div>
                 </div>
               </Link>
-            </div>
-          )}
+            ) : (
+              // No featured event state
+              <div className="relative bg-white/10 backdrop-blur-md rounded-2xl overflow-hidden border border-white/20 shadow-xl max-w-md mx-auto lg:mx-0 p-8 text-center">
+                <FaCalendarAlt className="text-4xl text-white/30 mx-auto mb-4" />
+                <h3 className="text-lg font-bold text-white mb-2">No Events Yet</h3>
+                <p className="text-gray-300 text-sm mb-4">Be the first to create an event!</p>
+                <button onClick={handleCreateEvent}
+                  className="bg-[#79FFFF] hover:bg-[#5ee8e8] text-[#1B3766] px-6 py-2.5 rounded-xl font-semibold text-sm transition-all">
+                  Create Event
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

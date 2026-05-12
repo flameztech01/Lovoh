@@ -5,11 +5,150 @@ import { useGetEventsQuery } from '../slices/eventApiSlice';
 import {
   FaCalendarAlt, FaMapMarkerAlt, FaClock, FaTicketAlt,
   FaSpinner, FaArrowRight, FaUsers, FaSearch, FaTimes,
-  FaSlidersH,
+  FaSlidersH, FaWifi, FaExclamationTriangle, FaPhone,
+  FaEnvelope,
 } from 'react-icons/fa';
 import AllEventsNavbar from '../components/AllEventsNavbar';
 import EventUpcomingGrid from '../components/EventUpcomingGrid';
 import Footer from '../components/Footer';
+
+// ==================== SUBDOMAIN HELPERS ====================
+const getSubdomain = () => {
+  const hostname = window.location.hostname;
+  if (hostname === 'eventroom.lovohcreate.com') return 'events';
+  if (hostname === 'biizzed.lovohcreate.com') return 'biizzed';
+  if (hostname === 'uduua.lovohcreate.com') return 'uduua';
+  return 'main';
+};
+
+const currentSubdomain = getSubdomain();
+
+const getEventDetailPath = (eventId) => {
+  if (currentSubdomain === 'events') return `/${eventId}`;
+  return `/events/${eventId}`;
+};
+// =========================================================
+
+// ==================== SKELETON COMPONENTS ====================
+const DesktopCardSkeleton = () => (
+  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col animate-pulse">
+    <div className="aspect-[16/10] bg-gray-200" />
+    <div className="p-4 flex-1 flex flex-col space-y-3">
+      <div className="flex items-center gap-2">
+        <div className="h-3 w-16 bg-gray-200 rounded" />
+        <div className="h-3 w-12 bg-gray-200 rounded" />
+      </div>
+      <div className="h-5 w-3/4 bg-gray-200 rounded" />
+      <div className="h-4 w-full bg-gray-200 rounded" />
+      <div className="h-4 w-2/3 bg-gray-200 rounded" />
+      <div className="space-y-1 pt-2">
+        <div className="h-3 w-1/2 bg-gray-200 rounded" />
+        <div className="h-3 w-2/3 bg-gray-200 rounded" />
+      </div>
+      <div className="flex items-center justify-between pt-3 border-t border-gray-100 mt-auto">
+        <div className="h-3 w-12 bg-gray-200 rounded" />
+        <div className="h-3 w-16 bg-gray-200 rounded" />
+      </div>
+    </div>
+  </div>
+);
+
+const MobileCardSkeleton = () => (
+  <div className="flex gap-3 bg-white rounded-xl shadow-sm border border-gray-100 p-3 animate-pulse">
+    <div className="w-28 h-24 flex-shrink-0 rounded-lg bg-gray-200" />
+    <div className="flex-1 min-w-0 space-y-2">
+      <div className="flex items-center gap-2">
+        <div className="h-2.5 w-12 bg-gray-200 rounded" />
+        <div className="h-2.5 w-8 bg-gray-200 rounded" />
+      </div>
+      <div className="h-4 w-3/4 bg-gray-200 rounded" />
+      <div className="h-3 w-1/2 bg-gray-200 rounded" />
+      <div className="h-3 w-2/3 bg-gray-200 rounded" />
+      <div className="flex items-center justify-between pt-1.5">
+        <div className="h-2.5 w-10 bg-gray-200 rounded" />
+        <div className="h-2.5 w-12 bg-gray-200 rounded" />
+      </div>
+    </div>
+  </div>
+);
+
+const FeaturedSkeleton = () => (
+  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
+    {[1, 2, 3, 4].map((i) => (
+      <div key={i} className="rounded-xl sm:rounded-2xl overflow-hidden bg-white shadow-md animate-pulse">
+        <div className="aspect-[3/4] bg-gray-200" />
+      </div>
+    ))}
+  </div>
+);
+// =========================================================
+
+// ==================== ERROR COMPONENT ====================
+const ErrorState = ({ error, onRetry }) => {
+  const isNetworkError = !error?.status || error?.status === 'FETCH_ERROR' || error?.error?.includes('fetch') || error?.error?.includes('network');
+
+  return (
+    <div className="min-h-[60vh] flex items-center justify-center px-4">
+      <div className="text-center max-w-md mx-auto">
+        <div className="w-20 h-20 mx-auto bg-red-50 rounded-full flex items-center justify-center mb-6">
+          {isNetworkError ? (
+            <FaWifi className="text-3xl text-red-400" />
+          ) : (
+            <FaExclamationTriangle className="text-3xl text-red-400" />
+          )}
+        </div>
+
+        <h2 className="text-xl font-bold text-gray-900 mb-2">
+          {isNetworkError ? 'Connection Issue' : 'Something Went Wrong'}
+        </h2>
+
+        <p className="text-gray-500 text-sm mb-2 leading-relaxed">
+          {isNetworkError
+            ? "We couldn't load the events. Please check your internet connection and try again."
+            : "We encountered an error while loading events. Our team has been notified."}
+        </p>
+
+        {error?.data?.message && (
+          <p className="text-red-500 text-xs mb-4 bg-red-50 px-3 py-2 rounded-lg inline-block">
+            {error.data.message}
+          </p>
+        )}
+
+        <div className="space-y-3 mb-6">
+          <button
+            onClick={onRetry}
+            className="w-full sm:w-auto px-6 py-2.5 bg-[#1B3766] text-white rounded-xl font-semibold text-sm hover:bg-[#142952] transition-all shadow-md"
+          >
+            Try Again
+          </button>
+        </div>
+
+        <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+          <p className="text-xs text-gray-500 mb-3 font-medium">Need help? Contact support:</p>
+          <div className="space-y-2">
+            <a
+              href="mailto:support@lovohcreate.com"
+              className="flex items-center justify-center gap-2 text-sm text-[#1B3766] hover:underline"
+            >
+              <FaEnvelope className="text-xs" />
+              support@lovohcreate.com
+            </a>
+            <a
+              href="https://wa.me/2348058586759"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 text-sm text-green-600 hover:underline"
+            >
+              <FaPhone className="text-xs" />
+              WhatsApp: 08058586759
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+// =========================================================
 
 const AllEvents = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -17,7 +156,7 @@ const AllEvents = () => {
   const [typeFilter, setTypeFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
 
-  const { data: eventsData, isLoading } = useGetEventsQuery({
+  const { data: eventsData, isLoading, error, refetch } = useGetEventsQuery({
     upcoming: 'true',
     limit: 50,
   });
@@ -64,12 +203,67 @@ const AllEvents = () => {
 
   const hasActiveFilters = searchTerm || categoryFilter !== 'all' || typeFilter !== 'all';
 
+  // ==================== LOADING STATE ====================
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
         <AllEventsNavbar />
-        <div className="flex justify-center items-center h-64 pt-16">
-          <FaSpinner className="w-10 h-10 text-[#1B3766] animate-spin" />
+        <div className="pt-14 sm:pt-16">
+          {/* Featured Skeleton */}
+          <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gray-50">
+            <div className="max-w-7xl mx-auto">
+              <div className="flex items-center gap-3 mb-6 sm:mb-8">
+                <div className="w-3 h-3 bg-green-200 rounded-full animate-pulse" />
+                <div className="h-8 w-48 bg-gray-200 rounded animate-pulse" />
+                <div className="h-6 w-8 bg-gray-200 rounded-full animate-pulse" />
+              </div>
+              <FeaturedSkeleton />
+            </div>
+          </section>
+
+          {/* All Events Skeleton */}
+          <section className="py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-6xl mx-auto">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <div className="h-7 w-32 bg-gray-200 rounded animate-pulse mb-1" />
+                  <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
+                </div>
+                <div className="hidden sm:flex items-center gap-2">
+                  <div className="h-9 w-48 bg-gray-200 rounded-xl animate-pulse" />
+                  <div className="h-9 w-32 bg-gray-200 rounded-xl animate-pulse" />
+                  <div className="h-9 w-28 bg-gray-200 rounded-xl animate-pulse" />
+                </div>
+              </div>
+
+              {/* Desktop Skeletons */}
+              <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <DesktopCardSkeleton key={i} />
+                ))}
+              </div>
+
+              {/* Mobile Skeletons */}
+              <div className="sm:hidden space-y-3">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <MobileCardSkeleton key={i} />
+                ))}
+              </div>
+            </div>
+          </section>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  // ==================== ERROR STATE ====================
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <AllEventsNavbar />
+        <div className="pt-14 sm:pt-16">
+          <ErrorState error={error} onRetry={refetch} />
         </div>
         <Footer />
       </div>
@@ -126,7 +320,7 @@ const AllEvents = () => {
                 </div>
               ) : (
                 filteredEvents.map(event => (
-                  <Link key={event._id} to={`/events/${event._id}`}
+                  <Link key={event._id} to={getEventDetailPath(event._id)}
                     className="group bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col">
                     <div className="aspect-[16/10] relative overflow-hidden bg-gray-100">
                       {event.images?.[0] ? (
@@ -171,7 +365,7 @@ const AllEvents = () => {
                 </div>
               ) : (
                 filteredEvents.map(event => (
-                  <Link key={event._id} to={`/events/${event._id}`}
+                  <Link key={event._id} to={getEventDetailPath(event._id)}
                     className="group flex gap-3 bg-white rounded-xl shadow-sm border border-gray-100 p-3 hover:shadow-md transition-all duration-300">
                     <div className="w-28 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 relative">
                       {event.images?.[0] ? (
