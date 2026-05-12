@@ -6,9 +6,38 @@ import {
   FaCalendarAlt, FaMapMarkerAlt, FaClock, FaTicketAlt, FaArrowRight, FaSpinner,
 } from 'react-icons/fa';
 
+// ==================== SUBDOMAIN HELPERS ====================
+const getSubdomain = () => {
+  const hostname = window.location.hostname;
+  if (hostname === 'eventroom.lovohcreate.com') return 'events';
+  if (hostname === 'biizzed.lovohcreate.com') return 'biizzed';
+  if (hostname === 'uduua.lovohcreate.com') return 'uduua';
+  return 'main';
+};
+
+const currentSubdomain = getSubdomain();
+
+const getEventDetailPath = (eventId) => {
+  if (currentSubdomain === 'events') return `/${eventId}`;
+  return `/events/${eventId}`;
+};
+
+const getAllEventsPath = () => {
+  if (currentSubdomain === 'events') return '/all-events';
+  return '/events/all-events';
+};
+
+const isAllEventsPage = (pathname) => {
+  if (currentSubdomain === 'events') {
+    return pathname === '/all-events';
+  }
+  return pathname === '/events/all-events';
+};
+// =========================================================
+
 const EventUpcomingGrid = () => {
   const location = useLocation();
-  const isAllEventsPage = location.pathname === '/events/all-events';
+  const onAllEventsPage = isAllEventsPage(location.pathname);
 
   const { data: eventsData, isLoading } = useGetEventsQuery({ 
     upcoming: 'true',
@@ -50,7 +79,7 @@ const EventUpcomingGrid = () => {
   }
 
   return (
-    <section id="events-grid" className={`${isAllEventsPage ? 'pt-8 pb-4' : 'py-16'} px-4 sm:px-6 lg:px-8 bg-gray-50`}>
+    <section id="events-grid" className={`${onAllEventsPage ? 'pt-8 pb-4' : 'py-16'} px-4 sm:px-6 lg:px-8 bg-gray-50`}>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6 sm:mb-8">
@@ -66,7 +95,7 @@ const EventUpcomingGrid = () => {
           {events.map(event => (
             <Link
               key={event._id}
-              to={`/events/${event._id}`}
+              to={getEventDetailPath(event._id)}
               className="group relative rounded-xl sm:rounded-2xl overflow-hidden bg-white shadow-md hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 sm:hover:-translate-y-2"
             >
               {/* Poster Image - Full Card */}
@@ -149,11 +178,11 @@ const EventUpcomingGrid = () => {
           ))}
         </div>
 
-        {/* View All Events Button */}
-        {!isAllEventsPage && (
+        {/* View All Events Button - Hides on all-events page */}
+        {!onAllEventsPage && (
           <div className="mt-8 sm:mt-10 text-center">
             <Link
-              to="/events/all-events"
+              to={getAllEventsPath()}
               className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-3.5 bg-[#1B3766] text-white rounded-xl font-semibold text-sm hover:bg-[#142952] transition-all shadow-lg hover:shadow-xl group"
             >
               View All Events

@@ -1,18 +1,31 @@
 // components/AllEventsNavbar.jsx
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FaSearch, FaTimes, FaCalendarAlt, FaArrowLeft } from 'react-icons/fa';
+import { FaSearch, FaTimes, FaCalendarAlt } from 'react-icons/fa';
+
+const getSubdomain = () => {
+  const hostname = window.location.hostname;
+  if (hostname === 'eventroom.lovohcreate.com') return 'events';
+  if (hostname === 'biizzed.lovohcreate.com') return 'biizzed';
+  if (hostname === 'uduua.lovohcreate.com') return 'uduua';
+  return 'main';
+};
+
+const currentSubdomain = getSubdomain();
+
+const getEventsListPath = () => {
+  if (currentSubdomain === 'events') return '/';
+  return '/events';
+};
+
+const getCreateEventPath = () => {
+  if (currentSubdomain === 'events') return '/dashboard/events/new';
+  return '/events/dashboard/events/new';
+};
 
 const AllEventsNavbar = () => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-
-  const handleBack = () => {
-    if (searchOpen) {
-      setSearchOpen(false);
-      setSearchTerm('');
-    }
-  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100">
@@ -20,11 +33,8 @@ const AllEventsNavbar = () => {
         {!searchOpen ? (
           // Normal Navbar
           <div className="flex items-center justify-between h-14 sm:h-16">
-            {/* Left - Back & Title */}
+            {/* Left - Title */}
             <div className="flex items-center gap-3">
-              <Link to="/events" className="p-1.5 -ml-1.5 text-gray-500 hover:text-[#1B3766] transition-colors rounded-lg hover:bg-gray-50">
-                <FaArrowLeft className="text-sm sm:text-base" />
-              </Link>
               <h1 className="text-base sm:text-xl font-bold text-gray-900">All Events</h1>
             </div>
 
@@ -40,7 +50,7 @@ const AllEventsNavbar = () => {
 
               {/* Create Event CTA */}
               <Link
-                to="/events/dashboard/events/new"
+                to={getCreateEventPath()}
                 className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-[#1B3766] text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-[#142952] transition-all"
               >
                 <FaCalendarAlt className="text-[10px] sm:text-xs" />
@@ -52,12 +62,6 @@ const AllEventsNavbar = () => {
         ) : (
           // Search Mode - Full width
           <div className="flex items-center gap-3 h-14 sm:h-16 animate-slideDown">
-            <button
-              onClick={handleBack}
-              className="p-1.5 -ml-1.5 text-gray-500 hover:text-[#1B3766] transition-colors rounded-lg hover:bg-gray-50 flex-shrink-0"
-            >
-              <FaArrowLeft className="text-sm" />
-            </button>
             <div className="relative flex-1">
               <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
               <input
