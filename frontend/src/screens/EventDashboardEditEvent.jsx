@@ -1,4 +1,4 @@
-// screens/EventDashboardEditEvent.jsx - With Custom Form Builder
+// screens/EventDashboardEditEvent.jsx - With reorderable custom form, bottom add button, description reload instruction
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -9,7 +9,8 @@ import {
   FaListUl, FaListOl, FaLink, FaHeading, FaQuoteRight, FaVideo,
   FaTicketAlt, FaTimes, FaUsers, FaUser, FaCamera,
   FaClipboardList, FaCheckSquare, FaDotCircle, FaFont, FaHashtag,
-  FaCalendar, FaEnvelope, FaPhone, FaChevronDown, FaChevronUp
+  FaCalendar, FaEnvelope, FaPhone, FaChevronDown, FaChevronUp,
+  FaSyncAlt, FaExclamationCircle
 } from 'react-icons/fa';
 import {
   useGetEventByIdQuery,
@@ -53,6 +54,7 @@ const EventDashboardEditEvent = () => {
   const [updateCustomForm, { isLoading: isUpdatingForm }] = useUpdateEventCustomFormMutation();
 
   const [description, setDescription] = useState("");
+  const [showReloadInstruction, setShowReloadInstruction] = useState(false); // NEW
   const [activeFormats, setActiveFormats] = useState({ bold: false, italic: false, underline: false });
   const [previewMode, setPreviewMode] = useState(false);
   const [hasTicketTypes, setHasTicketTypes] = useState(false);
@@ -94,7 +96,7 @@ const EventDashboardEditEvent = () => {
   const [speakers, setSpeakers] = useState([]);
   const [speakerFiles, setSpeakerFiles] = useState({});
 
-  // Populate form – now also load custom form
+  // Populate form – also load custom form
   useEffect(() => {
     if (event) {
       const eventDate = event.date ? new Date(event.date) : new Date();
@@ -159,10 +161,16 @@ const EventDashboardEditEvent = () => {
     );
   }, [formTitle, formDescription, formFields, customFormData]);
 
-  // Set editor content after load
+  // Set editor content after load + check if it appeared
   useEffect(() => {
     if (editorRef.current && event?.description && !isLoadingEvent) {
       editorRef.current.innerHTML = event.description;
+      // If the innerHTML ended up empty, show the reload instruction
+      if (editorRef.current.innerHTML === '') {
+        setShowReloadInstruction(true);
+      } else {
+        setShowReloadInstruction(false);
+      }
     }
   }, [event, isLoadingEvent]);
 
@@ -321,6 +329,21 @@ const EventDashboardEditEvent = () => {
     setFormFields(updated);
   };
 
+  // NEW – Reorder fields
+  const moveFieldUp = (index) => {
+    if (index === 0) return;
+    const updated = [...formFields];
+    [updated[index], updated[index - 1]] = [updated[index - 1], updated[index]];
+    setFormFields(updated);
+  };
+
+  const moveFieldDown = (index) => {
+    if (index === formFields.length - 1) return;
+    const updated = [...formFields];
+    [updated[index], updated[index + 1]] = [updated[index + 1], updated[index]];
+    setFormFields(updated);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.title.trim()) { toast.error("Title required"); return; }
@@ -455,6 +478,12 @@ const EventDashboardEditEvent = () => {
                   onInput={(e) => setDescription(e.currentTarget.innerHTML)}
                   onKeyUp={updateActiveFormats} onMouseUp={updateActiveFormats} />
               )}
+              {showReloadInstruction && (
+                <div className="mt-3 flex items-center gap-2 text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                  <FaExclamationCircle className="text-yellow-500" />
+                  <span>Description didn't load? <button type="button" onClick={() => window.location.reload()} className="underline text-[#1B3766] font-medium inline-flex items-center gap-1"><FaSyncAlt className="text-xs" /> Reload the page</button></span>
+                </div>
+              )}
               <p className="text-xs text-gray-500 mt-2">{previewMode ? "Switch back to edit mode." : "Use the toolbar to format your text."}</p>
             </div>
 
@@ -533,11 +562,11 @@ const EventDashboardEditEvent = () => {
               <p className="text-xs text-gray-400 mt-1">If not set, registration closes on event date</p>
             </div>
 
-            {/* NEW: Custom Registration Form Builder */}
+            {/* Custom Registration Form Builder */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2"><FaClipboardList className="text-[#1B3766]" /> Custom Registration Form</h3>
-                <button type="button" onClick={addFormField} className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-[#1B3766] text-white rounded-lg hover:bg-[#142952] transition-colors"><FaPlus /> Add Field</button>
+                {/* Removed top add field button */}
               </div>
               <p className="text-xs text-gray-500 mb-4">Collect extra info from attendees (e.g., "What do you hope to learn?"). These questions will appear during registration.</p>
 
@@ -558,7 +587,17 @@ const EventDashboardEditEvent = () => {
                     <div key={idx} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs font-semibold text-gray-700">Field {idx + 1}</span>
-                        <button type="button" onClick={() => removeFormField(idx)} className="text-red-500 hover:bg-red-50 p-1 rounded"><FaTrashAlt className="text-xs" /></button>
+                        <div className="flex items-center gap-1">
+                          <button type="button" onClick={() => moveFieldUp(idx)} disabled={idx === 0}
+                            className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30" title="Move up">
+                            <FaChevronUp className="text-xs" />
+                          </button>
+                          <button type="button" onClick={() => moveFieldDown(idx)} disabled={idx === formFields.length - 1}
+                            className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30" title="Move down">
+                            <FaChevronDown className="text-xs" />
+                          </button>
+                          <button type="button" onClick={() => removeFormField(idx)} className="p-1 text-red-500 hover:bg-red-50 rounded"><FaTrashAlt className="text-xs" /></button>
+                        </div>
                       </div>
                       <div className="grid grid-cols-2 gap-2 mb-2">
                         <div className="col-span-2">
@@ -601,6 +640,11 @@ const EventDashboardEditEvent = () => {
                     </div>
                   ))
                 )}
+
+                {/* Add Field button placed at the bottom */}
+                <button type="button" onClick={addFormField} className="w-full py-2.5 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 text-sm hover:border-[#1B3766] hover:text-[#1B3766] transition-colors">
+                  <FaPlus className="inline mr-1 text-xs" /> Add Field
+                </button>
               </div>
             </div>
           </div>
