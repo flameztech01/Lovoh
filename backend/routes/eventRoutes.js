@@ -21,6 +21,8 @@ import {
   checkInAttendee,
   verifyTicket,
   handlePaystackWebhook,
+  getEventCustomForm,          // ← new
+  updateEventCustomForm,       // ← new
 } from '../controllers/eventController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { protectAdmin } from '../middleware/adminAuthMiddleware.js';
@@ -44,24 +46,21 @@ cloudinary.config({
 const storage = new CloudinaryStorage({
   cloudinary,
   params: async (req, file) => {
-    // Determine folder based on fieldname
     const isSpeakerImage = file.fieldname.startsWith('speakerImages');
-    
     return {
       folder: isSpeakerImage ? 'The_Brave_Events/speakers' : 'The_Brave_Events',
       allowed_formats: ['jpg', 'png', 'jpeg', 'webp', 'avif'],
-      transformation: isSpeakerImage 
+      transformation: isSpeakerImage
         ? [{ width: 500, height: 500, crop: 'fill', gravity: 'face' }]
         : [{ width: 2000, height: 2000, crop: 'limit' }],
     };
   },
 });
 
-// Single multer upload that accepts all files
 const upload = multer({
   storage,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
-}).any(); // Accept any field names
+}).any();
 
 // Unified auth middleware
 const protectBoth = asyncHandler(async (req, res, next) => {
@@ -134,6 +133,12 @@ router.post('/wallet/withdraw', protect, withdrawEarnings);
 router.get('/admin/dashboard', protectAdmin, getAdminDashboard);
 router.put('/admin/:id/toggle-status', protectAdmin, toggleEventStatus);
 
+// ==================== CUSTOM FORM ROUTES ====================
+// Public: fetch the custom form for an event (used during registration)
+router.get('/:id/custom-form', getEventCustomForm);
+// Protected: create/update the custom form
+router.put('/:id/custom-form', protectBoth, updateEventCustomForm);
+
 // ==================== :id ROUTES (with sub-paths) ====================
 router.get('/:id/registrations', protectBoth, getEventRegistrations);
 router.post('/:id/register', registerForEvent);
@@ -141,7 +146,7 @@ router.post('/:id/report', reportEvent);
 router.put('/:id', protectBoth, upload, updateEvent);
 router.delete('/:id', protectBoth, deleteEvent);
 
-// ==================== PLAIN :id LAST ====================
+// ==================== PLAIN :id LAST (works with slug or _id) ====================
 router.get('/:id', getEventById);
 
 // ==================== ROOT ROUTES ====================

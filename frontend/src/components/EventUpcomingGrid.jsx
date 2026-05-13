@@ -17,9 +17,9 @@ const getSubdomain = () => {
 
 const currentSubdomain = getSubdomain();
 
-const getEventDetailPath = (eventId) => {
-  if (currentSubdomain === 'events') return `/${eventId}`;
-  return `/events/${eventId}`;
+const getEventDetailPath = (eventSlug) => {
+  if (currentSubdomain === 'events') return `/${eventSlug}`;
+  return `/events/${eventSlug}`;
 };
 
 const getAllEventsPath = () => {
@@ -95,7 +95,7 @@ const EventUpcomingGrid = () => {
           {events.map(event => (
             <Link
               key={event._id}
-              to={getEventDetailPath(event._id)}
+              to={getEventDetailPath(event.slug)}   // ← changed to event.slug
               className="group relative rounded-xl sm:rounded-2xl overflow-hidden bg-white shadow-md hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 sm:hover:-translate-y-2"
             >
               {/* Poster Image - Full Card */}

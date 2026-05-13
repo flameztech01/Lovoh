@@ -1,4 +1,4 @@
-// screens/EventRegistration.jsx - Event registration page
+// screens/EventRegistration.jsx - With custom registration form
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
@@ -6,7 +6,7 @@ import {
   FaDollarSign, FaCalendarAlt, FaClock, FaMapMarkerAlt,
   FaPlus, FaMinus, FaTimes, FaUser, FaEnvelope, FaPhone,
 } from 'react-icons/fa';
-import { useGetEventByIdQuery, useRegisterForEventMutation } from '../slices/eventApiSlice';
+import { useGetEventByIdQuery, useRegisterForEventMutation, useGetEventCustomFormQuery } from '../slices/eventApiSlice';
 import { toast } from 'react-toastify';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
@@ -17,6 +17,10 @@ const EventRegistration = () => {
 
   const { data: event, isLoading } = useGetEventByIdQuery(id);
   const [registerForEvent, { isLoading: isRegistering }] = useRegisterForEventMutation();
+  
+  // Fetch custom form
+  const { data: customFormResponse } = useGetEventCustomFormQuery(id);
+  const customForm = customFormResponse?._id ? customFormResponse : null; // only treat as valid if it has _id
 
   const [selectedTicketIndex, setSelectedTicketIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
@@ -25,12 +29,28 @@ const EventRegistration = () => {
   const [registrationComplete, setRegistrationComplete] = useState(false);
 
   const [formData, setFormData] = useState({ name: '', email: '', phone: '' });
+  const [customFormResponses, setCustomFormResponses] = useState([]);
 
   const hasTicketTypes = event?.ticketTypes?.length > 0;
   const selectedTicket = hasTicketTypes ? event.ticketTypes[selectedTicketIndex] : null;
   const ticketPrice = selectedTicket ? selectedTicket.price : (event?.price || 0);
   const totalAmount = ticketPrice * quantity;
   const canRegister = event && !event.isDisabled && new Date(event.date) >= new Date();
+
+  // Initialize custom form responses
+  useEffect(() => {
+    if (customForm && customForm.fields?.length > 0) {
+      setCustomFormResponses(
+        customForm.fields.map((field) => ({
+          fieldId: field._id,
+          label: field.label,
+          value: field.type === 'checkbox' ? [] : '', // use array for multi-select checkbox
+        }))
+      );
+    } else {
+      setCustomFormResponses([]);
+    }
+  }, [customForm]);
 
   // Update additional attendees when quantity changes
   useEffect(() => {
@@ -55,6 +75,23 @@ const EventRegistration = () => {
     setAdditionalAttendees(updated);
   };
 
+  // Custom form field change handler
+  const handleCustomFormChange = (index, value, isCheckbox = false, isChecked = false) => {
+    const updated = [...customFormResponses];
+    if (isCheckbox) {
+      // For checkbox type, value is an array of selected options
+      const current = updated[index].value || [];
+      if (isChecked) {
+        updated[index] = { ...updated[index], value: [...current, value] };
+      } else {
+        updated[index] = { ...updated[index], value: current.filter(v => v !== value) };
+      }
+    } else {
+      updated[index] = { ...updated[index], value };
+    }
+    setCustomFormResponses(updated);
+  };
+
   const formatDate = (date) => {
     if (!date) return 'TBD';
     return new Date(date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -73,24 +110,50 @@ const EventRegistration = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name.trim() || !formData.email.trim()) { toast.error('Please enter your name and email'); return; }
+    if (!formData.name.trim() || !formData.email.trim()) {
+      toast.error('Please enter your name and email');
+      return;
+    }
+
+    // Validate custom form required fields
+    if (customForm && customForm.fields) {
+      for (let i = 0; i < customForm.fields.length; i++) {
+        const field = customForm.fields[i];
+        if (field.required) {
+          const response = customFormResponses[i];
+          const val = response?.value;
+          if (
+            val === undefined ||
+            val === '' ||
+            (Array.isArray(val) && val.length === 0)
+          ) {
+            toast.error(`"${field.label}" is required`);
+            return;
+          }
+        }
+      }
+    }
 
     try {
+      const payload = {
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone || '',
+        ticketTypeIndex: hasTicketTypes ? selectedTicketIndex : 0,
+        quantity,
+        additionalAttendees: showAttendeeFields ? additionalAttendees.map(a => ({
+          name: a.name.trim(),
+          email: a.email?.trim() || '',
+          phone: a.phone || '',
+        })) : [],
+        sendIndividualTickets: showAttendeeFields && additionalAttendees.some(a => a.email),
+        // Include custom form responses if any fields exist
+        customFormResponses: customFormResponses.length > 0 ? customFormResponses : undefined,
+      };
+
       const result = await registerForEvent({
         id: event._id,
-        data: {
-          name: formData.name.trim(),
-          email: formData.email.trim(),
-          phone: formData.phone || '',
-          ticketTypeIndex: hasTicketTypes ? selectedTicketIndex : 0,
-          quantity,
-          additionalAttendees: showAttendeeFields ? additionalAttendees.map(a => ({
-            name: a.name.trim(),
-            email: a.email?.trim() || '',
-            phone: a.phone || '',
-          })) : [],
-          sendIndividualTickets: showAttendeeFields && additionalAttendees.some(a => a.email),
-        },
+        data: payload,
       }).unwrap();
 
       if (event.isPaid && result.paymentUrl) {
@@ -198,6 +261,127 @@ const EventRegistration = () => {
                 <div><input type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="Phone Number (Optional)" className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3766]" /></div>
               </div>
             </div>
+
+            {/* Custom Registration Form */}
+            {customForm && customForm.fields?.length > 0 && customForm.isActive !== false && (
+              <div className="border-t border-gray-100 pt-5">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">{customForm.title || 'Additional Information'}</h3>
+                {customForm.description && (
+                  <p className="text-xs text-gray-500 mb-4">{customForm.description}</p>
+                )}
+                <div className="space-y-4">
+                  {customForm.fields.map((field, idx) => {
+                    const resp = customFormResponses[idx];
+                    const isReq = field.required;
+                    const commProps = {
+                      required: isReq,
+                      className: `w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-sm`,
+                      placeholder: field.placeholder || field.label + (isReq ? ' *' : ''),
+                    };
+
+                    return (
+                      <div key={idx}>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          {field.label} {isReq && <span className="text-red-500">*</span>}
+                        </label>
+                        {field.type === 'text' && (
+                          <input
+                            type="text"
+                            {...commProps}
+                            value={resp?.value || ''}
+                            onChange={(e) => handleCustomFormChange(idx, e.target.value)}
+                          />
+                        )}
+                        {field.type === 'textarea' && (
+                          <textarea
+                            {...commProps}
+                            value={resp?.value || ''}
+                            onChange={(e) => handleCustomFormChange(idx, e.target.value)}
+                            rows={3}
+                          />
+                        )}
+                        {field.type === 'number' && (
+                          <input
+                            type="number"
+                            {...commProps}
+                            value={resp?.value || ''}
+                            onChange={(e) => handleCustomFormChange(idx, e.target.value)}
+                          />
+                        )}
+                        {field.type === 'email' && (
+                          <input
+                            type="email"
+                            {...commProps}
+                            value={resp?.value || ''}
+                            onChange={(e) => handleCustomFormChange(idx, e.target.value)}
+                          />
+                        )}
+                        {field.type === 'phone' && (
+                          <input
+                            type="tel"
+                            {...commProps}
+                            value={resp?.value || ''}
+                            onChange={(e) => handleCustomFormChange(idx, e.target.value)}
+                          />
+                        )}
+                        {field.type === 'date' && (
+                          <input
+                            type="date"
+                            {...commProps}
+                            value={resp?.value || ''}
+                            onChange={(e) => handleCustomFormChange(idx, e.target.value)}
+                          />
+                        )}
+                        {field.type === 'dropdown' && (
+                          <select
+                            {...commProps}
+                            value={resp?.value || ''}
+                            onChange={(e) => handleCustomFormChange(idx, e.target.value)}
+                          >
+                            <option value="">-- Select --</option>
+                            {field.options?.map((opt, oi) => (
+                              <option key={oi} value={opt}>{opt}</option>
+                            ))}
+                          </select>
+                        )}
+                        {field.type === 'checkbox' && (
+                          <div className="space-y-2">
+                            {field.options?.map((opt, oi) => (
+                              <label key={oi} className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  className="rounded text-[#1B3766] focus:ring-[#1B3766]"
+                                  checked={resp?.value?.includes(opt) || false}
+                                  onChange={(e) => handleCustomFormChange(idx, opt, true, e.target.checked)}
+                                />
+                                <span className="text-sm text-gray-700">{opt}</span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                        {field.type === 'radio' && (
+                          <div className="space-y-2">
+                            {field.options?.map((opt, oi) => (
+                              <label key={oi} className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name={`custom-field-${idx}`}
+                                  className="text-[#1B3766] focus:ring-[#1B3766]"
+                                  value={opt}
+                                  checked={resp?.value === opt}
+                                  onChange={(e) => handleCustomFormChange(idx, e.target.value)}
+                                />
+                                <span className="text-sm text-gray-700">{opt}</span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Additional Attendees Toggle */}
             {quantity > 1 && (

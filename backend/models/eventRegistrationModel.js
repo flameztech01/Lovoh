@@ -11,6 +11,12 @@ const attendeeSchema = mongoose.Schema({
   checkedInAt: { type: Date },
 });
 
+const customFormResponseSchema = mongoose.Schema({
+  fieldId: { type: mongoose.Schema.Types.ObjectId, required: true },
+  label: { type: String },   // optional, but useful for displaying later
+  value: { type: mongoose.Schema.Types.Mixed }, // string, number, array of strings, etc.
+}, { _id: false });
+
 const eventRegistrationSchema = mongoose.Schema(
   {
     event: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'Event' },
@@ -42,6 +48,9 @@ const eventRegistrationSchema = mongoose.Schema(
     ticketCheckedIn: { type: Boolean, default: false },
     checkedInAt: { type: Date },
     notes: { type: String, default: '' },
+
+    // NEW: custom form answers
+    customFormResponses: [customFormResponseSchema],
   },
   { timestamps: true }
 );

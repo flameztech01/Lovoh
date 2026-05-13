@@ -1,4 +1,4 @@
-// screens/AllEvents.jsx
+// screens/AllEvents.jsx – Full updated version
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useGetEventsQuery } from '../slices/eventApiSlice';
@@ -23,9 +23,9 @@ const getSubdomain = () => {
 
 const currentSubdomain = getSubdomain();
 
-const getEventDetailPath = (eventId) => {
-  if (currentSubdomain === 'events') return `/${eventId}`;
-  return `/events/${eventId}`;
+const getEventDetailPath = (eventSlug) => {
+  if (currentSubdomain === 'events') return `/${eventSlug}`;
+  return `/events/${eventSlug}`;
 };
 // =========================================================
 
@@ -320,7 +320,7 @@ const AllEvents = () => {
                 </div>
               ) : (
                 filteredEvents.map(event => (
-                  <Link key={event._id} to={getEventDetailPath(event._id)}
+                  <Link key={event._id} to={getEventDetailPath(event.slug)}
                     className="group bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col">
                     <div className="aspect-[16/10] relative overflow-hidden bg-gray-100">
                       {event.images?.[0] ? (
@@ -365,7 +365,7 @@ const AllEvents = () => {
                 </div>
               ) : (
                 filteredEvents.map(event => (
-                  <Link key={event._id} to={getEventDetailPath(event._id)}
+                  <Link key={event._id} to={getEventDetailPath(event.slug)}
                     className="group flex gap-3 bg-white rounded-xl shadow-sm border border-gray-100 p-3 hover:shadow-md transition-all duration-300">
                     <div className="w-28 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 relative">
                       {event.images?.[0] ? (

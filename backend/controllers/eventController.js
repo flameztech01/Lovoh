@@ -1,15 +1,17 @@
 import asyncHandler from 'express-async-handler';
 import crypto from 'crypto';
+import mongoose from 'mongoose';
 import Event from '../models/eventModel.js';
+import EventForm from '../models/eventFormModel.js';
 import EventRegistration from '../models/eventRegistrationModel.js';
 import User from '../models/userModel.js';
 import Transaction from '../models/transactionModel.js';
 import { v2 as cloudinary } from 'cloudinary';
 import axios from 'axios';
-import { 
-  sendRegistrationConfirmation, 
-  sendNewRegistrationToCreator, 
-  sendPaymentConfirmation, 
+import {
+  sendRegistrationConfirmation,
+  sendNewRegistrationToCreator,
+  sendPaymentConfirmation,
   sendPaymentToCreator,
   sendEventReportNotice,
   sendWithdrawalConfirmation,
@@ -24,7 +26,18 @@ const PAYSTACK_BASE_URL = 'https://api.paystack.co';
 const COMPANY_SHARE_PERCENTAGE = 6;
 const CREATOR_SHARE_PERCENTAGE = 94;
 
-// Generate seat number helper
+// --------------------- HELPERS ---------------------
+
+// Find event by slug (fallback to _id for legacy)
+const findEvent = async (identifier) => {
+  if (mongoose.Types.ObjectId.isValid(identifier)) {
+    const byId = await Event.findById(identifier);
+    if (byId) return byId;
+  }
+  return await Event.findOne({ slug: identifier.toLowerCase() });
+};
+
+// Generate a unique seat number
 const generateSeatNumber = async (eventId) => {
   const confirmedCount = await EventRegistration.countDocuments({
     event: eventId,
@@ -33,7 +46,30 @@ const generateSeatNumber = async (eventId) => {
   return `A${String(confirmedCount + 1).padStart(3, '0')}`;
 };
 
-// ==================== EVENT CREATION ====================
+// Create or update the custom form linked to an event
+const upsertEventForm = async (eventId, formData) => {
+  if (!formData) return null;
+  const { title, description, fields } = formData;
+  if (!fields || !Array.isArray(fields) || fields.length === 0) return null;
+
+  let form = await EventForm.findOne({ event: eventId });
+  if (form) {
+    form.title = title || form.title;
+    form.description = description || form.description;
+    form.fields = fields;
+    await form.save();
+    return form._id;
+  }
+  form = await EventForm.create({
+    event: eventId,
+    title: title || 'Additional Information',
+    description: description || '',
+    fields,
+  });
+  return form._id;
+};
+
+// --------------------- EVENT CREATION ---------------------
 
 const createEvent = asyncHandler(async (req, res) => {
   const {
@@ -41,31 +77,25 @@ const createEvent = asyncHandler(async (req, res) => {
     location, venue, speakers, maxAttendees, isPaid, price,
     registrationDeadline, tags, isVirtual, meetingLink,
     ticketTypes, enableMultipleTickets, maxTicketsPerOrder,
+    customForm,
   } = req.body;
 
-  // Basic validation – location is only required for in‑person events
   if (!title || !description || !eventType || !category || !date || !time) {
-    // Clean up uploaded files on error
     if (req.files) {
       const files = Array.isArray(req.files) ? req.files : Object.values(req.files).flat();
-      for (const file of files) {
-        await cloudinary.uploader.destroy(file.filename);
-      }
+      for (const file of files) await cloudinary.uploader.destroy(file.filename);
     }
     res.status(400);
     throw new Error('Please provide all required fields');
   }
 
-  // Virtual event check – location is optional
   const isVirtualEvent = isVirtual === 'true' || isVirtual === true;
   const eventLocation = isVirtualEvent ? (location?.trim() || 'Online') : location;
-
   if (!eventLocation && !isVirtualEvent) {
     res.status(400);
     throw new Error('Location is required for in‑person events');
   }
 
-  // Parse ticket types
   let parsedTicketTypes = [];
   if (ticketTypes) {
     try {
@@ -79,7 +109,6 @@ const createEvent = asyncHandler(async (req, res) => {
   const isAdmin = req.user.role === 'admin';
   const hasTicketTypes = parsedTicketTypes.length > 0;
 
-  // Price validation for paid events
   if (!isAdmin && (isPaid === 'true' || isPaid === true)) {
     if (hasTicketTypes) {
       for (const tt of parsedTicketTypes) {
@@ -106,7 +135,6 @@ const createEvent = asyncHandler(async (req, res) => {
     }
   }
 
-  // Parse speakers
   let parsedSpeakers = [];
   if (speakers) {
     try {
@@ -116,20 +144,16 @@ const createEvent = asyncHandler(async (req, res) => {
     }
   }
 
-  // Separate event images from speaker images
   let eventImages = [];
   let speakerImageFiles = [];
-
   if (req.files) {
     const allFiles = Array.isArray(req.files) ? req.files : [];
     eventImages = allFiles.filter(f => f.fieldname === 'images');
     speakerImageFiles = allFiles.filter(f => f.fieldname.startsWith('speakerImages'));
   }
 
-  // Get event image URLs
   const eventImageUrls = eventImages.map(file => file.path);
 
-  // Assign speaker images to speakers based on fieldname index
   if (speakerImageFiles.length > 0 && parsedSpeakers.length > 0) {
     speakerImageFiles.forEach((file) => {
       const match = file.fieldname.match(/\[(\d+)\]/);
@@ -174,13 +198,28 @@ const createEvent = asyncHandler(async (req, res) => {
     paymentSplit: isAdmin ? 'full' : 'split',
   });
 
+  // Process custom form
+  if (customForm) {
+    try {
+      const formData = typeof customForm === 'string' ? JSON.parse(customForm) : customForm;
+      const formId = await upsertEventForm(event._id, formData);
+      if (formId) {
+        event.customForm = formId;
+        await event.save();
+      }
+    } catch (err) {
+      // rollback: delete event if form creation fails?
+      throw new Error('Invalid custom form format');
+    }
+  }
+
   res.status(201).json({
     message: 'Event created successfully',
     event,
   });
 });
 
-// ==================== GET EVENTS ====================
+// --------------------- GET EVENTS ---------------------
 
 const getEvents = asyncHandler(async (req, res) => {
   const { status, category, eventType, upcoming, search, createdBy, creatorType, page = 1, limit = 12 } = req.query;
@@ -215,16 +254,16 @@ const getEvents = asyncHandler(async (req, res) => {
         from: 'users',
         localField: 'createdBy',
         foreignField: '_id',
-        as: 'userCreator'
-      }
+        as: 'userCreator',
+      },
     },
     {
       $lookup: {
         from: 'admins',
         localField: 'createdBy',
         foreignField: '_id',
-        as: 'adminCreator'
-      }
+        as: 'adminCreator',
+      },
     },
     {
       $addFields: {
@@ -232,24 +271,19 @@ const getEvents = asyncHandler(async (req, res) => {
           $cond: {
             if: { $eq: ['$creatorType', 'admin'] },
             then: { $arrayElemAt: ['$adminCreator', 0] },
-            else: { $arrayElemAt: ['$userCreator', 0] }
-          }
-        }
-      }
+            else: { $arrayElemAt: ['$userCreator', 0] },
+          },
+        },
+      },
     },
     {
       $addFields: {
         'createdBy.name': { $ifNull: ['$createdBy.name', 'Unknown'] },
         'createdBy.email': { $ifNull: ['$createdBy.email', ''] },
-        'createdBy.profile': { $ifNull: ['$createdBy.profile', ''] }
-      }
+        'createdBy.profile': { $ifNull: ['$createdBy.profile', ''] },
+      },
     },
-    {
-      $project: {
-        userCreator: 0,
-        adminCreator: 0
-      }
-    }
+    { $project: { userCreator: 0, adminCreator: 0 } },
   ];
 
   const events = await Event.aggregate(pipeline);
@@ -279,22 +313,31 @@ const getMyEvents = asyncHandler(async (req, res) => {
 });
 
 const getEventById = asyncHandler(async (req, res) => {
-  const event = await Event.findById(req.params.id).lean();
+  const event = await findEvent(req.params.id);
   if (!event || event.isDisabled) {
     res.status(404);
     throw new Error('Event not found');
   }
+
   const confirmedCount = await EventRegistration.countDocuments({
     event: event._id,
     status: 'confirmed',
   });
-  res.json({ ...event, currentAttendees: confirmedCount });
+
+  // Populate custom form if exists
+  if (event.customForm) {
+    await event.populate('customForm');
+  }
+
+  const eventObj = event.toObject({ virtuals: true });
+  eventObj.currentAttendees = confirmedCount;
+  res.json(eventObj);
 });
 
-// ==================== UPDATE & DELETE EVENTS ====================
+// --------------------- UPDATE & DELETE EVENTS ---------------------
 
 const updateEvent = asyncHandler(async (req, res) => {
-  const event = await Event.findById(req.params.id);
+  const event = await findEvent(req.params.id);
   if (!event) {
     res.status(404);
     throw new Error('Event not found');
@@ -311,14 +354,13 @@ const updateEvent = asyncHandler(async (req, res) => {
     location, venue, speakers, maxAttendees, isPaid, price,
     registrationDeadline, tags, isVirtual, meetingLink, keepImages,
     ticketTypes, enableMultipleTickets, maxTicketsPerOrder,
+    customForm,
   } = req.body;
 
-  // FIXED: Handle files from .any() - req.files is a flat array
   let allFiles = [];
   if (req.files && Array.isArray(req.files)) {
     allFiles = req.files;
   }
-
   const eventImageFiles = allFiles.filter(f => f.fieldname === 'images');
   const speakerImageFiles = allFiles.filter(f => f.fieldname.startsWith('speakerImages'));
 
@@ -326,15 +368,12 @@ const updateEvent = asyncHandler(async (req, res) => {
   if (speakers) {
     try {
       let parsedSpeakers = typeof speakers === 'string' ? JSON.parse(speakers) : speakers;
-      
-      // Handle new speaker image uploads
       if (speakerImageFiles.length > 0) {
         speakerImageFiles.forEach((file) => {
           const match = file.fieldname.match(/\[(\d+)\]/);
           if (match) {
             const index = parseInt(match[1]);
             if (parsedSpeakers[index]) {
-              // Delete old speaker image from cloudinary
               const oldSpeaker = event.speakers[index];
               if (oldSpeaker && oldSpeaker.image && oldSpeaker.image.includes('cloudinary')) {
                 try {
@@ -347,8 +386,7 @@ const updateEvent = asyncHandler(async (req, res) => {
           }
         });
       }
-      
-      // Preserve existing speaker images for speakers not being updated
+      // Preserve existing speaker images if not updated
       for (let i = 0; i < parsedSpeakers.length; i++) {
         const existingSpeaker = event.speakers[i];
         if (existingSpeaker && existingSpeaker.image) {
@@ -357,8 +395,7 @@ const updateEvent = asyncHandler(async (req, res) => {
           }
         }
       }
-      
-      // Delete removed speaker images from cloudinary
+      // Delete removed speaker images
       for (const oldSpeaker of event.speakers) {
         if (oldSpeaker.image && oldSpeaker.image.includes('cloudinary')) {
           const stillExists = parsedSpeakers.some(s => s.image === oldSpeaker.image);
@@ -381,12 +418,10 @@ const updateEvent = asyncHandler(async (req, res) => {
     } catch (error) { console.error('Ticket types parsing error:', error); }
   }
 
-  // FIXED: Handle event images - always process keepImages, even if no new uploads
+  // Handle event images
   const imagesToKeep = keepImages
     ? (Array.isArray(keepImages) ? keepImages : JSON.parse(keepImages))
     : [];
-
-  // Delete old images not in keepImages
   for (const oldImage of event.images) {
     if (!imagesToKeep.includes(oldImage)) {
       try {
@@ -395,18 +430,16 @@ const updateEvent = asyncHandler(async (req, res) => {
       } catch (err) { console.error('Error deleting old image:', err); }
     }
   }
-
-  // Add new event images
   const newImages = eventImageFiles.map(file => file.path);
   event.images = [...imagesToKeep, ...newImages];
 
-  // Update other fields
+  // Update text fields
   if (title) event.title = title.trim();
   if (description) event.description = description;
   if (eventType) event.eventType = eventType;
   if (category) event.category = category;
-  if (date) { 
-    event.date = new Date(date); 
+  if (date) {
+    event.date = new Date(date);
     if (event.status !== 'postponed' && event.status !== 'cancelled') {
       event.status = event.date < new Date() ? 'passed' : 'upcoming';
     }
@@ -425,67 +458,104 @@ const updateEvent = asyncHandler(async (req, res) => {
   if (registrationDeadline) event.registrationDeadline = new Date(registrationDeadline);
   if (tags) event.tags = Array.isArray(tags) ? tags : tags.split(',').map(t => t.trim()).filter(Boolean);
 
-  const updatedEvent = await event.save();
-  res.json(updatedEvent);
+  // Custom form handling
+  if (customForm !== undefined) {
+    const formData = typeof customForm === 'string' ? JSON.parse(customForm) : customForm;
+    if (formData && formData.fields && formData.fields.length > 0) {
+      const formId = await upsertEventForm(event._id, formData);
+      event.customForm = formId;
+    } else if (customForm === null || (Array.isArray(formData?.fields) && formData.fields.length === 0)) {
+      // remove form
+      if (event.customForm) {
+        await EventForm.findByIdAndDelete(event.customForm);
+        event.customForm = undefined;
+      }
+    }
+  }
+
+  await event.save();
+  res.json(event);
 });
 
 const deleteEvent = asyncHandler(async (req, res) => {
-  const event = await Event.findById(req.params.id);
-  if (!event) { res.status(404); throw new Error('Event not found'); }
+  const event = await findEvent(req.params.id);
+  if (!event) {
+    res.status(404);
+    throw new Error('Event not found');
+  }
   const isOwner = event.createdBy.toString() === req.user._id.toString();
   const isAdmin = req.user.role === 'admin';
-  if (!isOwner && !isAdmin) { res.status(403); throw new Error('Not authorized to delete this event'); }
+  if (!isOwner && !isAdmin) {
+    res.status(403);
+    throw new Error('Not authorized to delete this event');
+  }
 
   for (const image of event.images) {
     try {
       const publicId = image.split('/').pop().split('.')[0];
       await cloudinary.uploader.destroy(`The_Brave_Events/${publicId}`);
-    } catch (error) {}
+    } catch (err) {}
   }
   await EventRegistration.deleteMany({ event: event._id });
-  await Event.deleteOne({ _id: req.params.id });
+  await EventForm.deleteOne({ event: event._id }); // clean up custom form
+  await Event.deleteOne({ _id: event._id });
   res.json({ message: 'Event removed successfully' });
 });
 
-// ==================== REPORT / DISABLE EVENT ====================
+// --------------------- REPORT / DISABLE EVENT ---------------------
 
 const reportEvent = asyncHandler(async (req, res) => {
-  const event = await Event.findById(req.params.id);
-  if (!event) { res.status(404); throw new Error('Event not found'); }
+  const event = await findEvent(req.params.id);
+  if (!event) {
+    res.status(404);
+    throw new Error('Event not found');
+  }
   event.reportCount = (event.reportCount || 0) + 1;
   if (event.reportCount >= 5 && !event.isDisabled) {
     event.isDisabled = true;
     event.disabledAt = Date.now();
     event.disabledReason = 'Reported by multiple users';
     const creator = await User.findById(event.createdBy);
-    if (creator) { await sendEventReportNotice(creator.email, event.title, event.reportCount); }
+    if (creator) await sendEventReportNotice(creator.email, event.title, event.reportCount);
   }
   await event.save();
   res.json({ message: 'Event reported', reportCount: event.reportCount, isDisabled: event.isDisabled });
 });
 
 const toggleEventStatus = asyncHandler(async (req, res) => {
-  const event = await Event.findById(req.params.id);
-  if (!event) { res.status(404); throw new Error('Event not found'); }
+  const event = await findEvent(req.params.id);
+  if (!event) {
+    res.status(404);
+    throw new Error('Event not found');
+  }
   const { reason } = req.body;
   event.isDisabled = !event.isDisabled;
-  if (event.isDisabled) { event.disabledAt = Date.now(); event.disabledReason = reason || 'Disabled by admin'; }
-  else { event.disabledAt = null; event.disabledReason = ''; event.reportCount = 0; }
+  if (event.isDisabled) {
+    event.disabledAt = Date.now();
+    event.disabledReason = reason || 'Disabled by admin';
+  } else {
+    event.disabledAt = null;
+    event.disabledReason = '';
+    event.reportCount = 0;
+  }
   await event.save();
   const creator = await User.findById(event.createdBy);
-  if (creator) { await sendEventReportNotice(creator.email, event.title, 0, event.isDisabled ? 'disabled' : 'enabled'); }
+  if (creator) {
+    await sendEventReportNotice(creator.email, event.title, 0, event.isDisabled ? 'disabled' : 'enabled');
+  }
   res.json({ message: event.isDisabled ? 'Event disabled' : 'Event enabled', event });
 });
 
-// ==================== REGISTRATION ====================
+// --------------------- REGISTRATION ---------------------
 
 const registerForEvent = asyncHandler(async (req, res) => {
-  const { 
-    name, email, phone, 
-    ticketTypeIndex = 0, 
+  const {
+    name, email, phone,
+    ticketTypeIndex = 0,
     quantity = 1,
     additionalAttendees = [],
     sendIndividualTickets = false,
+    customFormResponses = [],
   } = req.body;
 
   if (!name || !email) {
@@ -493,10 +563,44 @@ const registerForEvent = asyncHandler(async (req, res) => {
     throw new Error('Name and email are required');
   }
 
-  const event = await Event.findById(req.params.id);
-  if (!event || event.isDisabled) { res.status(404); throw new Error('Event not found'); }
-  if (event.status === 'passed' || new Date(event.date) < new Date()) { res.status(400); throw new Error('Event has already passed'); }
-  if (event.registrationDeadline && new Date(event.registrationDeadline) < new Date()) { res.status(400); throw new Error('Registration deadline has passed'); }
+  const event = await findEvent(req.params.id);
+  if (!event || event.isDisabled) {
+    res.status(404);
+    throw new Error('Event not found');
+  }
+  if (event.status === 'passed' || new Date(event.date) < new Date()) {
+    res.status(400);
+    throw new Error('Event has already passed');
+  }
+  if (event.registrationDeadline && new Date(event.registrationDeadline) < new Date()) {
+    res.status(400);
+    throw new Error('Registration deadline has passed');
+  }
+
+  // Load custom form and validate required fields
+  let customForm = null;
+  if (event.customForm) {
+    customForm = await EventForm.findById(event.customForm);
+    if (customForm && customForm.isActive) {
+      for (const field of customForm.fields) {
+        if (field.required) {
+          const response = customFormResponses.find(
+            r => r.fieldId.toString() === field._id.toString()
+          );
+          const val = response?.value;
+          if (
+            response === undefined ||
+            val === undefined ||
+            val === '' ||
+            (Array.isArray(val) && val.length === 0)
+          ) {
+            res.status(400);
+            throw new Error(`"${field.label}" is required`);
+          }
+        }
+      }
+    }
+  }
 
   let selectedTicketType = null;
   let ticketPrice = event.price || 0;
@@ -504,7 +608,10 @@ const registerForEvent = asyncHandler(async (req, res) => {
 
   if (event.ticketTypes && event.ticketTypes.length > 0) {
     selectedTicketType = event.ticketTypes[ticketTypeIndex];
-    if (!selectedTicketType) { res.status(400); throw new Error('Invalid ticket type'); }
+    if (!selectedTicketType) {
+      res.status(400);
+      throw new Error('Invalid ticket type');
+    }
     ticketPrice = selectedTicketType.price;
     seatsPerTicket = selectedTicketType.seatsPerTicket || 1;
 
@@ -532,70 +639,19 @@ const registerForEvent = asyncHandler(async (req, res) => {
     email: email.toLowerCase().trim(),
     status: { $in: ['confirmed', 'pending'] },
   });
-  if (existingRegistration) { res.status(400); throw new Error('You are already registered for this event'); }
+  if (existingRegistration) {
+    res.status(400);
+    throw new Error('You are already registered for this event');
+  }
 
   const totalAmount = ticketPrice * quantity;
 
-  // FREE EVENT
-  if (!event.isPaid || totalAmount === 0) {
-    const baseSeatNumber = await generateSeatNumber(event._id);
-    
-    const registration = await EventRegistration.create({
-      event: event._id,
-      name: name.trim(),
-      email: email.toLowerCase().trim(),
-      phone: phone || '',
-      isPaidEvent: false,
-      price: ticketPrice,
-      totalAmount: 0,
-      quantity,
-      ticketType: selectedTicketType?.name || 'General',
-      ticketTypeIndex,
-      seatsPerTicket,
-      totalSeats,
-      status: 'confirmed',
-      seatNumber: baseSeatNumber,
-      additionalAttendees: additionalAttendees.map(att => ({
-        ...att,
-        email: att.email?.toLowerCase().trim(),
-        seatNumber: `${baseSeatNumber}-${Math.random().toString(36).substr(2, 3).toUpperCase()}`,
-      })),
-      sendIndividualTickets,
-    });
-
-    event.currentAttendees = confirmedCount + totalSeats;
-    if (selectedTicketType) {
-      event.ticketTypes[ticketTypeIndex].soldCount += quantity;
-    }
-    await event.save();
-
-    // Send confirmation email(s)
-    await sendRegistrationConfirmation(email, name, event.title, event.date, event.time, event.venue || event.location, registration, event);
-
-    // Send individual tickets – CHANGED: added `event` as last argument
-    if (sendIndividualTickets && registration.additionalAttendees?.length > 0) {
-      for (const att of registration.additionalAttendees) {
-        if (att.email) {
-          await sendTicketToAttendee(att.email, att.name, event.title, event.date, event.time, event.venue || event.location, att.ticketId, att.seatNumber, event);
-        }
-      }
-    }
-
-    const creator = await User.findById(event.createdBy);
-    if (creator) {
-      await sendNewRegistrationToCreator(creator.email, event.title, name, email, 'free', registration.ticketId, registration.seatNumber, quantity);
-    }
-
-    return res.status(201).json({ message: 'Registration successful! Check your email for your ticket(s).', registration });
-  }
-
-  // PAID EVENT
-  const registration = await EventRegistration.create({
+  const registrationData = {
     event: event._id,
     name: name.trim(),
     email: email.toLowerCase().trim(),
     phone: phone || '',
-    isPaidEvent: true,
+    isPaidEvent: event.isPaid && totalAmount > 0,
     price: ticketPrice,
     totalAmount,
     quantity,
@@ -603,12 +659,68 @@ const registerForEvent = asyncHandler(async (req, res) => {
     ticketTypeIndex,
     seatsPerTicket,
     totalSeats,
-    status: 'pending',
+    customFormResponses,
     additionalAttendees: additionalAttendees.map(att => ({
       ...att,
       email: att.email?.toLowerCase().trim(),
     })),
     sendIndividualTickets,
+  };
+
+  // Free event – direct confirmation
+  if (!registrationData.isPaidEvent || totalAmount === 0) {
+    const baseSeatNumber = await generateSeatNumber(event._id);
+    registrationData.status = 'confirmed';
+    registrationData.seatNumber = baseSeatNumber;
+    registrationData.additionalAttendees = registrationData.additionalAttendees.map((att, idx) => ({
+      ...att,
+      seatNumber: `${baseSeatNumber}-${Math.random().toString(36).substr(2, 3).toUpperCase()}`,
+    }));
+
+    const registration = await EventRegistration.create(registrationData);
+
+    event.currentAttendees = confirmedCount + totalSeats;
+    if (selectedTicketType) {
+      event.ticketTypes[ticketTypeIndex].soldCount += quantity;
+    }
+    await event.save();
+
+    await sendRegistrationConfirmation(
+      registration.email,
+      registration.name,
+      event.title,
+      event.date,
+      event.time,
+      event.venue || event.location,
+      registration,
+      event
+    );
+
+    if (registration.sendIndividualTickets && registration.additionalAttendees?.length > 0) {
+      for (const att of registration.additionalAttendees) {
+        if (att.email) {
+          await sendTicketToAttendee(
+            att.email, att.name, event.title, event.date, event.time,
+            event.venue || event.location, att.ticketId, att.seatNumber, event
+          );
+        }
+      }
+    }
+
+    const creator = await User.findById(event.createdBy);
+    if (creator) {
+      await sendNewRegistrationToCreator(
+        creator.email, event.title, name, email, 'free', registration.ticketId, registration.seatNumber, quantity
+      );
+    }
+
+    return res.status(201).json({ message: 'Registration successful! Check your email for your ticket(s).', registration });
+  }
+
+  // Paid event – initiate payment
+  const registration = await EventRegistration.create({
+    ...registrationData,
+    status: 'pending',
   });
 
   try {
@@ -623,7 +735,7 @@ const registerForEvent = asyncHandler(async (req, res) => {
         quantity,
         ticketType: selectedTicketType?.name || 'General',
       },
-      callback_url: `${process.env.FRONTEND_URL}/events/${event._id}`,
+      callback_url: `${process.env.FRONTEND_URL}/events/${event.slug}`,
     };
 
     const isUserEvent = event.creatorType !== 'admin' && event.paymentSplit !== 'full';
@@ -656,7 +768,7 @@ const registerForEvent = asyncHandler(async (req, res) => {
   }
 });
 
-// ==================== VERIFY PAYMENT ====================
+// --------------------- VERIFY PAYMENT ---------------------
 
 const verifyEventPayment = asyncHandler(async (req, res) => {
   const { reference } = req.params;
@@ -674,8 +786,13 @@ const verifyEventPayment = asyncHandler(async (req, res) => {
       if (!registration && metadata?.registrationId) {
         registration = await EventRegistration.findById(metadata.registrationId);
       }
-      if (!registration) { res.status(404); throw new Error('Registration not found'); }
-      if (registration.status === 'confirmed') { return res.json({ message: 'Payment already confirmed', registration }); }
+      if (!registration) {
+        res.status(404);
+        throw new Error('Registration not found');
+      }
+      if (registration.status === 'confirmed') {
+        return res.json({ message: 'Payment already confirmed', registration });
+      }
 
       const totalTickets = registration.quantity || 1;
       const currentConfirmed = await EventRegistration.countDocuments({
@@ -717,58 +834,90 @@ const verifyEventPayment = asyncHandler(async (req, res) => {
 
         if (isAdminEvent) {
           await Transaction.create({
-            event: event._id, registration: registration._id, creator: event.createdBy,
-            totalAmount, companyShare: totalAmount, creatorShare: 0,
-            status: 'completed', paystackReference: paystackRef || reference,
+            event: event._id,
+            registration: registration._id,
+            creator: event.createdBy,
+            totalAmount,
+            companyShare: totalAmount,
+            creatorShare: 0,
+            status: 'completed',
+            paystackReference: paystackRef || reference,
           });
         } else {
           const companyShare = (totalAmount * COMPANY_SHARE_PERCENTAGE) / 100;
           const creatorShare = (totalAmount * CREATOR_SHARE_PERCENTAGE) / 100;
           await Transaction.create({
-            event: event._id, registration: registration._id, creator: event.createdBy,
-            totalAmount, companyShare, creatorShare,
-            status: 'completed', paystackReference: paystackRef || reference,
+            event: event._id,
+            registration: registration._id,
+            creator: event.createdBy,
+            totalAmount,
+            companyShare,
+            creatorShare,
+            status: 'completed',
+            paystackReference: paystackRef || reference,
           });
         }
 
-        // Send confirmation email(s)
-        await sendPaymentConfirmation(registration.email, registration.name, event.title, totalAmount, registration, event);
+        await sendPaymentConfirmation(
+          registration.email,
+          registration.name,
+          event.title,
+          totalAmount,
+          registration,
+          event
+        );
 
-        // Send individual tickets – CHANGED: added `event` as last argument
         if (registration.sendIndividualTickets && registration.additionalAttendees?.length > 0) {
           for (const att of registration.additionalAttendees) {
             if (att.email) {
-              await sendTicketToAttendee(att.email, att.name, event.title, event.date, event.time, event.venue || event.location, att.ticketId, att.seatNumber, event);
+              await sendTicketToAttendee(
+                att.email, att.name, event.title, event.date, event.time,
+                event.venue || event.location, att.ticketId, att.seatNumber, event
+              );
             }
           }
         }
 
         const creator = await User.findById(event.createdBy);
         if (creator) {
-          await sendPaymentToCreator(creator.email, event.title, registration.name, totalAmount, isAdminEvent ? 0 : CREATOR_SHARE_PERCENTAGE);
+          await sendPaymentToCreator(
+            creator.email,
+            event.title,
+            registration.name,
+            totalAmount,
+            isAdminEvent ? 0 : CREATOR_SHARE_PERCENTAGE
+          );
         }
       }
 
       return res.json({ message: 'Payment verified! Check your email for your ticket(s).', registration });
     } else {
       const reg = await EventRegistration.findOne({ paymentReference: reference });
-      if (reg && reg.status === 'pending') { reg.status = 'failed'; await reg.save(); }
-      res.status(400); throw new Error('Payment verification failed');
+      if (reg && reg.status === 'pending') {
+        reg.status = 'failed';
+        await reg.save();
+      }
+      res.status(400);
+      throw new Error('Payment verification failed');
     }
   } catch (error) {
-    if (error.response) { res.status(400); throw new Error(error.response.data.message || 'Payment verification failed'); }
+    if (error.response) {
+      res.status(400);
+      throw new Error(error.response.data.message || 'Payment verification failed');
+    }
     throw error;
   }
 });
 
-// ==================== CHECK-IN & VERIFY TICKET ====================
+// --------------------- CHECK-IN & VERIFY TICKET ---------------------
 
 const checkInAttendee = asyncHandler(async (req, res) => {
   const { ticketId } = req.params;
 
   let registration = await EventRegistration.findOne({ ticketId }).populate('event', 'title date createdBy');
   if (!registration) {
-    registration = await EventRegistration.findOne({ 'additionalAttendees.ticketId': ticketId }).populate('event', 'title date createdBy');
+    registration = await EventRegistration.findOne({ 'additionalAttendees.ticketId': ticketId })
+      .populate('event', 'title date createdBy');
     if (registration) {
       const attIndex = registration.additionalAttendees.findIndex(a => a.ticketId === ticketId);
       if (attIndex !== -1 && !registration.additionalAttendees[attIndex].checkedIn) {
@@ -778,24 +927,46 @@ const checkInAttendee = asyncHandler(async (req, res) => {
         await registration.save();
         return res.json({ message: 'Check-in successful', attendee: registration.additionalAttendees[attIndex] });
       }
-      res.status(400); throw new Error('Already checked in');
+      res.status(400);
+      throw new Error('Already checked in');
     }
   }
 
-  if (!registration) { res.status(404); throw new Error('Invalid ticket ID'); }
-  if (registration.status !== 'confirmed') { res.status(400); throw new Error('Registration is not confirmed'); }
-  if (registration.ticketCheckedIn) { res.status(400); throw new Error('Attendee already checked in'); }
+  if (!registration) {
+    res.status(404);
+    throw new Error('Invalid ticket ID');
+  }
+  if (registration.status !== 'confirmed') {
+    res.status(400);
+    throw new Error('Registration is not confirmed');
+  }
+  if (registration.ticketCheckedIn) {
+    res.status(400);
+    throw new Error('Attendee already checked in');
+  }
 
   const event = registration.event;
   const isOwner = event.createdBy.toString() === req.user._id.toString();
   const isAdmin = req.user.role === 'admin';
-  if (!isOwner && !isAdmin) { res.status(403); throw new Error('Not authorized'); }
+  if (!isOwner && !isAdmin) {
+    res.status(403);
+    throw new Error('Not authorized');
+  }
 
   registration.ticketCheckedIn = true;
   registration.checkedInAt = Date.now();
   await registration.save();
 
-  res.json({ message: 'Check-in successful', attendee: { name: registration.name, email: registration.email, ticketId: registration.ticketId, seatNumber: registration.seatNumber, checkedInAt: registration.checkedInAt } });
+  res.json({
+    message: 'Check-in successful',
+    attendee: {
+      name: registration.name,
+      email: registration.email,
+      ticketId: registration.ticketId,
+      seatNumber: registration.seatNumber,
+      checkedInAt: registration.checkedInAt,
+    },
+  });
 });
 
 const verifyTicket = asyncHandler(async (req, res) => {
@@ -803,7 +974,8 @@ const verifyTicket = asyncHandler(async (req, res) => {
 
   let registration = await EventRegistration.findOne({ ticketId }).populate('event', 'title date time venue location');
   if (!registration) {
-    registration = await EventRegistration.findOne({ 'additionalAttendees.ticketId': ticketId }).populate('event', 'title date time venue location');
+    registration = await EventRegistration.findOne({ 'additionalAttendees.ticketId': ticketId })
+      .populate('event', 'title date time venue location');
     if (registration) {
       const att = registration.additionalAttendees.find(a => a.ticketId === ticketId);
       return res.json({
@@ -814,7 +986,10 @@ const verifyTicket = asyncHandler(async (req, res) => {
     }
   }
 
-  if (!registration) { res.status(404); throw new Error('Invalid ticket'); }
+  if (!registration) {
+    res.status(404);
+    throw new Error('Invalid ticket');
+  }
 
   res.json({
     valid: registration.status === 'confirmed' && !registration.ticketCheckedIn,
@@ -823,29 +998,93 @@ const verifyTicket = asyncHandler(async (req, res) => {
   });
 });
 
-// ==================== WALLET ====================
+// --------------------- CUSTOM FORM (dedicated endpoints) ---------------------
+
+const getEventCustomForm = asyncHandler(async (req, res) => {
+  const event = await findEvent(req.params.id);
+  if (!event || event.isDisabled) {
+    res.status(404);
+    throw new Error('Event not found');
+  }
+  const form = await EventForm.findOne({ event: event._id });
+  res.json(form || { message: 'No custom form' });
+});
+
+const updateEventCustomForm = asyncHandler(async (req, res) => {
+  const event = await findEvent(req.params.id);
+  if (!event || event.isDisabled) {
+    res.status(404);
+    throw new Error('Event not found');
+  }
+  const isOwner = event.createdBy.toString() === req.user._id.toString();
+  const isAdmin = req.user.role === 'admin';
+  if (!isOwner && !isAdmin) {
+    res.status(403);
+    throw new Error('Not authorized');
+  }
+
+  const formData = req.body; // { title, description, fields }
+  const formId = await upsertEventForm(event._id, formData);
+
+  if (formId) {
+    event.customForm = formId;
+    await event.save();
+    const updatedForm = await EventForm.findById(formId);
+    return res.json(updatedForm);
+  } else if (req.body.fields && req.body.fields.length === 0) {
+    // explicit removal
+    if (event.customForm) {
+      await EventForm.findByIdAndDelete(event.customForm);
+      event.customForm = undefined;
+      await event.save();
+    }
+    return res.json({ message: 'Custom form removed' });
+  }
+  res.json(event);
+});
+
+// --------------------- WALLET ---------------------
 
 const setupPaystackWallet = asyncHandler(async (req, res) => {
   const { accountNumber, bankCode, businessName } = req.body;
-  if (!accountNumber || !bankCode) { res.status(400); throw new Error('Account number and bank code are required'); }
+  if (!accountNumber || !bankCode) {
+    res.status(400);
+    throw new Error('Account number and bank code are required');
+  }
 
   const user = await User.findById(req.user._id);
-  if (!user) { res.status(404); throw new Error('User not found'); }
+  if (!user) {
+    res.status(404);
+    throw new Error('User not found');
+  }
 
   try {
     const subaccountResponse = await axios.post(
       `${PAYSTACK_BASE_URL}/subaccount`,
-      { business_name: businessName || user.name || 'Event Creator', settlement_bank: bankCode, account_number: accountNumber, percentage_charge: COMPANY_SHARE_PERCENTAGE, description: `Event creator: ${user.email}` },
+      {
+        business_name: businessName || user.name || 'Event Creator',
+        settlement_bank: bankCode,
+        account_number: accountNumber,
+        percentage_charge: COMPANY_SHARE_PERCENTAGE,
+        description: `Event creator: ${user.email}`,
+      },
       { headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`, 'Content-Type': 'application/json' } }
     );
 
     user.paystackSubaccountCode = subaccountResponse.data.data.subaccount_code;
-    user.paystackAccountDetails = { accountNumber, bankCode, businessName: businessName || user.name };
+    user.paystackAccountDetails = {
+      accountNumber,
+      bankCode,
+      businessName: businessName || user.name,
+    };
     user.hasPaymentWallet = true;
     await user.save();
     await sendWalletSetupConfirmation(user.email, user.name);
 
-    res.json({ message: 'Payment wallet set up successfully!', subaccountCode: user.paystackSubaccountCode });
+    res.json({
+      message: 'Payment wallet set up successfully!',
+      subaccountCode: user.paystackSubaccountCode,
+    });
   } catch (error) {
     console.error('Wallet setup error:', error.response?.data || error.message);
     res.status(500);
@@ -855,80 +1094,151 @@ const setupPaystackWallet = asyncHandler(async (req, res) => {
 
 const getWalletInfo = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
-  if (!user || !user.hasPaymentWallet) { return res.json({ hasWallet: false, message: 'Payment wallet not set up' }); }
+  if (!user || !user.hasPaymentWallet) {
+    return res.json({ hasWallet: false, message: 'Payment wallet not set up' });
+  }
 
-  const transactions = await Transaction.find({ creator: user._id }).populate('event', 'title date').sort({ createdAt: -1 });
-  const totalEarnings = transactions.filter(t => t.status === 'completed').reduce((sum, t) => sum + t.creatorShare, 0);
-  const totalWithdrawn = transactions.filter(t => t.withdrawn).reduce((sum, t) => sum + t.creatorShare, 0);
+  const transactions = await Transaction.find({ creator: user._id })
+    .populate('event', 'title date')
+    .sort({ createdAt: -1 });
 
-  res.json({ hasWallet: true, walletDetails: { accountDetails: user.paystackAccountDetails }, totalEarnings, totalWithdrawn, availableBalance: totalEarnings - totalWithdrawn, transactions });
+  const totalEarnings = transactions
+    .filter(t => t.status === 'completed')
+    .reduce((sum, t) => sum + t.creatorShare, 0);
+  const totalWithdrawn = transactions
+    .filter(t => t.withdrawn)
+    .reduce((sum, t) => sum + t.creatorShare, 0);
+
+  res.json({
+    hasWallet: true,
+    walletDetails: { accountDetails: user.paystackAccountDetails },
+    totalEarnings,
+    totalWithdrawn,
+    availableBalance: totalEarnings - totalWithdrawn,
+    transactions,
+  });
 });
 
 const withdrawEarnings = asyncHandler(async (req, res) => {
   const { amount } = req.body;
-  if (!amount || Number(amount) <= 0) { res.status(400); throw new Error('Valid withdrawal amount is required'); }
+  if (!amount || Number(amount) <= 0) {
+    res.status(400);
+    throw new Error('Valid withdrawal amount is required');
+  }
 
   const user = await User.findById(req.user._id);
-  if (!user || !user.hasPaymentWallet) { res.status(400); throw new Error('Payment wallet not set up'); }
+  if (!user || !user.hasPaymentWallet) {
+    res.status(400);
+    throw new Error('Payment wallet not set up');
+  }
 
   const transactions = await Transaction.find({ creator: user._id, status: 'completed' });
   let remaining = Number(amount);
   for (const t of transactions) {
     if (remaining <= 0) break;
-    if (!t.withdrawn) { t.withdrawn = true; t.withdrawnAt = Date.now(); await t.save(); remaining -= t.creatorShare; }
+    if (!t.withdrawn) {
+      t.withdrawn = true;
+      t.withdrawnAt = Date.now();
+      await t.save();
+      remaining -= t.creatorShare;
+    }
   }
 
   await sendWithdrawalConfirmation(user.email, user.name, Number(amount));
   res.json({ message: `₦${Number(amount).toLocaleString()} withdrawal recorded`, withdrawn: Number(amount) });
 });
 
-// ==================== BANKS ====================
+// --------------------- BANK LIST ---------------------
 
 const getBankList = asyncHandler(async (req, res) => {
   try {
     if (!PAYSTACK_SECRET_KEY) return res.json(getFallbackBanks());
-    const response = await axios.get(`${PAYSTACK_BASE_URL}/bank`, { headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` }, params: { country: 'nigeria', perPage: 100 } });
-    if (response.data?.data) { const banks = response.data.data.filter(bank => bank.type === 'nuban' || !bank.type); return res.json(banks); }
+    const response = await axios.get(`${PAYSTACK_BASE_URL}/bank`, {
+      headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
+      params: { country: 'nigeria', perPage: 100 },
+    });
+    if (response.data?.data) {
+      const banks = response.data.data.filter(bank => bank.type === 'nuban' || !bank.type);
+      return res.json(banks);
+    }
     return res.json(getFallbackBanks());
-  } catch (error) { console.error('Failed to fetch bank list:', error.response?.data || error.message); res.json(getFallbackBanks()); }
+  } catch (error) {
+    console.error('Failed to fetch bank list:', error.response?.data || error.message);
+    res.json(getFallbackBanks());
+  }
 });
 
 const getFallbackBanks = () => [
-  { name: 'Access Bank', code: '044', type: 'nuban' }, { name: 'Ecobank Nigeria', code: '050', type: 'nuban' }, { name: 'Fidelity Bank', code: '070', type: 'nuban' }, { name: 'First Bank of Nigeria', code: '011', type: 'nuban' }, { name: 'First City Monument Bank (FCMB)', code: '214', type: 'nuban' }, { name: 'Guaranty Trust Bank (GTB)', code: '058', type: 'nuban' }, { name: 'Keystone Bank', code: '082', type: 'nuban' }, { name: 'Kuda Bank', code: '000013', type: 'nuban' }, { name: 'Moniepoint MFB', code: '000026', type: 'nuban' }, { name: 'Opay', code: '000008', type: 'nuban' }, { name: 'Palmpay', code: '000010', type: 'nuban' }, { name: 'Polaris Bank', code: '076', type: 'nuban' }, { name: 'Providus Bank', code: '101', type: 'nuban' }, { name: 'Stanbic IBTC Bank', code: '007', type: 'nuban' }, { name: 'Standard Chartered Bank', code: '068', type: 'nuban' }, { name: 'Sterling Bank', code: '232', type: 'nuban' }, { name: 'Union Bank of Nigeria', code: '032', type: 'nuban' }, { name: 'United Bank for Africa (UBA)', code: '033', type: 'nuban' }, { name: 'Unity Bank', code: '215', type: 'nuban' }, { name: 'Wema Bank', code: '035', type: 'nuban' }, { name: 'Zenith Bank', code: '057', type: 'nuban' },
+  { name: 'Access Bank', code: '044', type: 'nuban' },
+  { name: 'Ecobank Nigeria', code: '050', type: 'nuban' },
+  { name: 'Fidelity Bank', code: '070', type: 'nuban' },
+  { name: 'First Bank of Nigeria', code: '011', type: 'nuban' },
+  { name: 'First City Monument Bank (FCMB)', code: '214', type: 'nuban' },
+  { name: 'Guaranty Trust Bank (GTB)', code: '058', type: 'nuban' },
+  { name: 'Keystone Bank', code: '082', type: 'nuban' },
+  { name: 'Kuda Bank', code: '000013', type: 'nuban' },
+  { name: 'Moniepoint MFB', code: '000026', type: 'nuban' },
+  { name: 'Opay', code: '000008', type: 'nuban' },
+  { name: 'Palmpay', code: '000010', type: 'nuban' },
+  { name: 'Polaris Bank', code: '076', type: 'nuban' },
+  { name: 'Providus Bank', code: '101', type: 'nuban' },
+  { name: 'Stanbic IBTC Bank', code: '007', type: 'nuban' },
+  { name: 'Standard Chartered Bank', code: '068', type: 'nuban' },
+  { name: 'Sterling Bank', code: '232', type: 'nuban' },
+  { name: 'Union Bank of Nigeria', code: '032', type: 'nuban' },
+  { name: 'United Bank for Africa (UBA)', code: '033', type: 'nuban' },
+  { name: 'Unity Bank', code: '215', type: 'nuban' },
+  { name: 'Wema Bank', code: '035', type: 'nuban' },
+  { name: 'Zenith Bank', code: '057', type: 'nuban' },
 ];
 
-// ==================== REGISTRATIONS ====================
+// --------------------- REGISTRATIONS ---------------------
 
 const getEventRegistrations = asyncHandler(async (req, res) => {
-  const event = await Event.findById(req.params.id);
-  if (!event) { res.status(404); throw new Error('Event not found'); }
+  const event = await findEvent(req.params.id);
+  if (!event) {
+    res.status(404);
+    throw new Error('Event not found');
+  }
 
   const isOwner = event.createdBy?.toString() === req.user?._id?.toString();
   const isAdmin = req.user?.role === 'admin';
-  if (!isOwner && !isAdmin) { res.status(403); throw new Error('Not authorized to view registrations'); }
+  if (!isOwner && !isAdmin) {
+    res.status(403);
+    throw new Error('Not authorized to view registrations');
+  }
 
   const { status, page = 1, limit = 50 } = req.query;
   let query = { event: event._id };
   if (status) query.status = status;
 
   const skip = (Number(page) - 1) * Number(limit);
-  const registrations = await EventRegistration.find(query).sort({ createdAt: -1 }).skip(skip).limit(Number(limit));
+  const registrations = await EventRegistration.find(query)
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(Number(limit));
+
   const total = await EventRegistration.countDocuments(query);
 
   res.json({
-    event: event.title, totalRegistrations: total,
+    event: event.title,
+    totalRegistrations: total,
     confirmedCount: await EventRegistration.countDocuments({ event: event._id, status: 'confirmed' }),
     pendingCount: await EventRegistration.countDocuments({ event: event._id, status: 'pending' }),
-    registrations, page: Number(page), pages: Math.ceil(total / Number(limit)),
+    registrations,
+    page: Number(page),
+    pages: Math.ceil(total / Number(limit)),
   });
 });
 
 const getMyRegistrations = asyncHandler(async (req, res) => {
-  const registrations = await EventRegistration.find({ email: req.user.email.toLowerCase() }).populate('event', 'title date time location status').sort({ createdAt: -1 });
+  const registrations = await EventRegistration.find({ email: req.user.email.toLowerCase() })
+    .populate('event', 'title slug date time location status')
+    .sort({ createdAt: -1 });
   res.json(registrations);
 });
 
-// ==================== ADMIN DASHBOARD ====================
+// --------------------- ADMIN DASHBOARD ---------------------
 
 const getAdminDashboard = asyncHandler(async (req, res) => {
   res.json({
@@ -941,25 +1251,45 @@ const getAdminDashboard = asyncHandler(async (req, res) => {
 });
 
 const getEventFilters = asyncHandler(async (req, res) => {
-  res.json({ categories: await Event.distinct('category'), eventTypes: await Event.distinct('eventType') });
+  res.json({
+    categories: await Event.distinct('category'),
+    eventTypes: await Event.distinct('eventType'),
+  });
 });
 
-// ==================== PAYSTACK WEBHOOK ====================
+// --------------------- PAYSTACK WEBHOOK ---------------------
 
 const handlePaystackWebhook = asyncHandler(async (req, res) => {
-  const hash = crypto.createHmac('sha512', process.env.PAYSTACK_SECRET_KEY).update(JSON.stringify(req.body)).digest('hex');
-  if (hash !== req.headers['x-paystack-signature']) { res.status(400); throw new Error('Invalid webhook signature'); }
+  const hash = crypto
+    .createHmac('sha512', process.env.PAYSTACK_SECRET_KEY)
+    .update(JSON.stringify(req.body))
+    .digest('hex');
+  if (hash !== req.headers['x-paystack-signature']) {
+    res.status(400);
+    throw new Error('Invalid webhook signature');
+  }
 
   const { event, data } = req.body;
   console.log(`Webhook received: ${event}`);
 
   switch (event) {
-    case 'charge.success': console.log('Charge success:', data.reference); break;
-    case 'transfer.success': await handleTransferSuccess(data); break;
-    case 'transfer.failed': console.log('Transfer failed:', data.reference); break;
-    case 'subaccount.created': console.log('Subaccount created:', data.subaccount_code); break;
-    case 'settlement.success': await handleSettlementSuccess(data); break;
-    default: console.log(`Unhandled webhook event: ${event}`);
+    case 'charge.success':
+      console.log('Charge success:', data.reference);
+      break;
+    case 'transfer.success':
+      await handleTransferSuccess(data);
+      break;
+    case 'transfer.failed':
+      console.log('Transfer failed:', data.reference);
+      break;
+    case 'subaccount.created':
+      console.log('Subaccount created:', data.subaccount_code);
+      break;
+    case 'settlement.success':
+      await handleSettlementSuccess(data);
+      break;
+    default:
+      console.log(`Unhandled webhook event: ${event}`);
   }
 
   res.status(200).json({ status: 'ok' });
@@ -969,35 +1299,74 @@ const handleTransferSuccess = async (data) => {
   try {
     const transaction = await Transaction.findOne({ paystackReference: data.reference });
     if (transaction && !transaction.withdrawn) {
-      transaction.withdrawn = true; transaction.withdrawnAt = Date.now(); transaction.transferStatus = 'success'; await transaction.save();
+      transaction.withdrawn = true;
+      transaction.withdrawnAt = Date.now();
+      transaction.transferStatus = 'success';
+      await transaction.save();
       const creator = await User.findById(transaction.creator);
-      if (creator) { await sendWithdrawalConfirmation(creator.email, creator.name, data.amount / 100); }
+      if (creator) {
+        await sendWithdrawalConfirmation(creator.email, creator.name, data.amount / 100);
+      }
     }
-  } catch (error) { console.error('Error handling transfer success:', error); }
+  } catch (error) {
+    console.error('Error handling transfer success:', error);
+  }
 };
 
 const handleSettlementSuccess = async (data) => {
   try {
     if (data.status !== 'success') return;
-    const user = await User.findOne({ paystackSubaccountCode: data.subaccount?.subaccount_code || data.subaccount });
+    const user = await User.findOne({
+      paystackSubaccountCode: data.subaccount?.subaccount_code || data.subaccount,
+    });
     if (!user) return;
 
-    const pendingTransactions = await Transaction.find({ creator: user._id, status: 'completed', withdrawn: false });
+    const pendingTransactions = await Transaction.find({
+      creator: user._id,
+      status: 'completed',
+      withdrawn: false,
+    });
     let totalMarked = 0;
-    for (const t of pendingTransactions) { t.withdrawn = true; t.withdrawnAt = Date.now(); t.settlementStatus = 'success'; await t.save(); totalMarked += t.creatorShare; }
+    for (const t of pendingTransactions) {
+      t.withdrawn = true;
+      t.withdrawnAt = Date.now();
+      t.settlementStatus = 'success';
+      await t.save();
+      totalMarked += t.creatorShare;
+    }
 
     if (totalMarked > 0) {
       await sendSettlementNotification(user.email, user.name, totalMarked, pendingTransactions.length);
     }
-  } catch (error) { console.error('Error handling settlement success:', error); }
+  } catch (error) {
+    console.error('Error handling settlement success:', error);
+  }
 };
 
-// ==================== EXPORT ====================
+// --------------------- EXPORT ---------------------
 
 export {
-  createEvent, getEvents, getMyEvents, getEventById, updateEvent, deleteEvent,
-  reportEvent, toggleEventStatus, registerForEvent, verifyEventPayment,
-  checkInAttendee, verifyTicket, setupPaystackWallet, getWalletInfo,
-  withdrawEarnings, getBankList, getEventRegistrations, getMyRegistrations,
-  getAdminDashboard, getEventFilters, handlePaystackWebhook,
+  createEvent,
+  getEvents,
+  getMyEvents,
+  getEventById,
+  updateEvent,
+  deleteEvent,
+  reportEvent,
+  toggleEventStatus,
+  registerForEvent,
+  verifyEventPayment,
+  checkInAttendee,
+  verifyTicket,
+  getEventCustomForm,
+  updateEventCustomForm,
+  setupPaystackWallet,
+  getWalletInfo,
+  withdrawEarnings,
+  getBankList,
+  getEventRegistrations,
+  getMyRegistrations,
+  getAdminDashboard,
+  getEventFilters,
+  handlePaystackWebhook,
 };

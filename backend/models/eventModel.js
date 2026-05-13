@@ -68,9 +68,45 @@ const eventSchema = mongoose.Schema(
       refPath: 'creatorType',
       required: true,
     },
+
+    // NEW: URL slug (unique, sparse so existing docs can stay null until updated)
+    slug: {
+      type: String,
+      unique: true,
+      sparse: true,          // allows null for legacy events until first update
+      lowercase: true,
+      trim: true,
+    },
+
+    // NEW: reference to the custom form for this event
+    customForm: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'EventForm',
+      default: null,
+    },
   },
   { timestamps: true }
 );
+
+// --------------------- Slugs generation ---------------------
+eventSchema.pre('save', async function (next) {
+  // Only generate slug if title changed or no slug yet
+  if (this.isModified('title') || !this.slug) {
+    let base = this.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')       // replace non-alphanum with hyphens
+      .replace(/(^-|-$)/g, '');           // trim leading/trailing hyphens
+
+    let slug = base;
+    let counter = 1;
+    // Ensure slug is unique (excluding the current document)
+    while (await mongoose.model('Event').findOne({ slug, _id: { $ne: this._id } })) {
+      slug = `${base}-${counter++}`;
+    }
+    this.slug = slug;
+  }
+  next();
+});
 
 // Virtuals
 eventSchema.virtual('isRegistrationOpen').get(function () {
@@ -111,6 +147,7 @@ eventSchema.index({ category: 1 });
 eventSchema.index({ eventType: 1 });
 eventSchema.index({ createdBy: 1 });
 eventSchema.index({ isDisabled: 1 });
+eventSchema.index({ slug: 1 });   // NEW index for slug lookups
 
 eventSchema.set('toJSON', { virtuals: true });
 eventSchema.set('toObject', { virtuals: true });

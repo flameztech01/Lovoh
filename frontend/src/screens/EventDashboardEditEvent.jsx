@@ -1,4 +1,4 @@
-// screens/EventDashboardEditEvent.jsx - With Speakers field
+// screens/EventDashboardEditEvent.jsx - With Custom Form Builder
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -8,8 +8,15 @@ import {
   FaBold, FaItalic, FaUnderline, FaAlignLeft, FaAlignCenter, FaAlignRight,
   FaListUl, FaListOl, FaLink, FaHeading, FaQuoteRight, FaVideo,
   FaTicketAlt, FaTimes, FaUsers, FaUser, FaCamera,
+  FaClipboardList, FaCheckSquare, FaDotCircle, FaFont, FaHashtag,
+  FaCalendar, FaEnvelope, FaPhone, FaChevronDown, FaChevronUp
 } from 'react-icons/fa';
-import { useGetEventByIdQuery, useUpdateEventMutation } from '../slices/eventApiSlice';
+import {
+  useGetEventByIdQuery,
+  useUpdateEventMutation,
+  useGetEventCustomFormQuery,
+  useUpdateEventCustomFormMutation
+} from '../slices/eventApiSlice';
 import { toast } from 'react-toastify';
 import EventDashboardSidebar from '../components/EventDashboardSidebar';
 
@@ -20,6 +27,19 @@ const ToolbarButton = ({ onClick, active, icon: Icon, title }) => (
   </button>
 );
 
+// Field type definitions with icons
+const FIELD_TYPES = [
+  { value: 'text', label: 'Short Text', icon: FaFont },
+  { value: 'textarea', label: 'Long Text', icon: FaAlignLeft },
+  { value: 'number', label: 'Number', icon: FaHashtag },
+  { value: 'email', label: 'Email', icon: FaEnvelope },
+  { value: 'phone', label: 'Phone', icon: FaPhone },
+  { value: 'date', label: 'Date', icon: FaCalendar },
+  { value: 'dropdown', label: 'Dropdown', icon: FaChevronDown },
+  { value: 'checkbox', label: 'Checkbox', icon: FaCheckSquare },
+  { value: 'radio', label: 'Radio', icon: FaDotCircle },
+];
+
 const EventDashboardEditEvent = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -27,12 +47,22 @@ const EventDashboardEditEvent = () => {
 
   const { data: event, isLoading: isLoadingEvent } = useGetEventByIdQuery(id);
   const [updateEvent, { isLoading: isUpdating }] = useUpdateEventMutation();
+  
+  // Custom form
+  const { data: customFormData, isLoading: isLoadingForm } = useGetEventCustomFormQuery(id);
+  const [updateCustomForm, { isLoading: isUpdatingForm }] = useUpdateEventCustomFormMutation();
 
   const [description, setDescription] = useState("");
   const [activeFormats, setActiveFormats] = useState({ bold: false, italic: false, underline: false });
   const [previewMode, setPreviewMode] = useState(false);
   const [hasTicketTypes, setHasTicketTypes] = useState(false);
   const [enableMultipleTickets, setEnableMultipleTickets] = useState(false);
+
+  // Custom form state
+  const [formTitle, setFormTitle] = useState("");
+  const [formDescription, setFormDescription] = useState("");
+  const [formFields, setFormFields] = useState([]);
+  const [formChanged, setFormChanged] = useState(false);
 
   const categories = [
     "Business", "Technology", "Lifestyle", "Education", "Entertainment",
@@ -64,7 +94,7 @@ const EventDashboardEditEvent = () => {
   const [speakers, setSpeakers] = useState([]);
   const [speakerFiles, setSpeakerFiles] = useState({});
 
-  // Populate form
+  // Populate form – now also load custom form
   useEffect(() => {
     if (event) {
       const eventDate = event.date ? new Date(event.date) : new Date();
@@ -101,6 +131,33 @@ const EventDashboardEditEvent = () => {
       }
     }
   }, [event]);
+
+  // Load custom form data
+  useEffect(() => {
+    if (customFormData && customFormData._id) {
+      setFormTitle(customFormData.title || "");
+      setFormDescription(customFormData.description || "");
+      setFormFields(customFormData.fields || []);
+    } else {
+      // No existing form, reset to defaults
+      setFormTitle("");
+      setFormDescription("");
+      setFormFields([]);
+    }
+  }, [customFormData]);
+
+  // Track changes to form
+  useEffect(() => {
+    // Compare against fetched data (only if we have it)
+    if (!customFormData) return;
+    const originalFields = customFormData.fields ? JSON.stringify(customFormData.fields) : '[]';
+    const currentFields = JSON.stringify(formFields);
+    setFormChanged(
+      formTitle !== (customFormData.title || "") ||
+      formDescription !== (customFormData.description || "") ||
+      originalFields !== currentFields
+    );
+  }, [formTitle, formDescription, formFields, customFormData]);
 
   // Set editor content after load
   useEffect(() => {
@@ -219,6 +276,51 @@ const EventDashboardEditEvent = () => {
   const removeExistingImage = (i) => { const u = existingImages.filter((_, j) => j !== i); setExistingImages(u); setImagesToKeep(u); };
   const removeNewImage = (i) => { setNewImages(prev => prev.filter((_, j) => j !== i)); setNewImagePreviews(prev => prev.filter((_, j) => j !== i)); };
 
+  // Custom form field handlers
+  const addFormField = () => {
+    const newField = {
+      label: '',
+      type: 'text',
+      required: false,
+      options: [],
+      placeholder: '',
+      order: formFields.length,
+    };
+    setFormFields([...formFields, newField]);
+  };
+
+  const removeFormField = (index) => {
+    setFormFields(formFields.filter((_, i) => i !== index));
+  };
+
+  const updateFormField = (index, key, value) => {
+    const updated = [...formFields];
+    updated[index] = { ...updated[index], [key]: value };
+    // If type changes from dropdown/checkbox/radio to something else, clear options
+    if (key === 'type' && !['dropdown', 'checkbox', 'radio'].includes(value)) {
+      updated[index].options = [];
+    }
+    setFormFields(updated);
+  };
+
+  const addOption = (fieldIndex) => {
+    const updated = [...formFields];
+    updated[fieldIndex].options = [...(updated[fieldIndex].options || []), ''];
+    setFormFields(updated);
+  };
+
+  const updateOption = (fieldIndex, optionIndex, value) => {
+    const updated = [...formFields];
+    updated[fieldIndex].options[optionIndex] = value;
+    setFormFields(updated);
+  };
+
+  const removeOption = (fieldIndex, optionIndex) => {
+    const updated = [...formFields];
+    updated[fieldIndex].options.splice(optionIndex, 1);
+    setFormFields(updated);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.title.trim()) { toast.error("Title required"); return; }
@@ -267,14 +369,39 @@ const EventDashboardEditEvent = () => {
     Object.entries(speakerFiles).forEach(([index, file]) => fd.append(`speakerImages[${index}]`, file));
 
     try {
+      // Update event first
       await updateEvent({ id, formData: fd }).unwrap();
       toast.success("Event updated!");
+
+      // If custom form was changed, update it
+      if (formChanged) {
+        const formPayload = {
+          title: formTitle,
+          description: formDescription,
+          fields: formFields.map(({ _id, ...rest }) => rest), // remove any MongoDB _id if present
+        };
+        await updateCustomForm({ id, data: formPayload }).unwrap();
+        toast.success("Registration form updated!");
+      }
+
       navigate(`/events/dashboard/events/${id}`);
-    } catch (err) { toast.error(err?.data?.message || "Update failed"); }
+    } catch (err) {
+      toast.error(err?.data?.message || "Update failed");
+    }
   };
 
-  if (isLoadingEvent) return (<EventDashboardSidebar><div className="flex justify-center items-center h-96"><FaSpinner className="w-12 h-12 text-[#1B3766] animate-spin" /></div></EventDashboardSidebar>);
-  if (!event) return (<EventDashboardSidebar><div className="text-center py-20"><h2 className="text-xl font-semibold text-gray-900 mb-2">Event Not Found</h2><button onClick={() => navigate('/events/dashboard/events')} className="px-4 py-2 bg-[#1B3766] text-white rounded-lg">Back to My Events</button></div></EventDashboardSidebar>);
+  if (isLoadingEvent || isLoadingForm) return (
+    <EventDashboardSidebar>
+      <div className="flex justify-center items-center h-96"><FaSpinner className="w-12 h-12 text-[#1B3766] animate-spin" /></div>
+    </EventDashboardSidebar>
+  );
+  if (!event) return (
+    <EventDashboardSidebar>
+      <div className="text-center py-20"><h2 className="text-xl font-semibold text-gray-900 mb-2">Event Not Found</h2>
+        <button onClick={() => navigate('/events/dashboard/events')} className="px-4 py-2 bg-[#1B3766] text-white rounded-lg">Back to My Events</button>
+      </div>
+    </EventDashboardSidebar>
+  );
 
   return (
     <EventDashboardSidebar>
@@ -285,11 +412,12 @@ const EventDashboardEditEvent = () => {
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Edit Event</h1>
             <p className="text-gray-500 mt-1 text-sm">Update your event details</p>
           </div>
-          <button onClick={handleSubmit} disabled={isUpdating} className="flex items-center gap-2 px-6 py-2.5 bg-[#1B3766] text-white rounded-lg font-medium hover:bg-[#142952] transition-all disabled:opacity-50"><FaSave /> {isUpdating ? "Saving..." : "Save Changes"}</button>
+          <button onClick={handleSubmit} disabled={isUpdating || isUpdatingForm} className="flex items-center gap-2 px-6 py-2.5 bg-[#1B3766] text-white rounded-lg font-medium hover:bg-[#142952] transition-all disabled:opacity-50"><FaSave /> {(isUpdating || isUpdatingForm) ? "Saving..." : "Save Changes"}</button>
         </div>
 
         <form className="grid lg:grid-cols-5 gap-6" onSubmit={(e) => e.preventDefault()}>
           <div className="lg:col-span-3 space-y-6">
+            {/* Event Title */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
               <label className="block text-sm font-semibold text-gray-700 mb-2">Event Title <span className="text-red-500">*</span></label>
               <input type="text" name="title" value={formData.title} onChange={handleChange} placeholder="Give your event a clear, compelling title..." className="w-full px-4 py-3 text-lg font-medium border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766]" />
@@ -330,6 +458,7 @@ const EventDashboardEditEvent = () => {
               <p className="text-xs text-gray-500 mt-2">{previewMode ? "Switch back to edit mode." : "Use the toolbar to format your text."}</p>
             </div>
 
+            {/* Date & Time */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
               <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2"><FaCalendarAlt className="text-[#1B3766]" /> Date & Time <span className="text-red-500">*</span></h3>
               <div className="grid sm:grid-cols-3 gap-4">
@@ -339,6 +468,7 @@ const EventDashboardEditEvent = () => {
               </div>
             </div>
 
+            {/* Location */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
               <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2"><FaMapMarkerAlt className="text-[#1B3766]" /> Location <span className="text-red-500">*</span></h3>
               <div className="space-y-4">
@@ -396,14 +526,87 @@ const EventDashboardEditEvent = () => {
               )}
             </div>
 
+            {/* Registration Deadline */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
               <label className="block text-sm font-semibold text-gray-700 mb-2">Registration Deadline</label>
               <input type="date" name="registrationDeadline" value={formData.registrationDeadline} onChange={handleChange} className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-sm" />
               <p className="text-xs text-gray-400 mt-1">If not set, registration closes on event date</p>
             </div>
+
+            {/* NEW: Custom Registration Form Builder */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2"><FaClipboardList className="text-[#1B3766]" /> Custom Registration Form</h3>
+                <button type="button" onClick={addFormField} className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-[#1B3766] text-white rounded-lg hover:bg-[#142952] transition-colors"><FaPlus /> Add Field</button>
+              </div>
+              <p className="text-xs text-gray-500 mb-4">Collect extra info from attendees (e.g., "What do you hope to learn?"). These questions will appear during registration.</p>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Form Title</label>
+                  <input type="text" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder="e.g., Extra Details" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Form Description</label>
+                  <input type="text" value={formDescription} onChange={(e) => setFormDescription(e.target.value)} placeholder="Optional instructions" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                </div>
+
+                {formFields.length === 0 ? (
+                  <p className="text-sm text-gray-400 text-center py-4">No fields added yet.</p>
+                ) : (
+                  formFields.map((field, idx) => (
+                    <div key={idx} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-semibold text-gray-700">Field {idx + 1}</span>
+                        <button type="button" onClick={() => removeFormField(idx)} className="text-red-500 hover:bg-red-50 p-1 rounded"><FaTrashAlt className="text-xs" /></button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 mb-2">
+                        <div className="col-span-2">
+                          <label className="block text-[10px] text-gray-500 mb-0.5">Label *</label>
+                          <input type="text" value={field.label} onChange={(e) => updateFormField(idx, 'label', e.target.value)} placeholder="e.g., How did you hear about us?" className="w-full px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-gray-500 mb-0.5">Type</label>
+                          <select value={field.type} onChange={(e) => updateFormField(idx, 'type', e.target.value)} className="w-full px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs">
+                            {FIELD_TYPES.map(ft => (
+                              <option key={ft.value} value={ft.value}>{ft.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="flex items-end mb-1">
+                          <label className="flex items-center gap-1 cursor-pointer">
+                            <input type="checkbox" checked={field.required || false} onChange={(e) => updateFormField(idx, 'required', e.target.checked)} className="text-[#1B3766] rounded w-3.5 h-3.5" />
+                            <span className="text-xs text-gray-600">Required</span>
+                          </label>
+                        </div>
+                        {['dropdown', 'checkbox', 'radio'].includes(field.type) && (
+                          <div className="col-span-2">
+                            <label className="block text-[10px] text-gray-500 mb-1">Options</label>
+                            {field.options?.map((opt, optIdx) => (
+                              <div key={optIdx} className="flex items-center gap-1 mb-1">
+                                <input type="text" value={opt} onChange={(e) => updateOption(idx, optIdx, e.target.value)} placeholder={`Option ${optIdx + 1}`} className="flex-1 px-2 py-1 border border-gray-200 rounded text-xs" />
+                                <button type="button" onClick={() => removeOption(idx, optIdx)} className="text-red-500"><FaTimes className="text-xs" /></button>
+                              </div>
+                            ))}
+                            <button type="button" onClick={() => addOption(idx)} className="text-xs text-[#1B3766] underline">+ Add option</button>
+                          </div>
+                        )}
+                        {!['dropdown', 'checkbox', 'radio'].includes(field.type) && (
+                          <div className="col-span-2">
+                            <label className="block text-[10px] text-gray-500 mb-0.5">Placeholder</label>
+                            <input type="text" value={field.placeholder || ''} onChange={(e) => updateFormField(idx, 'placeholder', e.target.value)} className="w-full px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="lg:col-span-2 space-y-6">
+            {/* Images */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
               <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2"><FaImage className="text-[#1B3766]" /> Images <span className="text-xs text-gray-400 font-normal">({existingImages.length + newImages.length}/10)</span></h3>
               {(existingImages.length + newImages.length) < 10 && (
@@ -417,6 +620,7 @@ const EventDashboardEditEvent = () => {
               )}
             </div>
 
+            {/* Category & Type */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
               <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2"><FaTag className="text-[#1B3766]" /> Category & Type</h3>
               <div className="space-y-4">
@@ -425,8 +629,10 @@ const EventDashboardEditEvent = () => {
               </div>
             </div>
 
+            {/* Tags */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5"><label className="block text-sm font-semibold text-gray-700 mb-2">Tags</label><input type="text" name="tags" value={formData.tags} onChange={handleChange} placeholder="e.g., tech, startup, AI" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-sm" /></div>
 
+            {/* Tickets & Pricing */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
               <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2"><FaTicketAlt className="text-[#1B3766]" /> Tickets & Pricing</h3>
               <div className="space-y-4">
@@ -453,16 +659,20 @@ const EventDashboardEditEvent = () => {
               </div>
             </div>
 
+            {/* Ticket Purchase Options */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
               <h3 className="text-sm font-semibold text-gray-900 mb-3">Ticket Purchase Options</h3>
               <label className="flex items-center gap-2 cursor-pointer mb-3"><input type="checkbox" checked={enableMultipleTickets} onChange={(e) => setEnableMultipleTickets(e.target.checked)} className="text-[#1B3766] rounded" /><span className="text-sm text-gray-700">Allow multiple tickets per order</span></label>
               {enableMultipleTickets && <div><label className="block text-xs font-medium text-gray-600 mb-1">Max Per Order</label><input type="number" name="maxTicketsPerOrder" value={formData.maxTicketsPerOrder} onChange={handleChange} min="1" max="100" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-sm" /></div>}
             </div>
 
+            {/* Capacity */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
               <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2"><FaUsers className="text-[#1B3766]" /> Capacity</h3>
               <input type="number" name="maxAttendees" value={formData.maxAttendees} onChange={handleChange} placeholder="Unlimited" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-sm" />
             </div>
+
+            {/* Featured */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
               <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="featured" checked={formData.featured} onChange={handleChange} className="text-yellow-500 rounded" /><span className="text-sm font-medium text-gray-700">{formData.featured ? <FaStar className="inline text-yellow-500 mr-1" /> : <FaRegStar className="inline text-gray-400 mr-1" />}Feature this event</span></label>
             </div>

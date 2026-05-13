@@ -1,7 +1,7 @@
 // components/AllEventsNavbar.jsx
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { FaSearch, FaTimes, FaCalendarAlt } from 'react-icons/fa';
+import { Link, useNavigate } from 'react-router-dom';
+import { FaArrowLeft, FaSearch, FaTimes, FaCalendarAlt } from 'react-icons/fa';
 
 const getSubdomain = () => {
   const hostname = window.location.hostname;
@@ -26,6 +26,15 @@ const getCreateEventPath = () => {
 const AllEventsNavbar = () => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const navigate = useNavigate();
+
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate(getEventsListPath());
+    }
+  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100">
@@ -33,9 +42,30 @@ const AllEventsNavbar = () => {
         {!searchOpen ? (
           // Normal Navbar
           <div className="flex items-center justify-between h-14 sm:h-16">
-            {/* Left - Title */}
-            <div className="flex items-center gap-3">
-              <h1 className="text-base sm:text-xl font-bold text-gray-900">All Events</h1>
+            {/* Left - Back → Logo → Title */}
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Back Button – first item on the left */}
+              <button
+                onClick={handleBack}
+                className="p-2 text-gray-500 hover:text-[#1B3766] hover:bg-gray-100 rounded-lg transition-colors"
+                aria-label="Go back"
+              >
+                <FaArrowLeft className="text-sm" />
+              </button>
+
+              {/* EventRoom Logo */}
+              <Link to={getEventsListPath()} className="flex-shrink-0">
+                <img
+                  src="/eventroom.png"
+                  alt="EventRoom"
+                  className="h-7 sm:h-8 w-auto"
+                />
+              </Link>
+
+              {/* Title – hidden on mobile */}
+              {/* <h1 className="text-sm sm:text-lg font-bold text-gray-900 hidden sm:block">
+                All Events
+              </h1> */}
             </div>
 
             {/* Right - Actions */}
@@ -82,7 +112,10 @@ const AllEventsNavbar = () => {
               )}
             </div>
             <button
-              onClick={() => { setSearchOpen(false); setSearchTerm(''); }}
+              onClick={() => {
+                setSearchOpen(false);
+                setSearchTerm('');
+              }}
               className="text-sm text-gray-500 hover:text-[#1B3766] font-medium flex-shrink-0"
             >
               Cancel
