@@ -130,7 +130,7 @@ const EventDashboardSidebar = ({ children }) => {
               <FaCalendarAlt className="text-white text-lg" />
             </div>
             <div>
-              <h2 className="font-bold text-gray-900">Event Hub</h2>
+              <h2 className="font-bold text-gray-900">EventRoom</h2>
               <p className="text-xs text-gray-500">Creator Dashboard</p>
             </div>
           </Link>
