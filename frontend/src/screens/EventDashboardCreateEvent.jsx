@@ -8,7 +8,7 @@ import {
   FaListUl, FaListOl, FaLink, FaHeading, FaEye, FaQuoteRight,
   FaVideo, FaTicketAlt, FaTimes, FaUsers, FaUser, FaCamera,
   FaClipboardList, FaCheckSquare, FaDotCircle, FaFont, FaHashtag,
-  FaCalendar, FaEnvelope, FaPhone, FaChevronDown,
+  FaCalendar, FaEnvelope, FaPhone, FaChevronDown, FaChevronUp,
 } from "react-icons/fa";
 import { useCreateEventMutation } from "../slices/eventApiSlice";
 import { toast } from "react-toastify";
@@ -228,6 +228,21 @@ const EventDashboardCreateEvent = () => {
   const removeOption = (fieldIndex, optionIndex) => {
     const updated = [...formFields];
     updated[fieldIndex].options.splice(optionIndex, 1);
+    setFormFields(updated);
+  };
+
+  // NEW – reorder functions
+  const moveFieldUp = (index) => {
+    if (index === 0) return;
+    const updated = [...formFields];
+    [updated[index], updated[index - 1]] = [updated[index - 1], updated[index]];
+    setFormFields(updated);
+  };
+
+  const moveFieldDown = (index) => {
+    if (index === formFields.length - 1) return;
+    const updated = [...formFields];
+    [updated[index], updated[index + 1]] = [updated[index + 1], updated[index]];
     setFormFields(updated);
   };
 
@@ -469,11 +484,11 @@ const EventDashboardCreateEvent = () => {
               <p className="text-xs text-gray-400 mt-1">If not set, registration closes on event date</p>
             </div>
 
-            {/* NEW: Custom Registration Form Builder */}
+            {/* Custom Registration Form Builder */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2"><FaClipboardList className="text-[#1B3766]" /> Custom Registration Form</h3>
-                <button type="button" onClick={addFormField} className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-[#1B3766] text-white rounded-lg hover:bg-[#142952] transition-colors"><FaPlus /> Add Field</button>
+                {/* Top add field button removed */}
               </div>
               <p className="text-xs text-gray-500 mb-4">Collect extra info from attendees (e.g., "What do you hope to learn?"). These questions will appear during registration.</p>
 
@@ -494,7 +509,17 @@ const EventDashboardCreateEvent = () => {
                     <div key={idx} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs font-semibold text-gray-700">Field {idx + 1}</span>
-                        <button type="button" onClick={() => removeFormField(idx)} className="text-red-500 hover:bg-red-50 p-1 rounded"><FaTrashAlt className="text-xs" /></button>
+                        <div className="flex items-center gap-1">
+                          <button type="button" onClick={() => moveFieldUp(idx)} disabled={idx === 0}
+                            className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30" title="Move up">
+                            <FaChevronUp className="text-xs" />
+                          </button>
+                          <button type="button" onClick={() => moveFieldDown(idx)} disabled={idx === formFields.length - 1}
+                            className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30" title="Move down">
+                            <FaChevronDown className="text-xs" />
+                          </button>
+                          <button type="button" onClick={() => removeFormField(idx)} className="p-1 text-red-500 hover:bg-red-50 rounded"><FaTrashAlt className="text-xs" /></button>
+                        </div>
                       </div>
                       <div className="grid grid-cols-2 gap-2 mb-2">
                         <div className="col-span-2">
@@ -537,6 +562,11 @@ const EventDashboardCreateEvent = () => {
                     </div>
                   ))
                 )}
+
+                {/* Add Field button placed at the bottom */}
+                <button type="button" onClick={addFormField} className="w-full py-2.5 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 text-sm hover:border-[#1B3766] hover:text-[#1B3766] transition-colors">
+                  <FaPlus className="inline mr-1 text-xs" /> Add Field
+                </button>
               </div>
             </div>
           </div>
