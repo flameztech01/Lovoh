@@ -39,9 +39,9 @@ const getEventsListPath = () => {
   return '/events';
 };
 
-const getEventRegisterPath = (eventId) => {
-  if (currentSubdomain === 'events') return `/${eventId}/register`;
-  return `/events/${eventId}/register`;
+const getEventRegisterPath = (slug) => {
+  if (currentSubdomain === 'events') return `/${slug}/register`;
+  return `/events/${slug}/register`;
 };
 
 const toAbsoluteUrl = (url) => {
@@ -179,7 +179,7 @@ const ErrorState = ({ error, onRetry }) => {
 // =========================================================
 
 const EventDetail = () => {
-  const { id } = useParams();
+  const { id } = useParams();   // this is the slug
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [copied, setCopied] = useState(false);
@@ -291,16 +291,14 @@ const EventDetail = () => {
     return formatPrice(event.price);
   };
 
+  // FIX: removed URL from share text to avoid double link
   const getShareDetails = useCallback(() => {
     if (!event) return '';
     const date = formatDate(event.date);
     const time = formatTime(event.time);
     const venue = event.venue || event.location || 'TBD';
     const price = getPriceRange() || 'Free';
-    const baseUrl = getBaseUrl();
-    const eventUrl = `${baseUrl}${window.location.pathname}`;
-
-    return `📅 ${event.title}\n${date} · ${time}\n📍 ${venue}\n💵 ${price}\n🔗 ${eventUrl}`;
+    return `📅 ${event.title}\n${date} · ${time}\n📍 ${venue}\n💵 ${price}`;
   }, [event]);
 
   const shareWithImage = async (imageUrl, title, bodyText, url) => {
@@ -313,7 +311,7 @@ const EventDetail = () => {
         await navigator.share({
           files: [file],
           title,
-          text: bodyText,
+          text: bodyText,   // no URL in text
           url,
         });
         return;
@@ -322,10 +320,11 @@ const EventDetail = () => {
       if (err.name !== 'AbortError') {
         console.log('File share not supported, falling back to text share', err);
       } else {
-        return;
+        return; // user cancelled
       }
     }
 
+    // Fallback: plain share without file
     if (navigator.share) {
       try {
         await navigator.share({ title, text: bodyText, url });
@@ -335,7 +334,9 @@ const EventDetail = () => {
         }
       }
     } else {
-      await navigator.clipboard.writeText(url);
+      // Desktop fallback – copy text with URL
+      const fullText = `${bodyText}\n🔗 ${url}`;
+      await navigator.clipboard.writeText(fullText);
       toast.success('Link copied to clipboard');
     }
   };
@@ -467,22 +468,17 @@ const EventDetail = () => {
 
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <ImageSkeleton />
-
             <div className="p-5 sm:p-8 space-y-6">
-              {/* Badges skeleton */}
               <div className="flex flex-wrap gap-2">
                 <div className="h-7 w-20 bg-gray-200 rounded-full" />
                 <div className="h-7 w-24 bg-gray-200 rounded-full" />
                 <div className="h-7 w-16 bg-gray-200 rounded-full" />
                 <div className="h-7 w-28 bg-gray-200 rounded-full" />
               </div>
-
-              {/* Title skeleton */}
               <div className="space-y-2">
                 <div className="h-8 w-3/4 bg-gray-200 rounded" />
                 <div className="h-8 w-1/2 bg-gray-200 rounded hidden sm:block" />
               </div>
-
               <DetailSkeleton />
               <ButtonSkeleton />
               <ContentSkeleton />
@@ -574,21 +570,18 @@ const EventDetail = () => {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
                 
-                {/* Desktop: "View poster" overlay on hover */}
                 <div className="absolute inset-0 items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hidden sm:flex">
                   <div className="bg-black/60 text-white text-sm px-4 py-2 rounded-full flex items-center gap-2">
                     <FaSearchPlus className="text-xs" /> View full poster
                   </div>
                 </div>
 
-                {/* Mobile: Always visible expand icon */}
                 <div className="absolute top-3 right-3 sm:hidden z-10">
                   <div className="bg-black/50 backdrop-blur-sm text-white p-2 rounded-full">
                     <FaExpand className="text-sm" />
                   </div>
                 </div>
 
-                {/* Mobile: "Tap to expand" hint at bottom */}
                 <div className="absolute bottom-3 left-1/2 -translate-x-1/2 sm:hidden z-10">
                   <div className="bg-black/50 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-full flex items-center gap-1.5">
                     <FaExpand className="text-[10px]" /> Tap to view full poster
