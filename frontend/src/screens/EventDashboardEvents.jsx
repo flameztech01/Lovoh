@@ -62,7 +62,12 @@ const EventDashboardEvents = () => {
 
   const confirmDelete = async () => {
     if (!eventToDelete) return;
-    try { await deleteEvent(eventToDelete._id).unwrap(); toast.success(`"${eventToDelete.title}" deleted`); setEventToDelete(null); refetch(); }
+    try { 
+      await deleteEvent(eventToDelete._id).unwrap(); 
+      toast.success(`"${eventToDelete.title}" deleted`); 
+      setEventToDelete(null); 
+      refetch(); 
+    }
     catch (error) { toast.error(error?.data?.message || 'Failed to delete'); }
   };
 
@@ -159,9 +164,9 @@ const EventDashboardEvents = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
-                      <button onClick={() => navigate(`/events/dashboard/events/${event._id}`)} className="flex items-center gap-1 px-2.5 py-1.5 text-blue-600 hover:bg-blue-50 rounded-lg text-xs"><FaEye className="text-[10px]" /> View</button>
-                      <button onClick={() => navigate(`/events/dashboard/events/${event._id}/edit`)} className="flex items-center gap-1 px-2.5 py-1.5 text-green-600 hover:bg-green-50 rounded-lg text-xs"><FaEdit className="text-[10px]" /> Edit</button>
-                      <button onClick={() => navigate(`/events/dashboard/events/${event._id}/registrations`)} className="flex items-center gap-1 px-2.5 py-1.5 text-purple-600 hover:bg-purple-50 rounded-lg text-xs"><FaTicketAlt className="text-[10px]" /> Registrations ({event.currentAttendees || 0})</button>
+                      <button onClick={() => navigate(`/events/dashboard/events/${event.slug}`)} className="flex items-center gap-1 px-2.5 py-1.5 text-blue-600 hover:bg-blue-50 rounded-lg text-xs"><FaEye className="text-[10px]" /> View</button>
+                      <button onClick={() => navigate(`/events/dashboard/events/${event.slug}/edit`)} className="flex items-center gap-1 px-2.5 py-1.5 text-green-600 hover:bg-green-50 rounded-lg text-xs"><FaEdit className="text-[10px]" /> Edit</button>
+                      <button onClick={() => navigate(`/events/dashboard/events/${event.slug}/registrations`)} className="flex items-center gap-1 px-2.5 py-1.5 text-purple-600 hover:bg-purple-50 rounded-lg text-xs"><FaTicketAlt className="text-[10px]" /> Registrations ({event.currentAttendees || 0})</button>
                       <button onClick={() => setEventToDelete(event)} className="flex items-center gap-1 px-2.5 py-1.5 text-red-600 hover:bg-red-50 rounded-lg text-xs ml-auto"><FaTrashAlt className="text-[10px]" /> Delete</button>
                     </div>
                   </div>
@@ -189,9 +194,9 @@ const EventDashboardEvents = () => {
                     <FaChevronRight className="text-gray-400 text-xs mt-1 flex-shrink-0" />
                   </div>
                   <div className="flex items-center gap-1 mt-2 pt-2 border-t border-gray-100" onClick={(e) => e.stopPropagation()}>
-                    <button onClick={() => navigate(`/events/dashboard/events/${event._id}`)} className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-medium flex items-center justify-center gap-1"><FaEye className="text-[8px]" /> View</button>
-                    <button onClick={() => navigate(`/events/dashboard/events/${event._id}/edit`)} className="flex-1 py-2 bg-green-50 text-green-600 rounded-lg text-[10px] font-medium flex items-center justify-center gap-1"><FaEdit className="text-[8px]" /> Edit</button>
-                    <button onClick={() => navigate(`/events/dashboard/events/${event._id}/registrations`)} className="flex-1 py-2 bg-purple-50 text-purple-600 rounded-lg text-[10px] font-medium flex items-center justify-center gap-1"><FaTicketAlt className="text-[8px]" /> Reg.</button>
+                    <button onClick={() => navigate(`/events/dashboard/events/${event.slug}`)} className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-medium flex items-center justify-center gap-1"><FaEye className="text-[8px]" /> View</button>
+                    <button onClick={() => navigate(`/events/dashboard/events/${event.slug}/edit`)} className="flex-1 py-2 bg-green-50 text-green-600 rounded-lg text-[10px] font-medium flex items-center justify-center gap-1"><FaEdit className="text-[8px]" /> Edit</button>
+                    <button onClick={() => navigate(`/events/dashboard/events/${event.slug}/registrations`)} className="flex-1 py-2 bg-purple-50 text-purple-600 rounded-lg text-[10px] font-medium flex items-center justify-center gap-1"><FaTicketAlt className="text-[8px]" /> Reg.</button>
                     <button onClick={() => setEventToDelete(event)} className="flex-1 py-2 bg-red-50 text-red-600 rounded-lg text-[10px] font-medium flex items-center justify-center gap-1"><FaTrashAlt className="text-[8px]" /> Del</button>
                   </div>
                 </div>

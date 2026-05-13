@@ -1,4 +1,4 @@
-// components/EventHero.jsx - Perfect screen-fit size with mobile responsiveness
+// components/EventHero.jsx – Updated to use event slug for detail path
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
@@ -94,7 +94,7 @@ const EventHero = () => {
           location: featured.venue || featured.location,
           price: priceDisplay,
           image: featured.images?.[0] || '/campus2.jpg',
-          slug: featured._id,
+          slug: featured.slug,   // ← use slug from backend, not _id
           category: featured.category,
           eventType: featured.eventType,
           hasTicketTypes: featured.ticketTypes?.length > 0,
