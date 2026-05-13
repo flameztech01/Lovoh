@@ -23,38 +23,38 @@
         const base = "https://lovohcreate.com";
 
         if (isMainDomain) {
-          title = "LovohCreate | Brand Marketing, Tech & Events";
+          title = "Lovoh Create – Brand Marketing & Tech Agency";
           description =
-            "LovohCreate helps brands grow with smart marketing, custom web & app development, a bustling marketplace (Uduua), an insightful magazine (Biizzed), and easy event creation. Explore now.";
+            "Lovoh Create is a brand marketing and technology agency building brands through strategy, design, digital marketing, and innovative tech solutions.";
           url = base;
           type = "website";
           ogImage = base + "/logo.png";
         } else if (hostname === "uduua.lovohcreate.com") {
-          title = "Uduua – Fast‑Growing Brands Marketplace | LovohCreate";
+          title = "Uduua – Marketplace for Fast‑Growing Brands | Lovoh Create";
           description =
-            "Uduua by LovohCreate is your destination for quality products at retail & bulk prices. Shop, sell, or advertise – built for everyday buyers and ambitious sellers.";
+            "Uduua by Lovoh Create is your destination for quality products you'll love, at retail & bulk prices. Shop, sell, advertise – built for everyday buyers and fast-growing brands.";
           url = "https://uduua.lovohcreate.com";
           type = "website";
-          ogImage = base + "/uduua.png";         // ← Uduua sub‑brand image
+          ogImage = base + "/uduua.png";
         } else if (hostname === "biizzed.lovohcreate.com") {
-          title = "Biizzed – Business & Culture Magazine | LovohCreate";
+          title = "Biizzed – Business & Culture Magazine | by Lovoh Create";
           description =
-            "Biizzed brings you articles, magazines, and videos spotlighting founders, leaders, and cultural innovators. A LovohCreate brand.";
+            "Biizzed brings you articles, magazines, and videos spotlighting founders, leaders, and cultural innovators. A Lovoh Create brand.";
           url = "https://biizzed.lovohcreate.com";
           type = "website";
-          ogImage = base + "/biizzed.png";       // ← Biizzed sub‑brand image
+          ogImage = base + "/biizzed.png";
         } else if (hostname === "eventroom.lovohcreate.com") {
-          title = "EventRoom – Create & Sell Tickets to Events | LovohCreate";
+          title = "EventRoom – Create, Register & Attend Events | Lovoh Create";
           description =
-            "EventRoom by LovohCreate lets you create, promote, and sell tickets to any event. Keep 94% of every sale. Secure & automated.";
+            "EventRoom by Lovoh Create helps organizers create, manage, promote, and sell tickets for physical and online events. Users can easily register for and attend conferences, shows, hangouts, trainings, and more from anywhere.";
           url = "https://eventroom.lovohcreate.com";
           type = "website";
-          ogImage = base + "/eventroom.png";          // ← EventRoom sub‑brand image
+          ogImage = base + "/eventroom.png";
         } else {
           // fallback
-          title = "LovohCreate – Brand Marketing & Tech";
+          title = "Lovoh Create – Brand Marketing & Tech";
           description =
-            "LovohCreate offers brand marketing, web/app development, e‑commerce, and event management. A place where brands come alive.";
+            "Lovoh Create offers brand marketing, web/app development, e‑commerce, and event management. A place where brands come alive.";
           url = base;
           type = "website";
           ogImage = base + "/logo.png";
@@ -101,7 +101,7 @@
 
           const ogSite = document.createElement("meta");
           ogSite.property = "og:site_name";
-          ogSite.content = "LovohCreate";
+          ogSite.content = "Lovoh Create";
           fragment.appendChild(ogSite);
 
           // Twitter Card
@@ -157,10 +157,9 @@
           `);
         } else if (hostname === "eventroom.lovohcreate.com") {
           document.write(`
-            <link rel="manifest" href="/manifest-events.json" />
             <meta name="theme-color" content="#1B3766" />
             <meta name="apple-mobile-web-app-title" content="EventRoom" />
-            <link rel="apple-touch-icon" href="/event-icon.png" />
+            <link rel="apple-touch-icon" href="/eventroom.png" />
           `);
         }
       })();
