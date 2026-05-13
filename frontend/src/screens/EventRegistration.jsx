@@ -197,9 +197,9 @@ const EventRegistration = () => {
     <div className="min-h-screen bg-gray-50">
       <AllEventsNavbar />
       <div className="max-w-2xl mx-auto px-4 py-8 pt-24">
-        <button onClick={() => navigate(`/events/${id}`)} className="flex items-center gap-2 text-gray-600 hover:text-[#1B3766] mb-6 transition-colors text-sm group">
+        {/* <button onClick={() => navigate(`/events/${id}`)} className="flex items-center gap-2 text-gray-600 hover:text-[#1B3766] mb-6 transition-colors text-sm group">
           <FaArrowLeft className="text-xs group-hover:-translate-x-1 transition-transform" /> Back to Event
-        </button>
+        </button> */}
 
         {/* Event Summary */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6">

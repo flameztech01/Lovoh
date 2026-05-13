@@ -531,12 +531,12 @@ const EventDetail = () => {
       <AllEventsNavbar />
       
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-20 sm:pt-24">
-        <button 
+        {/* <button 
           onClick={handleBack} 
           className="flex items-center gap-2 text-gray-600 hover:text-[#1B3766] mb-6 transition-colors text-sm group"
         >
           <FaArrowLeft className="text-xs group-hover:-translate-x-1 transition-transform" /> Back to Events
-        </button>
+        </button> */}
 
         {isVerifying && (
           <div className="bg-blue-50 rounded-2xl p-6 border border-blue-200 text-center mb-6">
