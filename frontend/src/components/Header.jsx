@@ -33,15 +33,23 @@ const buildLink = (path) => {
   if (path === '/uduua') return getSubdomainUrl('uduua');
   if (path === '/events') return getSubdomainUrl('events');
 
-  // If we're on a subdomain, other external paths go to the main domain
+  // If we're on a subdomain, the "Welcome" (home) link should go to the main domain
   if (currentSubdomain !== 'main') {
+    if (path === '/') {
+      return 'https://lovohcreate.com';
+    }
+
+    // Other main‑domain‑only paths
     const mainOnlyPaths = ['/about', '/services', '/work', '/contact', '/thefruiit', '/puuls', '/createinstitute', '/start-project'];
     if (mainOnlyPaths.includes(path)) {
       return 'https://lovohcreate.com' + path;
     }
+
+    // Any other path stays within the current subdomain (relative)
+    return path;
   }
 
-  // On main domain or staying inside the same subdomain, use relative paths
+  // On main domain, use relative paths as before
   return path;
 };
 
