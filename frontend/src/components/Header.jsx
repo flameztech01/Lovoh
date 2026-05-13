@@ -18,7 +18,7 @@ const currentSubdomain = getSubdomain();
 const getSubdomainUrl = (subdomain) => {
   if (subdomain === 'biizzed') return 'https://biizzed.lovohcreate.com';
   if (subdomain === 'uduua') return 'https://uduua.lovohcreate.com';
-  if (subdomain === 'events') return 'https://event-room.lovohcreate.com';
+  if (subdomain === 'events') return 'https://eventroom.lovohcreate.com'; // fixed typo
   return 'https://lovohcreate.com';
 };
 
@@ -66,8 +66,20 @@ const Header = () => {
     { name: "Services", path: "/services" },
   ];
 
-  // Determine which logo to show based on current path
-  const getTargetLogo = useCallback((pathname) => {
+  // Map subdomain to logo (used only when on that subdomain)
+  const subdomainLogoMap = {
+    events: '/eventroom.png',
+    biizzed: '/biizzed.png',
+    uduua: '/uduua.png',
+  };
+
+  // Determine target logo based on subdomain and path
+  const getTargetLogo = useCallback((pathname, subdomain) => {
+    // If on a subdomain, always show the corresponding logo
+    if (subdomain !== 'main') {
+      return subdomainLogoMap[subdomain] || '/logo.png';
+    }
+    // Main domain: path-based logo
     if (pathname.startsWith("/uduua")) return "/uduua.png";
     if (pathname.startsWith("/thefruiit")) return "/thefruiit-logo.png";
     if (pathname.startsWith("/biizzed")) return "/biizzed.png";
@@ -77,7 +89,7 @@ const Header = () => {
 
   // Animate logo change
   useEffect(() => {
-    const targetLogo = getTargetLogo(location.pathname);
+    const targetLogo = getTargetLogo(location.pathname, currentSubdomain);
     if (targetLogo === currentLogo) return;
 
     setIsTransitioning(true);
