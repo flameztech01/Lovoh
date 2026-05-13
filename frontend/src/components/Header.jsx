@@ -13,32 +13,35 @@ const getSubdomain = () => {
 };
 
 const currentSubdomain = getSubdomain();
+const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1' || hostname.includes('local');
 
 // Helper: get full URL for cross-subdomain navigation
 const getSubdomainUrl = (subdomain) => {
   if (subdomain === 'biizzed') return 'https://biizzed.lovohcreate.com';
   if (subdomain === 'uduua') return 'https://uduua.lovohcreate.com';
-  if (subdomain === 'events') return 'https://eventroom.lovohcreate.com'; // fixed typo
+  if (subdomain === 'events') return 'https://eventroom.lovohcreate.com';
   return 'https://lovohcreate.com';
 };
 
 // Helper: build correct link href based on current context
 const buildLink = (path) => {
-  // If we're on a subdomain, external links go to full domain
+  // On localhost, use client-side routing
+  if (isLocalhost) return path;
+
+  // Sub‑brand pages ALWAYS go to the corresponding subdomain
+  if (path === '/biizzed') return getSubdomainUrl('biizzed');
+  if (path === '/uduua') return getSubdomainUrl('uduua');
+  if (path === '/events') return getSubdomainUrl('events');
+
+  // If we're on a subdomain, other external paths go to the main domain
   if (currentSubdomain !== 'main') {
-    // These are main-domain-only paths
     const mainOnlyPaths = ['/about', '/services', '/work', '/contact', '/thefruiit', '/puuls', '/createinstitute', '/start-project'];
     if (mainOnlyPaths.includes(path)) {
-      return `https://lovohcreate.com${path}`;
+      return 'https://lovohcreate.com' + path;
     }
-    
-    // Switching to another subdomain
-    if (path === '/biizzed') return getSubdomainUrl('biizzed');
-    if (path === '/uduua') return getSubdomainUrl('uduua');
-    if (path === '/events') return getSubdomainUrl('events');
   }
-  
-  // On main domain, use relative paths as before
+
+  // On main domain or staying inside the same subdomain, use relative paths
   return path;
 };
 
