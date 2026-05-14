@@ -36,7 +36,36 @@ import NotFound from "./screens/NotFound.jsx";
 const router = createBrowserRouter([
   { path: "/", element: <EventsScreen /> },
   { path: ":id", element: <EventDetail /> },
-    { path: ":id/register", element: <EventRegistration /> },
+  { path: "all-events", element: <AllEvents /> },
+  { path: ":id/register", element: <EventRegistration /> },
+  { path: "login", element: <EventLogin /> },
+  { path: "signup", element: <EventSignup /> },
+
+  { path: "dashboard", element: <EventDashboard /> },
+  { path: "dashboard/events", element: <EventDashboardEvents /> },
+  {
+    path: "dashboard/events/new",
+    element: <EventDashboardCreateEvent />,
+  },
+  {
+    path: "dashboard/registrations",
+    element: <EventDashboardRegistrations />,
+  },
+  { path: "dashboard/wallet", element: <EventDashboardWallet /> },
+  { path: "dashboard/analytics", element: <EventDashboardAnalytics /> },
+  {
+    path: "dashboard/events/:id",
+    element: <EventDashboardEventDetail />,
+  },
+  {
+    path: "dashboard/events/:id/registrations",
+    element: <EventDashboardEventRegistrations />,
+  },
+  {
+    path: "dashboard/events/:id/edit",
+    element: <EventDashboardEditEvent />,
+  },
+
   { path: "*", element: <NotFound /> }, // Catch-all route for 404
   {
     path: "/events",
