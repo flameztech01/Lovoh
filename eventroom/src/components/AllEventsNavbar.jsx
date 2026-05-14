@@ -3,26 +3,6 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaArrowLeft, FaSearch, FaTimes, FaCalendarAlt } from 'react-icons/fa';
 
-const getSubdomain = () => {
-  const hostname = window.location.hostname;
-  if (hostname === 'eventroom.lovohcreate.com') return 'events';
-  if (hostname === 'biizzed.lovohcreate.com') return 'biizzed';
-  if (hostname === 'uduua.lovohcreate.com') return 'uduua';
-  return 'main';
-};
-
-const currentSubdomain = getSubdomain();
-
-const getEventsListPath = () => {
-  if (currentSubdomain === 'events') return '/';
-  return '/';
-};
-
-const getCreateEventPath = () => {
-  if (currentSubdomain === 'events') return '/dashboard/events/new';
-  return '/dashboard/events/new';
-};
-
 const AllEventsNavbar = () => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -32,7 +12,7 @@ const AllEventsNavbar = () => {
     if (window.history.length > 1) {
       navigate(-1);
     } else {
-      navigate(getEventsListPath());
+      navigate('/');
     }
   };
 
@@ -42,9 +22,9 @@ const AllEventsNavbar = () => {
         {!searchOpen ? (
           // Normal Navbar
           <div className="flex items-center justify-between h-14 sm:h-16">
-            {/* Left - Back → Logo → Title */}
+            {/* Left - Back → Logo */}
             <div className="flex items-center gap-2 sm:gap-3">
-              {/* Back Button – first item on the left */}
+              {/* Back Button */}
               <button
                 onClick={handleBack}
                 className="p-2 text-gray-500 hover:text-[#1B3766] hover:bg-gray-100 rounded-lg transition-colors"
@@ -54,18 +34,13 @@ const AllEventsNavbar = () => {
               </button>
 
               {/* EventRoom Logo */}
-              <Link to={getEventsListPath()} className="flex-shrink-0">
+              <Link to="/" className="flex-shrink-0">
                 <img
                   src="/eventroom.png"
                   alt="EventRoom"
                   className="h-7 sm:h-8 w-auto"
                 />
               </Link>
-
-              {/* Title – hidden on mobile */}
-              {/* <h1 className="text-sm sm:text-lg font-bold text-gray-900 hidden sm:block">
-                All Events
-              </h1> */}
             </div>
 
             {/* Right - Actions */}
@@ -80,7 +55,7 @@ const AllEventsNavbar = () => {
 
               {/* Create Event CTA */}
               <Link
-                to={getCreateEventPath()}
+                to="/dashboard/events/new"
                 className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-[#1B3766] text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-[#142952] transition-all"
               >
                 <FaCalendarAlt className="text-[10px] sm:text-xs" />
