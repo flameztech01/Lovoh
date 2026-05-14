@@ -15,12 +15,12 @@ const currentSubdomain = getSubdomain();
 
 const getEventsListPath = () => {
   if (currentSubdomain === 'events') return '/';
-  return '/events';
+  return '/';
 };
 
 const getCreateEventPath = () => {
-  if (currentSubdomain === 'events') return '//dashboard/events/new';
-  return '/events/dashboard/events/new';
+  if (currentSubdomain === 'events') return '/dashboard/events/new';
+  return '/dashboard/events/new';
 };
 
 const AllEventsNavbar = () => {
