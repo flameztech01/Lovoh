@@ -36,7 +36,6 @@
       "source": "/api/og/biizzed/video/:id",
       "destination": "/api/og-biizzed-video.js"
     },
-
     {
       "source": "/(.*)",
       "has": [{ "type": "host", "value": "biizzed.lovohcreate.com" }],
@@ -52,13 +51,11 @@
       "has": [{ "type": "host", "value": "eventroom.lovohcreate.com" }],
       "destination": "/eventroom.html"
     },
-
     {
       "source": "/(.*)",
       "has": [{ "type": "host", "value": "lovohcreate.com" }],
       "destination": "/index.html"
     },
-
     {
       "source": "/(.*)",
       "has": [{ "type": "host", "value": "www.lovohcreate.com" }],
