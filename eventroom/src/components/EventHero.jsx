@@ -5,33 +5,6 @@ import { useSelector } from 'react-redux';
 import { useGetEventsQuery } from '../slices/eventApiSlice';
 import { FaPlus, FaArrowRight, FaTicketAlt, FaUserFriends, FaStar, FaGlobe, FaUsers, FaCalendarAlt } from 'react-icons/fa';
 
-// ==================== SUBDOMAIN HELPERS ====================
-const getSubdomain = () => {
-  const hostname = window.location.hostname;
-  if (hostname === 'eventroom.lovohcreate.com') return 'events';
-  if (hostname === 'biizzed.lovohcreate.com') return 'biizzed';
-  if (hostname === 'uduua.lovohcreate.com') return 'uduua';
-  return 'main';
-};
-
-const currentSubdomain = getSubdomain();
-
-const getEventDetailPath = (slug) => {
-  if (currentSubdomain === 'events') return `/${slug}`;
-  return `/${slug}`;
-};
-
-const getDashboardPath = () => {
-  if (currentSubdomain === 'events') return '/dashboard';
-  return '/dashboard';
-};
-
-const getLoginPath = () => {
-  if (currentSubdomain === 'events') return '/login?redirect=/dashboard';
-  return '/login?redirect=/dashboard';
-};
-// =========================================================
-
 // ==================== FEATURED CARD SKELETON ====================
 const FeaturedCardSkeleton = () => (
   <div className="relative bg-white/10 backdrop-blur-md rounded-2xl overflow-hidden border border-white/20 shadow-xl max-w-md mx-auto lg:mx-0 animate-pulse">
@@ -110,8 +83,8 @@ const EventHero = () => {
   };
 
   const handleCreateEvent = () => {
-    if (userInfo) { navigate(getDashboardPath()); }
-    else { navigate(getLoginPath()); }
+    if (userInfo) { navigate('/dashboard'); }
+    else { navigate('/login?redirect=/dashboard'); }
   };
 
   return (
@@ -185,7 +158,7 @@ const EventHero = () => {
             {isLoading ? (
               <FeaturedCardSkeleton />
             ) : featuredEvent ? (
-              <Link to={getEventDetailPath(featuredEvent.slug)} className="block group">
+              <Link to={`/${featuredEvent.slug}`} className="block group">
                 <div className="relative bg-white/10 backdrop-blur-md rounded-2xl overflow-hidden border border-white/20 shadow-xl hover:bg-white/15 transition-all duration-500 hover:scale-[1.02] max-w-md mx-auto lg:mx-0">
                   <div className="relative h-48 xs:h-56 sm:h-64 overflow-hidden">
                     <img src={featuredEvent.image} alt={featuredEvent.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />

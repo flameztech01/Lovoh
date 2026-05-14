@@ -6,38 +6,9 @@ import {
   FaCalendarAlt, FaMapMarkerAlt, FaClock, FaTicketAlt, FaArrowRight, FaSpinner,
 } from 'react-icons/fa';
 
-// ==================== SUBDOMAIN HELPERS ====================
-const getSubdomain = () => {
-  const hostname = window.location.hostname;
-  if (hostname === 'eventroom.lovohcreate.com') return 'events';
-  if (hostname === 'biizzed.lovohcreate.com') return 'biizzed';
-  if (hostname === 'uduua.lovohcreate.com') return 'uduua';
-  return 'main';
-};
-
-const currentSubdomain = getSubdomain();
-
-const getEventDetailPath = (eventSlug) => {
-  if (currentSubdomain === 'events') return `/${eventSlug}`;
-  return `/${eventSlug}`;
-};
-
-const getAllEventsPath = () => {
-  if (currentSubdomain === 'events') return '/all-events';
-  return '/all-events';
-};
-
-const isAllEventsPage = (pathname) => {
-  if (currentSubdomain === 'events') {
-    return pathname === '/all-events';
-  }
-  return pathname === '/all-events';
-};
-// =========================================================
-
 const EventUpcomingGrid = () => {
   const location = useLocation();
-  const onAllEventsPage = isAllEventsPage(location.pathname);
+  const onAllEventsPage = location.pathname === '/all-events';
 
   const { data: eventsData, isLoading } = useGetEventsQuery({ 
     upcoming: 'true',
@@ -95,7 +66,7 @@ const EventUpcomingGrid = () => {
           {events.map(event => (
             <Link
               key={event._id}
-              to={getEventDetailPath(event.slug)}   // ← changed to event.slug
+              to={`/${event.slug}`}
               className="group relative rounded-xl sm:rounded-2xl overflow-hidden bg-white shadow-md hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 sm:hover:-translate-y-2"
             >
               {/* Poster Image - Full Card */}
@@ -182,7 +153,7 @@ const EventUpcomingGrid = () => {
         {!onAllEventsPage && (
           <div className="mt-8 sm:mt-10 text-center">
             <Link
-              to={getAllEventsPath()}
+              to="/all-events"
               className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-3.5 bg-[#1B3766] text-white rounded-xl font-semibold text-sm hover:bg-[#142952] transition-all shadow-lg hover:shadow-xl group"
             >
               View All Events

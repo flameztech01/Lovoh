@@ -19,33 +19,6 @@ import {
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 
-// ==================== SUBDOMAIN HELPERS ====================
-const getSubdomain = () => {
-  const hostname = window.location.hostname;
-  if (hostname === 'eventroom.lovohcreate.com') return 'events';
-  if (hostname === 'biizzed.lovohcreate.com') return 'biizzed';
-  if (hostname === 'uduua.lovohcreate.com') return 'uduua';
-  return 'main';
-};
-
-const currentSubdomain = getSubdomain();
-
-const getEventsListPath = () => {
-  if (currentSubdomain === 'events') return '/';
-  return '/';
-};
-
-const getSignupPath = (redirect) => {
-  const base = currentSubdomain === 'events' ? '/signup' : '/events/signup';
-  return redirect ? `${base}?redirect=${redirect}` : base;
-};
-
-const getDashboardPath = () => {
-  if (currentSubdomain === 'events') return '/dashboard';
-  return '/dashboard';
-};
-// =========================================================
-
 const EventLogin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -60,7 +33,7 @@ const EventLogin = () => {
   const [googleAuth, { isLoading: googleLoading }] = useGoogleAuthMutation();
   const [login, { isLoading: loginLoading }] = useLoginMutation();
 
-  const redirect = searchParams.get('redirect') || getDashboardPath();
+  const redirect = searchParams.get('redirect') || '/dashboard';
 
   useEffect(() => {
     if (userInfo) {
@@ -128,7 +101,7 @@ const EventLogin = () => {
       <div className="max-w-md mx-auto px-4 py-16 pt-24">
         {/* Back Button */}
         <button
-          onClick={() => navigate(getEventsListPath())}
+          onClick={() => navigate('/')}
           className="flex items-center gap-2 text-gray-600 hover:text-[#1B3766] mb-8 transition-colors text-sm group"
         >
           <FaArrowLeft className="text-xs group-hover:-translate-x-1 transition-transform" />
@@ -250,7 +223,7 @@ const EventLogin = () => {
         <p className="text-center text-sm text-gray-500 mt-6">
           Don't have an account?{' '}
           <Link
-            to={getSignupPath(redirect)}
+            to={`/signup${redirect ? `?redirect=${redirect}` : ''}`}
             className="text-[#1B3766] font-semibold hover:underline"
           >
             Create one here

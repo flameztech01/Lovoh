@@ -261,8 +261,8 @@ const EventDashboardEventDetail = () => {
           <FaArrowLeft className="text-xs group-hover:-translate-x-1 transition-transform" /> Back to My Events
         </button>
         <div className="flex items-center gap-2">
-          <button onClick={() => navigate(`/dashboard/${id}/edit`)} className="flex items-center gap-1.5 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all text-sm"><FaEdit className="text-xs" /> Edit</button>
-          <button onClick={() => navigate(`/dashboard/${id}/registrations`)} className="flex items-center gap-1.5 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all text-sm"><FaTicketAlt className="text-xs" /> Registrations ({totalTickets})</button>
+          <button onClick={() => navigate(`/dashboard/events/${id}/edit`)} className="flex items-center gap-1.5 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all text-sm"><FaEdit className="text-xs" /> Edit</button>
+          <button onClick={() => navigate(`/dashboard/events/${id}/registrations`)} className="flex items-center gap-1.5 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all text-sm"><FaTicketAlt className="text-xs" /> Registrations ({totalTickets})</button>
           <button onClick={() => setShowDeleteModal(true)} className="flex items-center gap-1.5 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all text-sm"><FaTrashAlt className="text-xs" /> Delete</button>
         </div>
       </div>
