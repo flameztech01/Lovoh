@@ -35,6 +35,7 @@ import NotFound from "./screens/NotFound.jsx";
 // ==================== ROUTES (EventRoom only) ====================
 const router = createBrowserRouter([
   { path: "/", element: <EventsScreen /> },
+  { path: ":id", element: <EventDetail /> },
   { path: "*", element: <NotFound /> }, // Catch-all route for 404
   {
     path: "/events",
