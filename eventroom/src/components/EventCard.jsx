@@ -29,7 +29,7 @@ const EventCard = ({ event, isUpcoming = true }) => {
 
   return (
     <Link
-      to={`/events/${event._id}`}
+      to={`/${event._id}`}
       className="group bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col"
     >
       {/* Event Image */}

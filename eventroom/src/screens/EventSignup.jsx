@@ -29,32 +29,15 @@ import {
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 
-// ==================== SUBDOMAIN HELPERS ====================
-const getSubdomain = () => {
-  const hostname = window.location.hostname;
-  if (hostname === 'eventroom.lovohcreate.com') return 'events';
-  if (hostname === 'biizzed.lovohcreate.com') return 'biizzed';
-  if (hostname === 'uduua.lovohcreate.com') return 'uduua';
-  return 'main';
-};
-
-const currentSubdomain = getSubdomain();
-
-const getEventsListPath = () => {
-  if (currentSubdomain === 'events') return '/';
-  return '/events';
-};
+// ==================== STANDALONE PATHS (no subdomain) ====================
+const getEventsListPath = () => '/';
 
 const getLoginPath = (redirect) => {
-  const base = currentSubdomain === 'events' ? '/login' : '/events/login';
-  return redirect ? `${base}?redirect=${redirect}` : base;
+  return redirect ? `/login?redirect=${redirect}` : '/login';
 };
 
-const getDashboardPath = () => {
-  if (currentSubdomain === 'events') return '/dashboard';
-  return '/events/dashboard';
-};
-// =========================================================
+const getDashboardPath = () => '/dashboard';
+// ========================================================================
 
 const EventSignup = () => {
   const [formData, setFormData] = useState({
@@ -475,7 +458,7 @@ const EventSignup = () => {
               <input
                 type="text"
                 value={otp}
-                onChange={(e) => setOtp(e.target.value.replace(/\D/, '').slice(0, 6))}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 placeholder="000000"
                 maxLength={6}
                 className="w-full px-4 py-3 text-center text-2xl tracking-[0.5em] border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3766] focus:border-transparent"

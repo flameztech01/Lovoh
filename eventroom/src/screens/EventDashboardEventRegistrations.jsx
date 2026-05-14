@@ -261,7 +261,7 @@ const EventDashboardEventRegistrations = () => {
         <div className="text-center py-20">
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Event Not Found</h2>
           <button
-            onClick={() => navigate('/events/dashboard/events')}
+            onClick={() => navigate('/dashboard/events')}
             className="px-4 py-2 bg-[#1B3766] text-white rounded-lg"
           >
             Back to My Events
@@ -515,7 +515,7 @@ const EventDashboardEventRegistrations = () => {
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div>
             <button
-              onClick={() => navigate(`/events/dashboard/events/${id}`)}
+              onClick={() => navigate(`/dashboard/events/${id}`)}
               className="flex items-center gap-2 text-gray-600 hover:text-[#1B3766] mb-2 transition-colors text-sm"
             >
               <FaArrowLeft className="text-xs" /> Back to Event

@@ -85,7 +85,7 @@ const EventDashboardEvents = () => {
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">My Events</h1>
           <p className="text-gray-500 mt-1 text-sm">{events?.length || 0} event{(events?.length || 0) !== 1 ? 's' : ''} created</p>
         </div>
-        <Link to="/events/dashboard/events/new" className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#1B3766] text-white rounded-lg font-medium hover:bg-[#142952] transition-all text-sm"><FaPlus /> Create Event</Link>
+        <Link to="/dashboard/events/new" className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#1B3766] text-white rounded-lg font-medium hover:bg-[#142952] transition-all text-sm"><FaPlus /> Create Event</Link>
       </div>
 
       {/* Stats - Mobile friendly grid */}
@@ -128,7 +128,7 @@ const EventDashboardEvents = () => {
           <div className="w-16 sm:w-20 h-16 sm:h-20 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center"><FaCalendarAlt className="text-2xl sm:text-3xl text-gray-400" /></div>
           <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">{searchTerm ? 'No matching events' : 'No events created yet'}</h3>
           <p className="text-gray-500 mb-6 text-xs sm:text-sm">{searchTerm ? 'Try a different search term.' : 'Create your first event to get started.'}</p>
-          {!searchTerm && <Link to="/events/dashboard/events/new" className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1B3766] text-white rounded-lg hover:bg-[#142952] transition-all text-sm"><FaPlus /> Create Your First Event</Link>}
+          {!searchTerm && <Link to="/dashboard/events/new" className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1B3766] text-white rounded-lg hover:bg-[#142952] transition-all text-sm"><FaPlus /> Create Your First Event</Link>}
         </div>
       ) : (
         <div className="space-y-3 sm:space-y-4">
@@ -164,9 +164,9 @@ const EventDashboardEvents = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
-                      <button onClick={() => navigate(`/events/dashboard/events/${event.slug}`)} className="flex items-center gap-1 px-2.5 py-1.5 text-blue-600 hover:bg-blue-50 rounded-lg text-xs"><FaEye className="text-[10px]" /> View</button>
-                      <button onClick={() => navigate(`/events/dashboard/events/${event.slug}/edit`)} className="flex items-center gap-1 px-2.5 py-1.5 text-green-600 hover:bg-green-50 rounded-lg text-xs"><FaEdit className="text-[10px]" /> Edit</button>
-                      <button onClick={() => navigate(`/events/dashboard/events/${event.slug}/registrations`)} className="flex items-center gap-1 px-2.5 py-1.5 text-purple-600 hover:bg-purple-50 rounded-lg text-xs"><FaTicketAlt className="text-[10px]" /> Registrations ({event.currentAttendees || 0})</button>
+                      <button onClick={() => navigate(`/dashboard/events/${event.slug}`)} className="flex items-center gap-1 px-2.5 py-1.5 text-blue-600 hover:bg-blue-50 rounded-lg text-xs"><FaEye className="text-[10px]" /> View</button>
+                      <button onClick={() => navigate(`/dashboard/events/${event.slug}/edit`)} className="flex items-center gap-1 px-2.5 py-1.5 text-green-600 hover:bg-green-50 rounded-lg text-xs"><FaEdit className="text-[10px]" /> Edit</button>
+                      <button onClick={() => navigate(`/dashboard/events/${event.slug}/registrations`)} className="flex items-center gap-1 px-2.5 py-1.5 text-purple-600 hover:bg-purple-50 rounded-lg text-xs"><FaTicketAlt className="text-[10px]" /> Registrations ({event.currentAttendees || 0})</button>
                       <button onClick={() => setEventToDelete(event)} className="flex items-center gap-1 px-2.5 py-1.5 text-red-600 hover:bg-red-50 rounded-lg text-xs ml-auto"><FaTrashAlt className="text-[10px]" /> Delete</button>
                     </div>
                   </div>
@@ -194,9 +194,9 @@ const EventDashboardEvents = () => {
                     <FaChevronRight className="text-gray-400 text-xs mt-1 flex-shrink-0" />
                   </div>
                   <div className="flex items-center gap-1 mt-2 pt-2 border-t border-gray-100" onClick={(e) => e.stopPropagation()}>
-                    <button onClick={() => navigate(`/events/dashboard/events/${event.slug}`)} className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-medium flex items-center justify-center gap-1"><FaEye className="text-[8px]" /> View</button>
-                    <button onClick={() => navigate(`/events/dashboard/events/${event.slug}/edit`)} className="flex-1 py-2 bg-green-50 text-green-600 rounded-lg text-[10px] font-medium flex items-center justify-center gap-1"><FaEdit className="text-[8px]" /> Edit</button>
-                    <button onClick={() => navigate(`/events/dashboard/events/${event.slug}/registrations`)} className="flex-1 py-2 bg-purple-50 text-purple-600 rounded-lg text-[10px] font-medium flex items-center justify-center gap-1"><FaTicketAlt className="text-[8px]" /> Reg.</button>
+                    <button onClick={() => navigate(`/dashboard/events/${event.slug}`)} className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-medium flex items-center justify-center gap-1"><FaEye className="text-[8px]" /> View</button>
+                    <button onClick={() => navigate(`/dashboard/events/${event.slug}/edit`)} className="flex-1 py-2 bg-green-50 text-green-600 rounded-lg text-[10px] font-medium flex items-center justify-center gap-1"><FaEdit className="text-[8px]" /> Edit</button>
+                    <button onClick={() => navigate(`/dashboard/events/${event.slug}/registrations`)} className="flex-1 py-2 bg-purple-50 text-purple-600 rounded-lg text-[10px] font-medium flex items-center justify-center gap-1"><FaTicketAlt className="text-[8px]" /> Reg.</button>
                     <button onClick={() => setEventToDelete(event)} className="flex-1 py-2 bg-red-50 text-red-600 rounded-lg text-[10px] font-medium flex items-center justify-center gap-1"><FaTrashAlt className="text-[8px]" /> Del</button>
                   </div>
                 </div>

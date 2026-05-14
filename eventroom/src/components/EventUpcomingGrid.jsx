@@ -19,19 +19,19 @@ const currentSubdomain = getSubdomain();
 
 const getEventDetailPath = (eventSlug) => {
   if (currentSubdomain === 'events') return `/${eventSlug}`;
-  return `/events/${eventSlug}`;
+  return `/${eventSlug}`;
 };
 
 const getAllEventsPath = () => {
   if (currentSubdomain === 'events') return '/all-events';
-  return '/events/all-events';
+  return '/all-events';
 };
 
 const isAllEventsPage = (pathname) => {
   if (currentSubdomain === 'events') {
     return pathname === '/all-events';
   }
-  return pathname === '/events/all-events';
+  return pathname === '/all-events';
 };
 // =========================================================
 

@@ -160,7 +160,7 @@ const EventDashboardRegistrations = () => {
           </p>
           {!searchTerm && (
             <Link
-              to="/events"
+              to="/"
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1B3766] text-white rounded-lg hover:bg-[#142952] transition-all text-sm"
             >
               Browse Events

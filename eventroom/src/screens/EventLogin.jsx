@@ -32,7 +32,7 @@ const currentSubdomain = getSubdomain();
 
 const getEventsListPath = () => {
   if (currentSubdomain === 'events') return '/';
-  return '/events';
+  return '/';
 };
 
 const getSignupPath = (redirect) => {
@@ -42,7 +42,7 @@ const getSignupPath = (redirect) => {
 
 const getDashboardPath = () => {
   if (currentSubdomain === 'events') return '/dashboard';
-  return '/events/dashboard';
+  return '/dashboard';
 };
 // =========================================================
 

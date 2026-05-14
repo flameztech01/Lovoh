@@ -129,7 +129,7 @@ const EventDashboard = () => {
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
           <div className="space-y-3">
             <Link
-              to="/events/dashboard/events/new"
+              to="/dashboard/events/new"
               className="flex items-center justify-between p-4 bg-[#1B3766] text-white rounded-xl hover:bg-[#142952] transition-all group"
             >
               <div className="flex items-center gap-3">
@@ -145,7 +145,7 @@ const EventDashboard = () => {
             </Link>
 
             <Link
-              to="/events/dashboard/wallet"
+              to="/dashboard/wallet"
               className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all group border border-gray-100"
             >
               <div className="flex items-center gap-3">
@@ -164,7 +164,7 @@ const EventDashboard = () => {
 
             {!wallet.hasWallet && (
               <Link
-                to="/events/dashboard/wallet"
+                to="/dashboard/wallet"
                 className="flex items-center justify-between p-4 bg-yellow-50 rounded-xl hover:bg-yellow-100 transition-all group border border-yellow-200"
               >
                 <div className="flex items-center gap-3">
@@ -186,7 +186,7 @@ const EventDashboard = () => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Recent Events</h2>
-            <Link to="/events/dashboard/events" className="text-sm text-[#1B3766] hover:underline font-medium">
+            <Link to="/dashboard/events" className="text-sm text-[#1B3766] hover:underline font-medium">
               View All
             </Link>
           </div>
@@ -198,7 +198,7 @@ const EventDashboard = () => {
               </div>
               <p className="text-gray-500 text-sm mb-4">No events created yet</p>
               <Link
-                to="/events/dashboard/events/new"
+                to="/dashboard/events/new"
                 className="inline-flex items-center gap-2 px-4 py-2 bg-[#1B3766] text-white rounded-lg text-sm hover:bg-[#142952] transition-all"
               >
                 <FaPlus /> Create Your First Event
@@ -209,7 +209,7 @@ const EventDashboard = () => {
               {recentEvents.map((event) => (
                 <Link
                   key={event._id}
-                  to={`/events/dashboard/events/${event._id}`}
+                  to={`/dashboard/events/${event._id}`}
                   className="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-50 transition-colors border border-gray-100 group"
                 >
                   <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">

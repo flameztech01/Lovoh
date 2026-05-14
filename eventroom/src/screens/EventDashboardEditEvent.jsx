@@ -407,7 +407,7 @@ const EventDashboardEditEvent = () => {
         toast.success("Registration form updated!");
       }
 
-      navigate(`/events/dashboard/events/${id}`);
+      navigate(`/dashboard/events/${id}`);
     } catch (err) {
       toast.error(err?.data?.message || "Update failed");
     }
@@ -421,7 +421,7 @@ const EventDashboardEditEvent = () => {
   if (!event) return (
     <EventDashboardSidebar>
       <div className="text-center py-20"><h2 className="text-xl font-semibold text-gray-900 mb-2">Event Not Found</h2>
-        <button onClick={() => navigate('/events/dashboard/events')} className="px-4 py-2 bg-[#1B3766] text-white rounded-lg">Back to My Events</button>
+        <button onClick={() => navigate('/dashboard/events')} className="px-4 py-2 bg-[#1B3766] text-white rounded-lg">Back to My Events</button>
       </div>
     </EventDashboardSidebar>
   );
@@ -431,7 +431,7 @@ const EventDashboardEditEvent = () => {
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
-            <button onClick={() => navigate(`/events/dashboard/events/${id}`)} className="flex items-center gap-2 text-gray-600 hover:text-[#1B3766] mb-2 transition-colors text-sm"><FaArrowLeft className="text-xs" /> Back to Event</button>
+            <button onClick={() => navigate(`/dashboard/events/${id}`)} className="flex items-center gap-2 text-gray-600 hover:text-[#1B3766] mb-2 transition-colors text-sm"><FaArrowLeft className="text-xs" /> Back to Event</button>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Edit Event</h1>
             <p className="text-gray-500 mt-1 text-sm">Update your event details</p>
           </div>

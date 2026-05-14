@@ -123,7 +123,7 @@ const EventDashboardAnalytics = () => {
         {/* Event Overview */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2"><FaChartPie className="text-[#1B3766]" /> Event Overview</h2>
-          {totalEvents === 0 ? <EmptyChart icon={FaChartPie} text="No events yet" link="/events/dashboard/events/new" linkText="Create your first event →" /> : (
+          {totalEvents === 0 ? <EmptyChart icon={FaChartPie} text="No events yet" link="/dashboard/events/new" linkText="Create your first event →" /> : (
             <div className="space-y-6">
               <div>
                 <p className="text-sm font-medium text-gray-700 mb-3">Paid vs Free</p>
@@ -167,7 +167,7 @@ const EventDashboardAnalytics = () => {
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2"><FaArrowUp className="text-green-600" /> Top Performing Events</h2>
           <div className="space-y-3">
             {topEvents.map((e, idx) => (
-              <Link key={e._id} to={`/events/dashboard/events/${e._id}`} className="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-50 transition-colors group">
+              <Link key={e._id} to={`/dashboard/events/${e._id}`} className="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-50 transition-colors group">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${idx===0?'bg-yellow-100 text-yellow-700':idx===1?'bg-gray-200 text-gray-600':idx===2?'bg-orange-100 text-orange-700':'bg-gray-100 text-gray-500'}`}>{idx+1}</div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-gray-900 truncate group-hover:text-[#1B3766]">{e.title}</p>

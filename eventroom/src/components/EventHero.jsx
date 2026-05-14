@@ -18,17 +18,17 @@ const currentSubdomain = getSubdomain();
 
 const getEventDetailPath = (slug) => {
   if (currentSubdomain === 'events') return `/${slug}`;
-  return `/events/${slug}`;
+  return `/${slug}`;
 };
 
 const getDashboardPath = () => {
   if (currentSubdomain === 'events') return '/dashboard';
-  return '/events/dashboard';
+  return '/dashboard';
 };
 
 const getLoginPath = () => {
   if (currentSubdomain === 'events') return '/login?redirect=/dashboard';
-  return '/events/login?redirect=/events/dashboard';
+  return '/login?redirect=/dashboard';
 };
 // =========================================================
 

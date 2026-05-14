@@ -7,7 +7,7 @@ import { FaArrowRight, FaCalendarCheck, FaTicketAlt, FaShieldAlt } from 'react-i
 const EventCTASection = () => {
   const { userInfo } = useSelector((state) => state.auth);
 
-  const getStartedLink = userInfo ? '/events/dashboard/events/new' : '/events/signup';
+  const getStartedLink = userInfo ? '/dashboard/events/new' : '/signup';
   const getStartedText = userInfo ? 'Create Your Event' : 'Start Hosting Events';
 
   return (
@@ -53,7 +53,7 @@ const EventCTASection = () => {
             <FaArrowRight className="group-hover:translate-x-1 transition-transform" />
           </Link>
           <Link
-            to="/events/all-events"
+            to="/all-events"
             className="group border-2 border-white/30 hover:border-white/80 text-white hover:bg-white/10 px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 transform hover:-translate-y-1 inline-flex items-center gap-3"
           >
             <FaTicketAlt className="text-cyan-300" />

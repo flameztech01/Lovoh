@@ -19,7 +19,7 @@ const getEventsListPath = () => {
 };
 
 const getCreateEventPath = () => {
-  if (currentSubdomain === 'events') return '/dashboard/events/new';
+  if (currentSubdomain === 'events') return '//dashboard/events/new';
   return '/events/dashboard/events/new';
 };
 

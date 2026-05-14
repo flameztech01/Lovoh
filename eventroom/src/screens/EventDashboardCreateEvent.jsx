@@ -339,7 +339,7 @@ const EventDashboardCreateEvent = () => {
     try {
       await createEvent(submitData).unwrap();
       toast.success("Event created successfully!");
-      navigate("/events/dashboard/events");
+      navigate("/dashboard/events");
     } catch (error) {
       toast.error(error?.data?.message || "Failed to create event");
     }
@@ -350,7 +350,7 @@ const EventDashboardCreateEvent = () => {
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
-            <button onClick={() => navigate("/events/dashboard/events")} className="flex items-center gap-2 text-gray-600 hover:text-[#1B3766] mb-2 transition-colors text-sm">
+            <button onClick={() => navigate("/dashboard/events")} className="flex items-center gap-2 text-gray-600 hover:text-[#1B3766] mb-2 transition-colors text-sm">
               <FaArrowLeft className="text-xs" /> Back to My Events
             </button>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Create New Event</h1>

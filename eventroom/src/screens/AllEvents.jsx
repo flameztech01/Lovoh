@@ -25,7 +25,7 @@ const currentSubdomain = getSubdomain();
 
 const getEventDetailPath = (eventSlug) => {
   if (currentSubdomain === 'events') return `/${eventSlug}`;
-  return `/events/${eventSlug}`;
+  return `/${eventSlug}`;
 };
 // =========================================================
 

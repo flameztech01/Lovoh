@@ -31,38 +31,38 @@ const EventDashboardSidebar = ({ children }) => {
     {
       title: 'Dashboard',
       icon: FaHome,
-      path: '/events/dashboard',
+      path: '/dashboard',
     },
     {
       title: 'My Events',
       icon: FaList,
-      path: '/events/dashboard/events',
+      path: '/dashboard/events',
     },
     {
       title: 'Create Event',
       icon: FaPlus,
-      path: '/events/dashboard/events/new',
+      path: '/dashboard/events/new',
     },
     {
       title: 'Registrations',
       icon: FaTicketAlt,
-      path: '/events/dashboard/registrations',
+      path: '/dashboard/registrations',
     },
     {
       title: 'Wallet',
       icon: FaWallet,
-      path: '/events/dashboard/wallet',
+      path: '/dashboard/wallet',
     },
     {
       title: 'Analytics',
       icon: FaChartBar,
-      path: '/events/dashboard/analytics',
+      path: '/dashboard/analytics',
     },
   ];
 
   const isActive = (path) => {
-    if (path === '/events/dashboard') {
-      return location.pathname === '/events/dashboard';
+    if (path === '/dashboard') {
+      return location.pathname === '/dashboard';
     }
     return location.pathname.startsWith(path);
   };
@@ -93,7 +93,7 @@ const EventDashboardSidebar = ({ children }) => {
     toast.success('Logged out successfully');
     
     // Navigate to events page
-    navigate('/events');
+    navigate('/');
     
     // Force a full page reload to clear any cached state
     setTimeout(() => {

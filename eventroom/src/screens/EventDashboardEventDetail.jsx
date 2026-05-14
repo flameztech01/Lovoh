@@ -148,7 +148,7 @@ const EventDashboardEventDetail = () => {
     if (!event) return;
     const imageUrl = toAbsoluteUrl(event.images?.[0]); // fallback to logo
     const message = getShareMessage();
-    const publicUrl = `${window.location.origin}/events/${id}`;
+    const publicUrl = `${window.location.origin}/${id}`;
     await shareWithImage(imageUrl, event.title, message, publicUrl);
   };
 
@@ -157,7 +157,7 @@ const EventDashboardEventDetail = () => {
     if (!event || !event.images?.length) return;
     const imageUrl = event.images[currentImageIndex];
     const message = getShareMessage();
-    const publicUrl = `${window.location.origin}/events/${id}`;
+    const publicUrl = `${window.location.origin}/${id}`;
     await shareWithImage(imageUrl, event.title, message, publicUrl);
   };
 
@@ -180,7 +180,7 @@ const EventDashboardEventDetail = () => {
   };
 
   const handleCopy = async () => {
-    const url = `${window.location.origin}/events/${id}`;
+    const url = `${window.location.origin}/${id}`;
     await navigator.clipboard.writeText(url);
     setCopied(true);
     toast.success('Link copied!');
@@ -191,13 +191,13 @@ const EventDashboardEventDetail = () => {
     try {
       await deleteEvent(id).unwrap();
       toast.success('Event deleted');
-      navigate('/events/dashboard/events');
+      navigate('/dashboard/events');
     } catch (error) {
       toast.error(error?.data?.message || 'Delete failed');
     }
   };
 
-  const getPublicLink = () => `${window.location.origin}/events/${id}`;
+  const getPublicLink = () => `${window.location.origin}/${id}`;
 
   // Lightbox navigation callbacks
   const nextImage = useCallback(() => {
@@ -245,7 +245,7 @@ const EventDashboardEventDetail = () => {
           <FaCalendarAlt className="text-3xl text-gray-400" />
         </div>
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Event Not Found</h1>
-        <Link to="/events/dashboard/events" className="inline-flex items-center gap-2 px-6 py-2 bg-[#1B3766] text-white rounded-xl"><FaArrowLeft /> Back to My Events</Link>
+        <Link to="/dashboard/events" className="inline-flex items-center gap-2 px-6 py-2 bg-[#1B3766] text-white rounded-xl"><FaArrowLeft /> Back to My Events</Link>
       </div>
     </EventDashboardSidebar>
   );
@@ -257,12 +257,12 @@ const EventDashboardEventDetail = () => {
     <EventDashboardSidebar>
       {/* Header (unchanged) */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <button onClick={() => navigate('/events/dashboard/events')} className="flex items-center gap-2 text-gray-600 hover:text-[#1B3766] transition-colors text-sm group">
+        <button onClick={() => navigate('/dashboard/events')} className="flex items-center gap-2 text-gray-600 hover:text-[#1B3766] transition-colors text-sm group">
           <FaArrowLeft className="text-xs group-hover:-translate-x-1 transition-transform" /> Back to My Events
         </button>
         <div className="flex items-center gap-2">
-          <button onClick={() => navigate(`/events/dashboard/events/${id}/edit`)} className="flex items-center gap-1.5 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all text-sm"><FaEdit className="text-xs" /> Edit</button>
-          <button onClick={() => navigate(`/events/dashboard/events/${id}/registrations`)} className="flex items-center gap-1.5 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all text-sm"><FaTicketAlt className="text-xs" /> Registrations ({totalTickets})</button>
+          <button onClick={() => navigate(`/dashboard/${id}/edit`)} className="flex items-center gap-1.5 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all text-sm"><FaEdit className="text-xs" /> Edit</button>
+          <button onClick={() => navigate(`/dashboard/${id}/registrations`)} className="flex items-center gap-1.5 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all text-sm"><FaTicketAlt className="text-xs" /> Registrations ({totalTickets})</button>
           <button onClick={() => setShowDeleteModal(true)} className="flex items-center gap-1.5 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all text-sm"><FaTrashAlt className="text-xs" /> Delete</button>
         </div>
       </div>

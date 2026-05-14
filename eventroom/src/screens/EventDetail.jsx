@@ -36,12 +36,12 @@ const getBaseUrl = () => {
 
 const getEventsListPath = () => {
   if (currentSubdomain === 'events') return '/';
-  return '/events';
+  return '/';
 };
 
 const getEventRegisterPath = (slug) => {
   if (currentSubdomain === 'events') return `/${slug}/register`;
-  return `/events/${slug}/register`;
+  return `/${slug}/register`;
 };
 
 const toAbsoluteUrl = (url) => {
