@@ -20,6 +20,22 @@
     }
   ],
   "rewrites": [
+    {
+      "source": "/api/og/event/:id",
+      "destination": "/api/og-event.js"
+    },
+    {
+      "source": "/api/og/biizzed/article/:slug",
+      "destination": "/api/og-biizzed-article.js"
+    },
+    {
+      "source": "/api/og/biizzed/magazine/:id",
+      "destination": "/api/og-biizzed-magazine.js"
+    },
+    {
+      "source": "/api/og/biizzed/video/:id",
+      "destination": "/api/og-biizzed-video.js"
+    },
 
     {
       "source": "/(.*)",
@@ -43,11 +59,10 @@
       "destination": "/index.html"
     },
 
-    { "source": "/api/og/event/:id", "destination": "/api/og-event.js" },
-    { "source": "/api/og/biizzed/article/:slug", "destination": "/api/og-biizzed-article.js" },
-    { "source": "/api/og/biizzed/magazine/:id", "destination": "/api/og-biizzed-magazine.js" },
-    { "source": "/api/og/biizzed/video/:id", "destination": "/api/og-biizzed-video.js" },
-
-    { "source": "/(.*)", "destination": "/" }
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "www.lovohcreate.com" }],
+      "destination": "/index.html"
+    }
   ]
 }
