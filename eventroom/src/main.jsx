@@ -27,17 +27,20 @@ import EventDashboardEventDetail from "./screens/EventDashboardEventDetail.jsx";
 import EventDashboardEventRegistrations from "./screens/EventDashboardEventRegistrations.jsx";
 import EventDashboardEditEvent from "./screens/EventDashboardEditEvent.jsx";
 
+import NotFound from "./screens/NotFound.jsx";
+
 // Push notifications hook (if still used, keep; otherwise remove)
 // import usePushNotifications from "./hooks/usePushNotifications";
 
 // ==================== ROUTES (EventRoom only) ====================
 const router = createBrowserRouter([
-  {path: "/", element: <EventsScreen />},
+  { path: "/", element: <EventsScreen /> },
+  { path: "*", element: <NotFound /> }, // Catch-all route for 404
   {
     path: "/events",
     element: <App />,
     children: [
-      {index: true, element: <EventsScreen />},
+      { index: true, element: <EventsScreen /> },
       { path: ":id", element: <EventDetail /> },
       { path: "all-events", element: <AllEvents /> },
       { path: ":id/register", element: <EventRegistration /> },
@@ -48,13 +51,28 @@ const router = createBrowserRouter([
         children: [
           { path: "dashboard", element: <EventDashboard /> },
           { path: "dashboard/events", element: <EventDashboardEvents /> },
-          { path: "dashboard/events/new", element: <EventDashboardCreateEvent /> },
-          { path: "dashboard/registrations", element: <EventDashboardRegistrations /> },
+          {
+            path: "dashboard/events/new",
+            element: <EventDashboardCreateEvent />,
+          },
+          {
+            path: "dashboard/registrations",
+            element: <EventDashboardRegistrations />,
+          },
           { path: "dashboard/wallet", element: <EventDashboardWallet /> },
           { path: "dashboard/analytics", element: <EventDashboardAnalytics /> },
-          { path: "dashboard/events/:id", element: <EventDashboardEventDetail /> },
-          { path: "dashboard/events/:id/registrations", element: <EventDashboardEventRegistrations /> },
-          { path: "dashboard/events/:id/edit", element: <EventDashboardEditEvent /> },
+          {
+            path: "dashboard/events/:id",
+            element: <EventDashboardEventDetail />,
+          },
+          {
+            path: "dashboard/events/:id/registrations",
+            element: <EventDashboardEventRegistrations />,
+          },
+          {
+            path: "dashboard/events/:id/edit",
+            element: <EventDashboardEditEvent />,
+          },
         ],
       },
     ],
@@ -81,5 +99,5 @@ createRoot(document.getElementById("root")).render(
         <Analytics />
       </GoogleOAuthProvider>
     </Provider>
-  </StrictMode>
+  </StrictMode>,
 );

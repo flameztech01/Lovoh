@@ -32,12 +32,15 @@ import UduuaSellerPaymentHistory from "./screens/UduuaSellerPaymentHistory.jsx";
 import UduuaPaymentVerify from "./screens/UduuaPaymentVerify.jsx";
 import UduuaPaymentPage from "./screens/UduuaPaymentPage.jsx";
 
+import NotFound from "./screens/NotFound.jsx";
+
 // Push notifications hook
 import usePushNotifications from "./hooks/usePushNotifications";
 
 // ==================== ROUTES (Uduua only) ====================
 const router = createBrowserRouter([
   {path: "/", element: <UduuaScreen />},
+  {path: "*", element: <NotFound />},
   {
     path: "/uduua",
     element: <UduuaLayout />,

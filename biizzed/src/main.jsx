@@ -30,12 +30,15 @@ import BiizzedResubscribeScreen from "./screens/BiizzedResubscribeScreen.jsx";
 import BiizzedSettings from "./screens/BiizzedSettings.jsx";
 import BiizzedNotifications from "./screens/BiizzedNotifications.jsx";
 
+import NotFound from "./screens/NotFound.jsx";
+
 // Push notifications hook
 import usePushNotifications from "./hooks/usePushNotifications";
 
 // ==================== ROUTES (Biizzed only) ====================
 const router = createBrowserRouter([
   { path: "/", element: <BiizzedScreen /> },
+  {path: "*", element: <NotFound />},
   {
     path: "/biizzed",
     element: <BiizzedLayout />,

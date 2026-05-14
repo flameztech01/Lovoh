@@ -8,6 +8,8 @@ import { Provider } from "react-redux";
 import store from "./store.js";
 import { Analytics } from "@vercel/analytics/react";
 
+import NotFound from "./screens/NotFound.jsx";
+
 import UserPrivateRoute from "./components/UserPrivateRoute.jsx";
 import BizzzedLayout from "./screens/BizzzedLayout.jsx";
 import UduuaLayout from "./screens/UduuaLayout.jsx";
@@ -314,6 +316,7 @@ const eventRoutes = [
 // --- Main domain routes ---
 const mainRoutes = [
   { index: true, element: <Homepage /> },
+  {path: "*", element: <NotFound />},
   { path: "admin/login", element: <Adminauth /> },
   { path: "/about", element: <Aboutscreen /> },
   { path: "/services", element: <Servicescreen /> },
