@@ -11,217 +11,23 @@
     />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <!-- ========== DYNAMIC SEO META TAGS (with sub‑brand images) ========== -->
-    <script>
-      (function () {
-        const hostname = window.location.hostname;
-        const isMainDomain =
-          hostname === "lovohcreate.com" ||
-          hostname === "www.lovohcreate.com";
+    <!-- ========== SEO META TAGS FOR LOVOH CREATE (Marketing Focus) ========== -->
+    <title>Lovoh Create – Top Brand Marketing & Technology Agency | Digital Marketing, Web Dev, SEO</title>
+    <meta name="description" content="Lovoh Create is a leading brand marketing and technology agency. We deliver strategy, creative design, digital marketing, SEO, web & app development, and innovative tech solutions to grow your brand." />
+    <meta name="keywords" content="marketing agency, brand marketing, digital marketing, tech agency, web development, app development, SEO, social media marketing, branding strategy, Lovoh Create" />
+    <meta property="og:title" content="Lovoh Create – Brand Marketing & Tech Agency" />
+    <meta property="og:description" content="Lovoh Create builds brands through strategy, design, and tech. Marketing, web dev, SEO, and more." />
+    <meta property="og:url" content="https://lovohcreate.com" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://lovohcreate.com/logo.png" />
+    <meta property="og:site_name" content="Lovoh Create" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Lovoh Create – Brand Marketing & Tech Agency" />
+    <meta name="twitter:description" content="Lovoh Create delivers marketing, web dev, and tech solutions." />
+    <meta name="twitter:image" content="https://lovohcreate.com/logo.png" />
+    <link rel="canonical" href="https://lovohcreate.com" />
+    <!-- ========== END SEO ========== -->
 
-        let title, description, url, type, ogImage;
-        const base = "https://lovohcreate.com";
-
-        if (isMainDomain) {
-          title = "Lovoh Create – Brand Marketing & Tech Agency";
-          description =
-            "Lovoh Create is a brand marketing and technology agency building brands through strategy, design, digital marketing, and innovative tech solutions.";
-          url = base;
-          type = "website";
-          ogImage = base + "/logo.png";
-        } else if (hostname === "uduua.lovohcreate.com") {
-          title = "Uduua – Marketplace for Fast‑Growing Brands | Lovoh Create";
-          description =
-            "Uduua by Lovoh Create is your destination for quality products you'll love, at retail & bulk prices. Shop, sell, advertise – built for everyday buyers and fast-growing brands.";
-          url = "https://uduua.lovohcreate.com";
-          type = "website";
-          ogImage = base + "/uduua.png";
-        } else if (hostname === "biizzed.lovohcreate.com") {
-          title = "Biizzed – Business & Culture Magazine | by Lovoh Create";
-          description =
-            "Biizzed brings you articles, magazines, and videos spotlighting founders, leaders, and cultural innovators. A Lovoh Create brand.";
-          url = "https://biizzed.lovohcreate.com";
-          type = "website";
-          ogImage = base + "/biizzed.png";
-        } else if (hostname === "eventroom.lovohcreate.com") {
-          title = "EventRoom – Create, Register & Attend Events | Lovoh Create";
-          description =
-            "EventRoom by Lovoh Create helps organizers create, manage, promote, and sell tickets for physical and online events. Users can easily register for and attend conferences, shows, hangouts, trainings, and more from anywhere.";
-          url = "https://eventroom.lovohcreate.com";
-          type = "website";
-          ogImage = base + "/eventroom.png";
-        } else {
-          // fallback
-          title = "Lovoh Create – Brand Marketing & Tech";
-          description =
-            "Lovoh Create offers brand marketing, web/app development, e‑commerce, and event management. A place where brands come alive.";
-          url = base;
-          type = "website";
-          ogImage = base + "/logo.png";
-        }
-
-        // Prevent double rendering on client-side navigation
-        if (!document.getElementById("seo-meta-tags")) {
-          const fragment = document.createDocumentFragment();
-
-          const titleTag = document.createElement("title");
-          titleTag.textContent = title;
-          fragment.appendChild(titleTag);
-
-          const metaDesc = document.createElement("meta");
-          metaDesc.name = "description";
-          metaDesc.content = description;
-          fragment.appendChild(metaDesc);
-
-          // Open Graph
-          const ogTitle = document.createElement("meta");
-          ogTitle.property = "og:title";
-          ogTitle.content = title;
-          fragment.appendChild(ogTitle);
-
-          const ogDesc = document.createElement("meta");
-          ogDesc.property = "og:description";
-          ogDesc.content = description;
-          fragment.appendChild(ogDesc);
-
-          const ogUrl = document.createElement("meta");
-          ogUrl.property = "og:url";
-          ogUrl.content = url;
-          fragment.appendChild(ogUrl);
-
-          const ogType = document.createElement("meta");
-          ogType.property = "og:type";
-          ogType.content = type;
-          fragment.appendChild(ogType);
-
-          const ogImageMeta = document.createElement("meta");
-          ogImageMeta.property = "og:image";
-          ogImageMeta.content = ogImage;
-          fragment.appendChild(ogImageMeta);
-
-          const ogSite = document.createElement("meta");
-          ogSite.property = "og:site_name";
-          ogSite.content = "Lovoh Create";
-          fragment.appendChild(ogSite);
-
-          // Twitter Card
-          const twitterCard = document.createElement("meta");
-          twitterCard.name = "twitter:card";
-          twitterCard.content = "summary_large_image";
-          fragment.appendChild(twitterCard);
-
-          const twitterTitle = document.createElement("meta");
-          twitterTitle.name = "twitter:title";
-          twitterTitle.content = title;
-          fragment.appendChild(twitterTitle);
-
-          const twitterDesc = document.createElement("meta");
-          twitterDesc.name = "twitter:description";
-          twitterDesc.content = description;
-          fragment.appendChild(twitterDesc);
-
-          const twitterImage = document.createElement("meta");
-          twitterImage.name = "twitter:image";
-          twitterImage.content = ogImage;
-          fragment.appendChild(twitterImage);
-
-          const wrapper = document.createElement("span");
-          wrapper.id = "seo-meta-tags";
-          wrapper.style.display = "none";
-          wrapper.appendChild(fragment);
-
-          document.head.prepend(wrapper);
-        }
-      })();
-    </script>
-    <!-- ========== END DYNAMIC SEO META TAGS ========== -->
-
-    <!-- ==================== SUBDOMAIN-AWARE PWA META TAGS ==================== -->
-    <script>
-      (function () {
-        const hostname = window.location.hostname;
-
-        if (hostname === "uduua.lovohcreate.com") {
-          document.write(`
-            <link rel="manifest" href="/manifest-uduua.json" />
-            <meta name="theme-color" content="#0043FC" />
-            <meta name="apple-mobile-web-app-title" content="Uduua" />
-            <link rel="apple-touch-icon" href="/uduua-icon.png" />
-          `);
-        } else if (hostname === "biizzed.lovohcreate.com") {
-          document.write(`
-            <link rel="manifest" href="/manifest.json" />
-            <meta name="theme-color" content="#1B3766" />
-            <meta name="apple-mobile-web-app-title" content="Biizzed" />
-            <link rel="apple-touch-icon" href="/7.png" />
-          `);
-        } else if (hostname === "eventroom.lovohcreate.com") {
-          document.write(`
-            <meta name="theme-color" content="#1B3766" />
-            <meta name="apple-mobile-web-app-title" content="EventRoom" />
-            <link rel="apple-touch-icon" href="/eventroom.png" />
-          `);
-        }
-      })();
-    </script>
-    <!-- ==================== END PWA META TAGS ==================== -->
-
-    <!-- Canonical URL to avoid duplicates -->
-    <script>
-      (function () {
-        const hostname = window.location.hostname;
-        let canonical;
-        if (hostname === "lovohcreate.com" || hostname === "www.lovohcreate.com") {
-          canonical = "https://lovohcreate.com";
-        } else if (hostname === "uduua.lovohcreate.com") {
-          canonical = "https://uduua.lovohcreate.com";
-        } else if (hostname === "biizzed.lovohcreate.com") {
-          canonical = "https://biizzed.lovohcreate.com";
-        } else if (hostname === "eventroom.lovohcreate.com") {
-          canonical = "https://eventroom.lovohcreate.com";
-        }
-        if (canonical) {
-          const link = document.createElement("link");
-          link.rel = "canonical";
-          link.href = canonical + window.location.pathname + window.location.search;
-          document.head.appendChild(link);
-        }
-      })();
-    </script>
-
-    <!-- ==================== SUBDOMAIN URL CLEANUP ==================== -->
-    <script>
-      (function () {
-        const hostname = window.location.hostname;
-        const path = window.location.pathname;
-        const search = window.location.search;
-        const hash = window.location.hash;
-
-        let cleanPath = null;
-
-        if (
-          hostname === "biizzed.lovohcreate.com" &&
-          path.startsWith("/biizzed/")
-        ) {
-          cleanPath = path.replace("/biizzed/", "/") + search + hash;
-        } else if (
-          hostname === "uduua.lovohcreate.com" &&
-          path.startsWith("/uduua/")
-        ) {
-          cleanPath = path.replace("/uduua/", "/") + search + hash;
-        } else if (
-          hostname === "eventroom.lovohcreate.com" &&
-          path.startsWith("/events/")
-        ) {
-          cleanPath = path.replace("/events/", "/") + search + hash;
-        }
-
-        if (cleanPath) {
-          window.location.replace(cleanPath);
-        }
-      })();
-    </script>
-    <!-- ==================== END URL CLEANUP ==================== -->
   </head>
   <body>
     <div id="root"></div>

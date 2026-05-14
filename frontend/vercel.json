@@ -14,16 +14,40 @@
     },
     {
       "source": "/events/:path*",
-      "has": [{ "type": "host", "value": "event-room.lovohcreate.com" }],
+      "has": [{ "type": "host", "value": "eventroom.lovohcreate.com" }],
       "destination": "/:path*",
       "permanent": false
     }
   ],
   "rewrites": [
+
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "biizzed.lovohcreate.com" }],
+      "destination": "/biizzed.html"
+    },
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "uduua.lovohcreate.com" }],
+      "destination": "/uduua.html"
+    },
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "eventroom.lovohcreate.com" }],
+      "destination": "/eventroom.html"
+    },
+
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "lovohcreate.com" }],
+      "destination": "/index.html"
+    },
+
     { "source": "/api/og/event/:id", "destination": "/api/og-event.js" },
     { "source": "/api/og/biizzed/article/:slug", "destination": "/api/og-biizzed-article.js" },
     { "source": "/api/og/biizzed/magazine/:id", "destination": "/api/og-biizzed-magazine.js" },
     { "source": "/api/og/biizzed/video/:id", "destination": "/api/og-biizzed-video.js" },
+
     { "source": "/(.*)", "destination": "/" }
   ]
 }
