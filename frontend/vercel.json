@@ -1,24 +1,4 @@
 {
-  "redirects": [
-    {
-      "source": "/biizzed/:path*",
-      "has": [{ "type": "host", "value": "biizzed.lovohcreate.com" }],
-      "destination": "/:path*",
-      "permanent": false
-    },
-    {
-      "source": "/uduua/:path*",
-      "has": [{ "type": "host", "value": "uduua.lovohcreate.com" }],
-      "destination": "/:path*",
-      "permanent": false
-    },
-    {
-      "source": "/events/:path*",
-      "has": [{ "type": "host", "value": "eventroom.lovohcreate.com" }],
-      "destination": "/:path*",
-      "permanent": false
-    }
-  ],
   "rewrites": [
     {
       "source": "/api/og/event/:id",
@@ -35,31 +15,6 @@
     {
       "source": "/api/og/biizzed/video/:id",
       "destination": "/api/og-biizzed-video.js"
-    },
-    {
-      "source": "/(.*)",
-      "has": [{ "type": "host", "value": "biizzed.lovohcreate.com" }],
-      "destination": "/biizzed.html"
-    },
-    {
-      "source": "/(.*)",
-      "has": [{ "type": "host", "value": "uduua.lovohcreate.com" }],
-      "destination": "/uduua.html"
-    },
-    {
-      "source": "/(.*)",
-      "has": [{ "type": "host", "value": "eventroom.lovohcreate.com" }],
-      "destination": "/eventroom.html"
-    },
-    {
-      "source": "/(.*)",
-      "has": [{ "type": "host", "value": "lovohcreate.com" }],
-      "destination": "/index.html"
-    },
-    {
-      "source": "/(.*)",
-      "has": [{ "type": "host", "value": "www.lovohcreate.com" }],
-      "destination": "/index.html"
     }
   ]
 }
