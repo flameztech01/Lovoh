@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     host: true,
-    port: 9000,
+    port: 2000,
     allowedHosts: ['entrepreneurs-morgan-alliance-rarely.trycloudflare.com'],
     proxy: {
       '/api': {

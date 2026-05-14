@@ -33,6 +33,8 @@ const MONGO_URL = process.env.MONGO_URL;
 app.use(cors({
     origin: [
         'http://localhost:3000',
+        'http://localhost:2000',
+        'http://localhost:1000',
         'https://lovoh-1.onrender.com',
         'https://lovohcreate.vercel.app',
         'https://www.lovohcreate.com',
