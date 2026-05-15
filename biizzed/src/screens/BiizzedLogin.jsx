@@ -17,7 +17,7 @@ const BiizzedLogin = () => {
   const { userInfo } = useSelector((state) => state.auth);
   const [googleAuth, { isLoading }] = useGoogleAuthMutation();
 
-  const redirect = location.search?.split('=')[1] || '/biizzed/feed';
+  const redirect = location.search?.split('=')[1] || '/feed';
 
   useEffect(() => {
     if (userInfo) navigate(redirect);
