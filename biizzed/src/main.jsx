@@ -43,6 +43,7 @@ const router = createBrowserRouter([
     path: "/biizzed",
     element: <BiizzedLayout />,
     children: [
+      {index: true, element: <BiizzedScreen />},
       { path: "login", element: <BiizzedLogin /> },
       { path: "signup", element: <BiizzedSignup /> },
       { path: "feed", element: <BiizzedFeed /> },
