@@ -259,7 +259,7 @@ const EventRegistration = () => {
               <div className="space-y-3">
                 <div><input type="text" name="name" value={formData.name} onChange={handleChange} required placeholder="Full Name *" className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3766]" /></div>
                 <div><input type="email" name="email" value={formData.email} onChange={handleChange} required placeholder="Email Address *" className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3766]" /></div>
-                <div><input type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="Phone Number (Optional)" className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3766]" /></div>
+                <div><input type="tel" name="phone" value={formData.phone} onChange={handleChange} required placeholder="Phone Number *" className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3766]" /></div>
               </div>
             </div>
 
