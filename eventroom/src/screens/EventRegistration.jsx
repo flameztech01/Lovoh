@@ -5,6 +5,7 @@ import {
   FaArrowLeft, FaSpinner, FaCheckCircle, FaTicketAlt,
   FaDollarSign, FaCalendarAlt, FaClock, FaMapMarkerAlt,
   FaPlus, FaMinus, FaTimes, FaUser, FaEnvelope, FaPhone,
+  FaExclamationTriangle,
 } from 'react-icons/fa';
 import { useGetEventByIdQuery, useRegisterForEventMutation, useGetEventCustomFormQuery } from '../slices/eventApiSlice';
 import { toast } from 'react-toastify';
@@ -419,6 +420,21 @@ const EventRegistration = () => {
                 <p className="text-xs mt-2">You'll be redirected to Paystack to complete payment securely.</p>
               </div>
             )}
+
+            {/* ⚠️ Security Warning - Do not submit sensitive information */}
+            <div className="bg-amber-50 border-l-4 border-amber-500 rounded-xl p-4 text-sm">
+              <div className="flex items-start gap-3">
+                <FaExclamationTriangle className="text-amber-600 text-lg mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="font-semibold text-amber-800 mb-1">Security Alert</p>
+                  <p className="text-amber-700">
+                    Never submit passwords, PINs, credit card details (except via official payment gateway), 
+                    or other sensitive personal information through this registration form. 
+                    Legitimate event organizers will never ask for such information here.
+                  </p>
+                </div>
+              </div>
+            </div>
 
             <button type="submit" disabled={isRegistering}
               className="w-full py-4 bg-[#1B3766] text-white rounded-xl font-bold text-lg hover:bg-[#142952] transition-all shadow-lg disabled:opacity-50">

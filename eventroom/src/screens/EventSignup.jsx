@@ -418,7 +418,7 @@ const EventSignup = () => {
             </div>
             <div className="flex items-center gap-3 text-sm text-gray-600">
               <FaWallet className="text-[#1B3766] flex-shrink-0" />
-              <span>Set up wallet for paid events (80% earnings)</span>
+              <span>Set up wallet for paid events (94% earnings)</span>
             </div>
             <div className="flex items-center gap-3 text-sm text-gray-600">
               <FaCalendarAlt className="text-[#1B3766] flex-shrink-0" />
