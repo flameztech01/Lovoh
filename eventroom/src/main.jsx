@@ -29,16 +29,13 @@ import EventDashboardEditEvent from "./screens/EventDashboardEditEvent.jsx";
 
 import NotFound from "./screens/NotFound.jsx";
 
-// Push notifications hook (if still used, keep; otherwise remove)
-// import usePushNotifications from "./hooks/usePushNotifications";
-
 // ==================== ROUTES (EventRoom only) ====================
 const router = createBrowserRouter([
   {
     path: "/",
     element: <App />,
     children: [
-      {index: true, element: <EventsScreen />},
+      { index: true, element: <EventsScreen /> },
       { path: ":id", element: <EventDetail /> },
       { path: "all-events", element: <AllEvents /> },
       { path: ":id/register", element: <EventRegistration /> },
@@ -58,6 +55,8 @@ const router = createBrowserRouter([
           { path: "dashboard/events/:id/edit", element: <EventDashboardEditEvent /> },
         ],
       },
+      // ⚠️ Catch-all route – must be the last child
+      { path: "*", element: <NotFound /> },
     ],
   },
 ]);
@@ -67,12 +66,6 @@ const GOOGLE_CLIENT_ID =
   "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
 
 // No service worker registration for EventRoom
-
-// No push notifications wrapper (remove if not needed)
-// const AppWithNotifications = () => {
-//   usePushNotifications();
-//   return <RouterProvider router={router} />;
-// };
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>

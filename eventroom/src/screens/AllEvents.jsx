@@ -4,9 +4,9 @@ import { Link } from 'react-router-dom';
 import { useGetEventsQuery } from '../slices/eventApiSlice';
 import {
   FaCalendarAlt, FaMapMarkerAlt, FaClock, FaTicketAlt,
-  FaSpinner, FaArrowRight, FaUsers, FaSearch, FaTimes,
+  FaSpinner, FaArrowRight, FaSearch, FaTimes,
   FaSlidersH, FaWifi, FaExclamationTriangle, FaPhone,
-  FaEnvelope,
+  FaEnvelope, FaDoorOpen,  // <-- replaced FaUsers with FaDoorOpen
 } from 'react-icons/fa';
 import AllEventsNavbar from '../components/AllEventsNavbar';
 import EventUpcomingGrid from '../components/EventUpcomingGrid';
@@ -29,7 +29,8 @@ const DesktopCardSkeleton = () => (
         <div className="h-3 w-2/3 bg-gray-200 rounded" />
       </div>
       <div className="flex items-center justify-between pt-3 border-t border-gray-100 mt-auto">
-        <div className="h-3 w-12 bg-gray-200 rounded" />
+        {/* Replaced attendee skeleton with EventRoom skeleton */}
+        <div className="h-3 w-16 bg-gray-200 rounded" />
         <div className="h-3 w-16 bg-gray-200 rounded" />
       </div>
     </div>
@@ -48,7 +49,7 @@ const MobileCardSkeleton = () => (
       <div className="h-3 w-1/2 bg-gray-200 rounded" />
       <div className="h-3 w-2/3 bg-gray-200 rounded" />
       <div className="flex items-center justify-between pt-1.5">
-        <div className="h-2.5 w-10 bg-gray-200 rounded" />
+        <div className="h-2.5 w-16 bg-gray-200 rounded" />  {/* EventRoom skeleton */}
         <div className="h-2.5 w-12 bg-gray-200 rounded" />
       </div>
     </div>
@@ -329,7 +330,10 @@ const AllEvents = () => {
                         <div className="flex items-center gap-1"><FaMapMarkerAlt className="text-[#1B3766] text-[10px]" /><span className="truncate">{event.venue || event.location}</span></div>
                       </div>
                       <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                        <span className="text-[10px] text-gray-400"><FaUsers className="inline mr-1" />{event.currentAttendees || 0}</span>
+                        {/* REPLACED: attendee count with EventRoom indicator */}
+                        <span className="text-[10px] text-gray-500 flex items-center gap-1">
+                          <FaDoorOpen className="text-[#1B3766] text-[10px]" /> EventRoom
+                        </span>
                         <span className="text-[#1B3766] font-semibold text-xs group-hover:gap-1.5 transition-all flex items-center gap-1">View <FaArrowRight className="text-[10px]" /></span>
                       </div>
                     </div>
@@ -372,7 +376,10 @@ const AllEvents = () => {
                         <div className="flex items-center gap-1"><FaMapMarkerAlt className="text-[#1B3766] text-[9px]" /><span className="truncate">{event.venue || event.location}</span></div>
                       </div>
                       <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-gray-50">
-                        <span className="text-[9px] text-gray-400"><FaUsers className="inline mr-0.5 text-[8px]" />{event.currentAttendees || 0}</span>
+                        {/* REPLACED: attendee count with EventRoom indicator */}
+                        <span className="text-[9px] text-gray-500 flex items-center gap-1">
+                          <FaDoorOpen className="text-[#1B3766] text-[8px]" /> EventRoom
+                        </span>
                         <span className="text-[#1B3766] font-semibold text-[10px] flex items-center gap-0.5">View <FaArrowRight className="text-[8px]" /></span>
                       </div>
                     </div>
