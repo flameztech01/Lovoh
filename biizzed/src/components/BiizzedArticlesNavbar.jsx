@@ -1,51 +1,21 @@
-// components/BiizzedArticlesNavbar.jsx - Full code with live notification badge
+// components/BiizzedArticlesNavbar.jsx - Cleaned version (no subdomain logic, no /biizzed prefix)
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import {
   FaSearch,
   FaTimes,
-  FaArrowLeft,
   FaBell,
   FaUserCircle,
-  FaFire,
-  FaClock,
-  FaStar,
-  FaBookmark,
   FaHome,
-  FaCompass,
-  FaFilter,
-  FaPlus,
-  FaVideo,
   FaNewspaper,
   FaBookOpen,
+  FaVideo,
   FaSignInAlt,
   FaUserPlus,
+  FaPlus,
 } from "react-icons/fa";
 import { useGetNotificationsQuery } from "../slices/notificationApiSlice";
-
-// ==================== SUBDOMAIN DETECTION ====================
-const hostname = window.location.hostname;
-
-const getSubdomain = () => {
-  if (hostname === 'uduua.lovohcreate.com') return 'uduua';
-  if (hostname === 'biizzed.lovohcreate.com') return 'biizzed';
-  if (hostname === 'event-room.lovohcreate.com') return 'events';
-  return 'main';
-};
-
-const currentSubdomain = getSubdomain();
-const isBiizzedSubdomain = currentSubdomain === 'biizzed';
-
-// Helper: build correct path based on current domain context
-const buildPath = (path) => {
-  // On biizzed subdomain, routes have NO /biizzed/ prefix
-  if (isBiizzedSubdomain && path.startsWith('/biizzed/')) {
-    return path.replace('/biizzed/', '/');
-  }
-  // On main domain, keep the /biizzed/ prefix
-  return path;
-};
 
 const BiizzedArticlesNavbar = () => {
   const navigate = useNavigate();
@@ -74,16 +44,16 @@ const BiizzedArticlesNavbar = () => {
 
   useEffect(() => {
     const path = location.pathname;
-    if (path.includes("/magazines") || path.includes("/biizzed/magazines")) setActiveTab("magazines");
-    else if (path.includes("/articles") || path.includes("/biizzed/articles")) setActiveTab("articles");
-    else if (path.includes("/videos") || path.includes("/biizzed/videos")) setActiveTab("videos");
+    if (path.includes("/magazines")) setActiveTab("magazines");
+    else if (path.includes("/articles")) setActiveTab("articles");
+    else if (path.includes("/videos")) setActiveTab("videos");
     else setActiveTab("feed");
   }, [location.pathname]);
 
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchTerm.trim()) {
-      navigate(buildPath(`/biizzed/search?q=${encodeURIComponent(searchTerm.trim())}`));
+      navigate(`/search?q=${encodeURIComponent(searchTerm.trim())}`);
     }
     setShowSearch(false);
     setSearchTerm("");
@@ -93,30 +63,30 @@ const BiizzedArticlesNavbar = () => {
     setActiveTab(tab);
     switch (tab) {
       case "feed":
-        navigate(buildPath("/biizzed/feed"));
+        navigate("/feed");
         break;
       case "articles":
-        navigate(buildPath("/biizzed/articles"));
+        navigate("/articles");
         break;
       case "magazines":
-        navigate(buildPath("/biizzed/magazines"));
+        navigate("/magazines");
         break;
       case "videos":
-        navigate(buildPath("/biizzed/videos"));
+        navigate("/videos");
         break;
       default:
-        navigate(buildPath("/biizzed"));
+        navigate("/");
     }
   };
 
   const handleCreateOption = (type) => {
     if (!userInfo) {
-      navigate(buildPath(`/biizzed/login?redirect=/biizzed/create-${type}`));
+      navigate(`/login?redirect=/create-${type}`);
       setShowCreateModal(false);
       return;
     }
     setShowCreateModal(false);
-    navigate(buildPath(`/biizzed/create-${type}`));
+    navigate(`/create-${type}`);
   };
 
   const createOptions = [
@@ -157,13 +127,7 @@ const BiizzedArticlesNavbar = () => {
           {/* Top Row */}
           <div className="h-14 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <button
-                onClick={() => navigate(-1)}
-                className="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-600 transition-colors"
-              >
-                {/* <FaArrowLeft className="text-sm" /> */}
-              </button>
-              <Link to={buildPath("/biizzed")} className="flex items-center gap-2">
+              <Link to="/" className="flex items-center gap-2">
                 <img src="/biizzed.png" alt="Biizzed" className="h-7 w-auto" />
               </Link>
             </div>
@@ -187,7 +151,7 @@ const BiizzedArticlesNavbar = () => {
                 <>
                   {/* Notification Bell */}
                   <Link
-                    to={buildPath("/biizzed/notifications")}
+                    to="/notifications"
                     className="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-600 transition-colors relative"
                   >
                     <FaBell className="text-sm" />
@@ -196,7 +160,7 @@ const BiizzedArticlesNavbar = () => {
                     )}
                   </Link>
                   <Link
-                    to={buildPath("/biizzed/profile")}
+                    to="/profile"
                     className="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-600 transition-colors"
                   >
                     {userInfo?.profile ? (
@@ -214,13 +178,13 @@ const BiizzedArticlesNavbar = () => {
                 <>
                   {/* Not Logged In - Show Login/Signup */}
                   <Link
-                    to={buildPath("/biizzed/login")}
+                    to="/login"
                     className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#1B3766] border border-[#1B3766] rounded-full hover:bg-[#1B3766] hover:text-white transition-colors"
                   >
                     <FaSignInAlt className="text-[10px]" /> Login
                   </Link>
                   <Link
-                    to={buildPath("/biizzed/signup")}
+                    to="/signup"
                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-[#1B3766] text-white rounded-full hover:bg-[#142952] transition-colors"
                   >
                     <FaUserPlus className="text-[10px]" />
@@ -310,7 +274,7 @@ const BiizzedArticlesNavbar = () => {
                   You'll need an account to publish
                 </p>
                 <Link
-                  to={buildPath("/biizzed/signup")}
+                  to="/signup"
                   onClick={() => setShowCreateModal(false)}
                   className="inline-block px-4 py-1.5 bg-[#1B3766] text-white rounded-full text-xs font-medium hover:bg-[#142952] transition-colors"
                 >
@@ -382,9 +346,7 @@ const BiizzedArticlesNavbar = () => {
                     <button
                       key={cat}
                       onClick={() => {
-                        navigate(
-                          buildPath(`/biizzed/articles?category=${encodeURIComponent(cat)}`)
-                        );
+                        navigate(`/articles?category=${encodeURIComponent(cat)}`);
                         setShowSearch(false);
                       }}
                       className="px-3 py-1.5 bg-gray-100 hover:bg-[#1B3766]/10 text-xs text-gray-600 hover:text-[#1B3766] rounded-lg transition-colors"

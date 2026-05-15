@@ -71,7 +71,7 @@ const BiizzedCreateMagazine = () => {
     try {
       await createMagazine(fd).unwrap();
       toast.success('Magazine published!');
-      navigate('/biizzed/magazines');
+      navigate('/magazines');
     } catch (error) {
       toast.error(error?.data?.message || 'Failed to publish');
     }

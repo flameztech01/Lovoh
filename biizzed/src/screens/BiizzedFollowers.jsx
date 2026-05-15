@@ -135,7 +135,7 @@ const BiizzedFollowers = () => {
               
               return (
                 <div key={uid} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex items-center justify-between">
-                  <Link to={`/biizzed/user/${uid}`} className="flex items-center gap-3 flex-1 min-w-0">
+                  <Link to={`/user/${uid}`} className="flex items-center gap-3 flex-1 min-w-0">
                     {user.profile ? (
                       <img src={user.profile} alt="" className="w-12 h-12 rounded-full object-cover flex-shrink-0" />
                     ) : (

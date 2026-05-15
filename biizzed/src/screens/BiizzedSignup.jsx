@@ -21,7 +21,7 @@ const BiizzedSignup = () => {
   const [step, setStep] = useState('phone');
   const [phone, setPhone] = useState('');
 
-  const redirect = location.search?.split('=')[1] || '/biizzed/feed';
+  const redirect = location.search?.split('=')[1] || '/feed';
 
   useEffect(() => {
     if (userInfo) navigate(redirect);
@@ -216,7 +216,7 @@ const BiizzedSignup = () => {
           {/* Login Link */}
           <p className="text-center text-sm text-gray-500 mt-6">
             Already have an account?{' '}
-            <Link to={redirect ? `/biizzed/login?redirect=${redirect}` : '/biizzed/login'} className="text-[#1B3766] font-medium hover:underline">
+            <Link to={redirect ? `/login?redirect=${redirect}` : '/login'} className="text-[#1B3766] font-medium hover:underline">
               Sign in
             </Link>
           </p>

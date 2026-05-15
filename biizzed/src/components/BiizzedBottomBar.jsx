@@ -1,36 +1,13 @@
-// components/BiizzedBottomBar.jsx - With Magazine & Clips tabs
+// components/BiizzedBottomBar.jsx - Cleaned version (no subdomain logic, no /biizzed prefix)
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import {
   FaHome, FaCompass, FaPlusCircle, FaBookOpen, FaVideo,
-  FaTimes, FaNewspaper,
+  FaNewspaper,
   FaFire, FaClock, FaStar, FaSlidersH, FaPlus,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
-
-// ==================== SUBDOMAIN DETECTION ====================
-const hostname = window.location.hostname;
-
-const getSubdomain = () => {
-  if (hostname === 'uduua.lovohcreate.com') return 'uduua';
-  if (hostname === 'biizzed.lovohcreate.com') return 'biizzed';
-  if (hostname === 'event-room.lovohcreate.com') return 'events';
-  return 'main';
-};
-
-const currentSubdomain = getSubdomain();
-const isBiizzedSubdomain = currentSubdomain === 'biizzed';
-
-// Helper: build correct path based on current domain context
-const buildPath = (path) => {
-  // On biizzed subdomain, routes have NO /biizzed/ prefix
-  if (isBiizzedSubdomain && path.startsWith('/biizzed/')) {
-    return path.replace('/biizzed/', '/');
-  }
-  // On main domain, keep the /biizzed/ prefix
-  return path;
-};
 
 const BiizzedBottomBar = () => {
   const navigate = useNavigate();
@@ -40,16 +17,15 @@ const BiizzedBottomBar = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   const isActive = (path) => {
-    const cleanPath = buildPath(path);
-    return location.pathname === cleanPath;
+    return location.pathname === path;
   };
 
   const tabs = [
-    { id: "home", icon: FaHome, label: "Home", path: "/biizzed/feed" },
-    { id: "explore", icon: FaCompass, label: "Explore", path: "/biizzed/articles" },
+    { id: "home", icon: FaHome, label: "Home", path: "/feed" },
+    { id: "explore", icon: FaCompass, label: "Explore", path: "/articles" },
     { id: "create", icon: FaPlusCircle, label: "Create", isCreate: true },
-    { id: "magazines", icon: FaBookOpen, label: "Magazines", path: "/biizzed/magazines" },
-    { id: "clips", icon: FaVideo, label: "Clips", path: "/biizzed/videos" },
+    { id: "magazines", icon: FaBookOpen, label: "Magazines", path: "/magazines" },
+    { id: "clips", icon: FaVideo, label: "Clips", path: "/videos" },
   ];
 
   const createOptions = [
@@ -70,7 +46,7 @@ const BiizzedBottomBar = () => {
   const handleCreateClick = () => {
     if (!userInfo) {
       toast.info('Login to create content');
-      navigate(buildPath('/biizzed/login?redirect=/biizzed/feed'));
+      navigate('/login?redirect=/feed');
       return;
     }
     setShowCreateModal(true);
@@ -78,26 +54,26 @@ const BiizzedBottomBar = () => {
 
   const handleCreateOption = (type) => {
     setShowCreateModal(false);
-    navigate(buildPath(`/biizzed/create-${type}`));
+    navigate(`/create-${type}`);
   };
 
   const handleFilterSelect = (filterId) => {
-    let url = "/biizzed/articles";
+    let url = "/articles";
     switch (filterId) {
       case "trending": url += "?sort=trending"; break;
       case "latest": url += "?sort=latest"; break;
       case "featured": url += "?featured=true"; break;
-      case "articles": url = "/biizzed/articles"; break;
-      case "magazines": url = "/biizzed/magazines"; break;
-      case "clips": url = "/biizzed/videos"; break;
+      case "articles": url = "/articles"; break;
+      case "magazines": url = "/magazines"; break;
+      case "clips": url = "/videos"; break;
       default: break;
     }
-    navigate(buildPath(url));
+    navigate(url);
     setShowFilterModal(false);
   };
 
   const handleTabClick = (path) => {
-    navigate(buildPath(path));
+    navigate(path);
   };
 
   return (

@@ -215,9 +215,9 @@ const BiizzedSearch = () => {
   };
 
   const getLink = (item) => {
-    if (item.type === 'article') return `/biizzed/articles/${item.slug}`;
-    if (item.type === 'magazine') return `/biizzed/${item.slug}`;
-    if (item.type === 'video') return `/biizzed/videos/${item._id}`;
+    if (item.type === 'article') return `/articles/${item.slug}`;
+    if (item.type === 'magazine') return `/${item.slug}`;
+    if (item.type === 'video') return `/videos/${item._id}`;
     return '#';
   };
 

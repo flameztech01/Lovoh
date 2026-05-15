@@ -162,7 +162,7 @@ const BiizzedMagazines = () => {
               {magazines.map((magazine) => (
                 <Link 
                   key={magazine._id}
-                  to={`/biizzed/${magazine.slug}`}
+                  to={`/${magazine.slug}`}
                   className="group bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all"
                 >
                   {/* Cover Image */}
@@ -206,7 +206,7 @@ const BiizzedMagazines = () => {
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            navigator.share?.({ title: magazine.title, url: `${window.location.origin}/biizzed/${magazine.slug}` });
+                            navigator.share?.({ title: magazine.title, url: `${window.location.origin}/${magazine.slug}` });
                           }}
                           className="p-2 bg-white/20 backdrop-blur-sm rounded-full hover:bg-white/30 transition-colors ml-auto"
                         >
@@ -250,7 +250,7 @@ const BiizzedMagazines = () => {
               {magazines.map((magazine) => (
                 <Link
                   key={magazine._id}
-                  to={`/biizzed/${magazine.slug}`}
+                  to={`/${magazine.slug}`}
                   className="flex gap-3 bg-white rounded-xl p-3 shadow-sm border border-gray-100 active:scale-[0.98] transition-transform"
                 >
                   <div className="w-20 h-28 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">

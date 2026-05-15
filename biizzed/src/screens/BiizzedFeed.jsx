@@ -340,12 +340,12 @@ const BiizzedFeed = () => {
                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Browse</h3>
                 <nav className="space-y-0.5">
                   {[
-                    { name: 'Feed', icon: FaNewspaper, path: '/biizzed' },
-                    { name: 'Articles', icon: FaNewspaper, path: '/biizzed/articles' },
-                    { name: 'Magazines', icon: FaBookOpen, path: '/biizzed/magazines' },
-                    { name: 'Videos', icon: FaVideo, path: '/biizzed/videos' },
+                    { name: 'Feed', icon: FaNewspaper, path: '/feed' },
+                    { name: 'Articles', icon: FaNewspaper, path: '/articles' },
+                    { name: 'Magazines', icon: FaBookOpen, path: '/magazines' },
+                    { name: 'Videos', icon: FaVideo, path: '/videos' },
                   ].map(i => (
-                    <Link key={i.name} to={i.path} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium ${i.path === '/biizzed' ? 'bg-[#1B3766]/5 text-[#1B3766]' : 'text-gray-700 hover:bg-gray-50 hover:text-[#1B3766]'}`}>
+                    <Link key={i.name} to={i.path} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium ${i.path === '/feed' ? 'bg-[#1B3766]/5 text-[#1B3766]' : 'text-gray-700 hover:bg-gray-50 hover:text-[#1B3766]'}`}>
                       <i.icon className="text-gray-400 text-sm" />{i.name}
                     </Link>
                   ))}
@@ -439,7 +439,7 @@ const BiizzedFeed = () => {
             </div>
 
             <div className="text-center py-6 border-t border-gray-200">
-              <Link to="/biizzed/articles" className="px-6 py-2.5 bg-white border border-gray-200 rounded-full text-sm font-medium text-gray-700 hover:border-[#1B3766] hover:text-[#1B3766] transition-colors inline-block">
+              <Link to="/articles" className="px-6 py-2.5 bg-white border border-gray-200 rounded-full text-sm font-medium text-gray-700 hover:border-[#1B3766] hover:text-[#1B3766] transition-colors inline-block">
                 View All Content
               </Link>
             </div>
@@ -459,7 +459,7 @@ const BiizzedFeed = () => {
                       return (
                         <div key={uid} className="flex items-center gap-3">
                           {user.profile ? <img src={user.profile} alt="" className="w-10 h-10 rounded-full object-cover flex-shrink-0" /> : <div className="w-10 h-10 rounded-full bg-[#1B3766] text-white flex items-center justify-center text-sm font-bold flex-shrink-0">{(user.name||'U')[0].toUpperCase()}</div>}
-                          <Link to={`/biizzed/user/${uid}`} className="flex-1 min-w-0">
+                          <Link to={`/user/${uid}`} className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-900 truncate hover:underline">{user.name}</p>
                             <p className="text-xs text-gray-500">{user.followersCount||0} followers</p>
                           </Link>
@@ -475,7 +475,7 @@ const BiizzedFeed = () => {
                   </div>
                 ) : <p className="text-sm text-gray-400 text-center py-4">No suggestions yet</p>) : (
                   <div className="text-center py-4">
-                    <Link to="/biizzed/login" className="text-xs text-[#1B3766] font-medium hover:underline">Login to connect</Link>
+                    <Link to="/login" className="text-xs text-[#1B3766] font-medium hover:underline">Login to connect</Link>
                   </div>
                 )}
               </div>
@@ -567,7 +567,7 @@ const FAC = ({ item, fmtD, getImg, getLD, isB, doLike, doBook }) => {
   const n = item.author || 'Editorial';
   const p = item.authorId?.profile;
   return (
-    <Link to={`/biizzed/articles/${item.slug}`} className="block relative w-full h-[300px] sm:h-[400px] lg:h-[350px] overflow-hidden">
+    <Link to={`/articles/${item.slug}`} className="block relative w-full h-[300px] sm:h-[400px] lg:h-[350px] overflow-hidden">
       <img src={getImg(item)} alt="" className="w-full h-full object-cover" onError={e => e.target.src='/placeholder-article.jpg'} />
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
       <div className="absolute top-4 left-4 flex gap-2">
@@ -593,7 +593,7 @@ const FAC = ({ item, fmtD, getImg, getLD, isB, doLike, doBook }) => {
 const FMC = ({ item, fmtD, getLD, isB, doLike, doBook }) => {
   const { liked, count } = getLD(item);
   return (
-    <Link to={`/biizzed/${item.slug}`} className="block relative w-full h-[300px] sm:h-[400px] lg:h-[350px] overflow-hidden bg-gradient-to-br from-purple-700 via-indigo-800 to-[#1B3766]">
+    <Link to={`/${item.slug}`} className="block relative w-full h-[300px] sm:h-[400px] lg:h-[350px] overflow-hidden bg-gradient-to-br from-purple-700 via-indigo-800 to-[#1B3766]">
       <div className="absolute inset-0 flex items-center justify-center p-6 sm:p-10">
         <div className="flex items-center justify-center gap-1 sm:gap-2 transform rotate-[-2deg]">
           <div className="w-[45%] aspect-[3/4] bg-white/10 rounded-l-lg rounded-r-sm shadow-2xl border-l-4 border-white/20 flex items-center justify-center"><FaBookOpen className="text-4xl text-white/30"/></div>
@@ -618,17 +618,17 @@ const FMC = ({ item, fmtD, getLD, isB, doLike, doBook }) => {
 const AC = ({ item, idx, total, aid, aname, aprof, f, own, admin, ld, bm, fmtD, getImg, doLike, doBook, doFollow }) => {
   return (
     <article className="border-b border-gray-200 hover:bg-gray-50/50 transition-colors cursor-pointer">
-      <Link to={`/biizzed/articles/${item.slug}`} className="block">
+      <Link to={`/articles/${item.slug}`} className="block">
         <div className="flex">
           <div className="flex flex-col items-center w-[48px] pt-3 px-2">
-            <Link to={`/biizzed/user/${aid}`} onClick={e => e.stopPropagation()}>
+            <Link to={`/user/${aid}`} onClick={e => e.stopPropagation()}>
               {aprof ? <img src={aprof} alt="" className="w-10 h-10 rounded-full object-cover"/> : <div className="w-10 h-10 rounded-full bg-[#1B3766] text-white flex items-center justify-center text-sm font-bold">{aname[0]}</div>}
             </Link>
             {idx < total - 1 && <div className="w-[2px] flex-1 bg-gray-200 mt-2"/>}
           </div>
           <div className="flex-1 pt-3 pr-3 pb-3">
             <div className="flex items-center gap-1.5 mb-0.5">
-              <Link to={`/biizzed/user/${aid}`} onClick={e=>e.stopPropagation()} className="font-bold text-gray-900 text-[15px] hover:underline truncate">{aname}</Link>
+              <Link to={`/user/${aid}`} onClick={e=>e.stopPropagation()} className="font-bold text-gray-900 text-[15px] hover:underline truncate">{aname}</Link>
               {admin && <span className="flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-bold rounded-full"><FaCheckCircle className="text-[8px]" /> Admin</span>}
               <span className="text-gray-500 text-[15px]">·</span><span className="text-gray-500 text-[15px]">{fmtD(item.publishedAt || item.createdAt)}</span>
               {!own && !!aid && !admin && (
@@ -639,7 +639,7 @@ const AC = ({ item, idx, total, aid, aname, aprof, f, own, admin, ld, bm, fmtD, 
             <h2 className="text-[17px] font-semibold text-gray-900 mb-1">{item.title}</h2>
             {item.excerpt && <p className="text-[15px] text-gray-500 line-clamp-2 mb-2">{item.excerpt}</p>}
             <div className="mb-3 rounded-2xl overflow-hidden border border-gray-200"><img src={getImg(item)} alt="" className="w-full h-auto max-h-[500px] object-cover" onError={e=>e.target.src='/placeholder-article.jpg'}/></div>
-            <AB item={item} ld={ld} bm={bm} doLike={doLike} doBook={doBook} shareUrl={`/biizzed/articles/${item.slug}`} />
+            <AB item={item} ld={ld} bm={bm} doLike={doLike} doBook={doBook} shareUrl={`/articles/${item.slug}`} />
           </div>
         </div>
       </Link>
@@ -650,7 +650,7 @@ const AC = ({ item, idx, total, aid, aname, aprof, f, own, admin, ld, bm, fmtD, 
 // ====== MAGAZINE CARD ======
 const MBC = ({ item, idx, total, ld, bm, fmtD, doLike, doBook }) => (
   <article className="border-b border-gray-200 hover:bg-gray-50/50 transition-colors cursor-pointer">
-    <Link to={`/biizzed/${item.slug}`} className="block">
+    <Link to={`/${item.slug}`} className="block">
       <div className="flex">
         <div className="flex flex-col items-center w-[48px] pt-3 px-2"><div className="w-10 h-10 rounded-full bg-purple-600 text-white flex items-center justify-center"><FaBookOpen/></div>{idx < total - 1 && <div className="w-[2px] flex-1 bg-gray-200 mt-2"/>}</div>
         <div className="flex-1 pt-3 pr-3 pb-3">
@@ -659,7 +659,7 @@ const MBC = ({ item, idx, total, ld, bm, fmtD, doLike, doBook }) => (
           <div className="mb-3 flex justify-center gap-0">
             <div className="w-3 h-[200px] sm:h-[260px] bg-gradient-to-r from-gray-300 to-gray-400 rounded-l-sm"/><div className="w-[45%] h-[200px] sm:h-[260px] bg-white rounded-r-md shadow-xl overflow-hidden flex flex-col border border-gray-200">{item.coverImage ? <img src={item.coverImage} alt="" className="w-full h-[65%] object-cover"/> : <div className="w-full h-[65%] bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center"><FaBookOpen className="text-4xl text-white/50"/></div>}<div className="flex-1 p-2 flex flex-col justify-between"><h3 className="text-xs font-bold text-gray-900 line-clamp-2">{item.title}</h3></div></div><div className="w-[6%] h-[190px] sm:h-[250px] bg-gray-100 rounded-r-sm shadow-md -ml-1 border border-gray-200"/>
           </div>
-          <AB item={item} ld={ld} bm={bm} doLike={doLike} doBook={doBook} shareUrl={`/biizzed/${item.slug}`} />
+          <AB item={item} ld={ld} bm={bm} doLike={doLike} doBook={doBook} shareUrl={`/${item.slug}`} />
         </div>
       </div>
     </Link>
@@ -709,10 +709,10 @@ const VC = ({ item, idx, total, aid, aname, aprof, f, own, admin, yt, ld, fmtD, 
 
   return (
     <article className="border-b border-gray-200 hover:bg-gray-50/50 transition-colors cursor-pointer relative">
-      <Link to={`/biizzed/videos/${item._id}`} className="block">
+      <Link to={`/videos/${item._id}`} className="block">
         <div className="flex">
           <div className="flex flex-col items-center w-[48px] pt-3 px-2">
-            <Link to={`/biizzed/user/${aid}`} onClick={e=>e.stopPropagation()}>
+            <Link to={`/user/${aid}`} onClick={e=>e.stopPropagation()}>
               {aprof ? <img src={aprof} alt="" className="w-10 h-10 rounded-full object-cover"/> : (
                 <div className={`w-10 h-10 rounded-full text-white flex items-center justify-center text-sm font-bold ${yt ? 'bg-red-600' : 'bg-red-500'}`}>
                   {yt ? <FaYoutube className="text-lg" /> : aname[0]}
@@ -723,7 +723,7 @@ const VC = ({ item, idx, total, aid, aname, aprof, f, own, admin, yt, ld, fmtD, 
           </div>
           <div className="flex-1 pt-3 pr-3 pb-3">
             <div className="flex items-center gap-1.5 mb-0.5">
-              <Link to={`/biizzed/user/${aid}`} onClick={e=>e.stopPropagation()} className="font-bold text-gray-900 text-[15px] hover:underline truncate">{aname}</Link>
+              <Link to={`/user/${aid}`} onClick={e=>e.stopPropagation()} className="font-bold text-gray-900 text-[15px] hover:underline truncate">{aname}</Link>
               {yt && <span className="flex items-center gap-0.5 px-1.5 py-0.5 bg-red-50 text-red-600 text-[10px] font-bold rounded-full"><FaYoutube className="text-[8px]" /> YouTube</span>}
               {admin && <span className="flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-bold rounded-full"><FaCheckCircle className="text-[8px]" /> Admin</span>}
               <span className="text-gray-500">·</span><span className="text-gray-500 text-[15px]">{fmtD(item.createdAt)}</span>
@@ -778,7 +778,7 @@ const VC = ({ item, idx, total, aid, aname, aprof, f, own, admin, yt, ld, fmtD, 
                 <div className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black/80 text-white text-xs rounded">{fmtDur(item.duration)}</div>
               )}
             </div>
-            <AB item={item} ld={ld} doLike={doLike} shareUrl={`/biizzed/videos/${item._id}`} yt={yt} />
+            <AB item={item} ld={ld} doLike={doLike} shareUrl={`/videos/${item._id}`} yt={yt} />
           </div>
         </div>
       </Link>

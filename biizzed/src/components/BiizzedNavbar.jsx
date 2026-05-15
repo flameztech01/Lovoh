@@ -73,16 +73,16 @@ const BiizzedNavbar = () => {
     const value = searchTerm.trim();
 
     if (value) {
-      navigate(`/biizzed/magazines?search=${encodeURIComponent(value)}`);
+      navigate(`/magazines?search=${encodeURIComponent(value)}`);
     } else {
-      navigate("/biizzed/magazines");
+      navigate("/magazines");
     }
 
     setIsSearchOpen(false);
   };
 
   const handleCategoryClick = (category) => {
-    navigate(`/biizzed/magazines?category=${encodeURIComponent(category)}`);
+    navigate(`/magazines?category=${encodeURIComponent(category)}`);
     setIsMobileMenuOpen(false);
     setIsSearchOpen(false);
   };
@@ -91,7 +91,7 @@ const BiizzedNavbar = () => {
     const lowerItem = item.toLowerCase();
 
     if (lowerItem === "home") {
-      navigate("/biizzed");
+      navigate("/");
     } else if (
       [
         "business",
@@ -104,13 +104,13 @@ const BiizzedNavbar = () => {
     ) {
       handleCategoryClick(item);
     } else if (lowerItem === "features") {
-      navigate("/biizzed/magazines?featured=true");
+      navigate("/magazines?featured=true");
     } else if (lowerItem === "latest") {
-      navigate("/biizzed/magazines?sort=latest");
+      navigate("/magazines?sort=latest");
     } else if (lowerItem === "trending") {
-      navigate("/biizzed/magazines?sort=trending");
+      navigate("/magazines?sort=trending");
     } else if (lowerItem === "editors pick") {
-      navigate("/biizzed/magazines?editorsPick=true");
+      navigate("/magazines?editorsPick=true");
     } else if (lowerItem === "insights") {
       handleCategoryClick("Insights");
     } else if (lowerItem === "interviews") {
@@ -118,7 +118,7 @@ const BiizzedNavbar = () => {
     } else if (lowerItem === "analysis") {
       handleCategoryClick("Analysis");
     } else {
-      navigate("/biizzed/magazines");
+      navigate("/magazines");
     }
 
     setIsMobileMenuOpen(false);
@@ -219,7 +219,7 @@ const BiizzedNavbar = () => {
             <div className="py-4 md:py-5 flex items-center justify-between gap-4">
               {/* LOGO */}
               <Link
-                to="/biizzed"
+                to="/"
                 className="shrink-0 flex items-center gap-2 group"
               >
                 <img
@@ -337,7 +337,7 @@ const BiizzedNavbar = () => {
               <div className="text-[12px] text-gray-600 truncate">
                 {latestMagazine ? (
                   <Link
-                    to={`/biizzed/${latestMagazine.slug}`}
+                    to={`/${latestMagazine.slug}`}
                     className="hover:text-[#1B3766] transition-colors"
                   >
                     {new Date(latestMagazine.createdAt).toLocaleDateString(

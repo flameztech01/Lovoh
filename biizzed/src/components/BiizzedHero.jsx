@@ -167,7 +167,7 @@ const BiizzedHero = () => {
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-3">
               <Link
-                to="/biizzed/feed"
+                to="/feed"
                 className="group flex items-center justify-center gap-2 px-6 py-3 bg-[#1B3766] text-white rounded-lg font-semibold hover:bg-[#142952] transition-all duration-300 transform hover:scale-105 text-sm shadow-lg shadow-[#1B3766]/20"
               >
                 <FaCompass className="text-sm" />
@@ -207,7 +207,7 @@ const BiizzedHero = () => {
             {displayMagazines.map((magazine, index) => (
               <Link
                 key={magazine._id || index}
-                to={`/biizzed/${magazine.slug}`}
+                to={`/${magazine.slug}`}
                 className="group block"
               >
                 <div className="relative bg-white rounded-lg shadow-lg overflow-hidden border border-gray-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer">

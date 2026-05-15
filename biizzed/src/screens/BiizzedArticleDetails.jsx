@@ -422,7 +422,7 @@ const BiizzedArticleDetails = () => {
                   ) : (
                     <div className="mb-6 p-4 bg-gray-50 rounded-xl text-center">
                       <p className="text-sm text-gray-500">Login to join the conversation</p>
-                      <Link to="/biizzed/login" className="text-xs text-[#1B3766] font-medium hover:underline mt-1 inline-block">Login now</Link>
+                      <Link to="/login" className="text-xs text-[#1B3766] font-medium hover:underline mt-1 inline-block">Login now</Link>
                     </div>
                   )}
 
@@ -515,7 +515,7 @@ const BiizzedArticleDetails = () => {
                   <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Related Articles</h3>
                   <div className="space-y-3">
                     {relatedArticles.map((related) => (
-                      <Link key={related._id} to={`/biizzed/articles/${related.slug}`} className="flex gap-3 group">
+                      <Link key={related._id} to={`/articles/${related.slug}`} className="flex gap-3 group">
                         <img 
                           src={related.featuredImage || related.images?.[0] || '/placeholder-article.jpg'} 
                           alt="" 

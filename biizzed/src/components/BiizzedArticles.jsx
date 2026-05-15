@@ -299,7 +299,7 @@ const BiizzedArticles = () => {
         {featuredArticle && (
           <div className="mb-12">
             <Link 
-              to={`/biizzed/articles/${featuredArticle.slug}`}
+              to={`/articles/${featuredArticle.slug}`}
               className="group block"
             >
               {/* Mobile layout */}
@@ -388,7 +388,7 @@ const BiizzedArticles = () => {
           <div className="space-y-4 md:hidden">
             {regularArticles.slice(0, 4).map((article, index) => (
               <React.Fragment key={article._id}>
-                <Link to={`/biizzed/articles/${article.slug}`} className="group block">
+                <Link to={`/articles/${article.slug}`} className="group block">
                   <div className="flex flex-row bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100">
                     <div className="w-28 h-28 overflow-hidden flex-shrink-0 bg-gray-100">
                       <img 
@@ -439,7 +439,7 @@ const BiizzedArticles = () => {
             {regularArticles.slice(0, 4).map((article, index) => (
               <React.Fragment key={article._id}>
                 <Link 
-                  to={`/biizzed/articles/${article.slug}`}
+                  to={`/articles/${article.slug}`}
                   className="group block"
                 >
                   <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 h-full">
@@ -498,7 +498,7 @@ const BiizzedArticles = () => {
         {/* View More Articles Button */}
         <div className="text-center">
           <Link
-            to="/biizzed/articles"
+            to="/articles"
             className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#1B3766] hover:bg-[#142952] text-white rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 text-sm"
           >
             View More Articles

@@ -76,9 +76,9 @@ const BiizzedNotifications = () => {
 
     // Navigate based on type
     if (notif.type === 'article' || notif.type === 'magazine') {
-      navigate(`/biizzed/${notif.data?.slug || ''}`);
+      navigate(`/${notif.data?.slug || ''}`);
     } else if (notif.type === 'video') {
-      navigate(`/biizzed/videos/${notif.data?.contentId || ''}`);
+      navigate(`/videos/${notif.data?.contentId || ''}`);
     } else if (notif.type === 'follow' || notif.type === 'unfollow') {
       // Could navigate to follower's profile, but we don't store followerId in data yet
       // For now, stay on the page
@@ -107,7 +107,7 @@ const BiizzedNotifications = () => {
           <FaBell className="text-5xl text-gray-300 mb-4" />
           <p className="text-gray-500 mb-4">Login to view notifications</p>
           <Link
-            to="/biizzed/login"
+            to="/login"
             className="px-6 py-2.5 bg-[#1B3766] text-white rounded-xl text-sm font-medium"
           >
             Login

@@ -145,7 +145,7 @@ const BiizzedProfile = () => {
       sessionStorage.clear();
       dispatch({ type: "RESET_ALL" });
       toast.success("Logged out successfully");
-      navigate("/biizzed/feed");
+      navigate("/feed");
       setTimeout(() => {
         window.location.reload();
       }, 300);

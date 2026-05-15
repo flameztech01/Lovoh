@@ -393,7 +393,7 @@ const BiizzedVideoDetail = () => {
 
               {/* Creator Info - Fixed Follow Logic */}
               <div className="flex items-center justify-between mt-4">
-                <Link to={`/biizzed/user/${authorId}`} className="flex items-center gap-3">
+                <Link to={`/user/${authorId}`} className="flex items-center gap-3">
                   {authorProfile ? (
                     <img src={authorProfile} alt="" className="w-12 h-12 rounded-full object-cover" />
                   ) : (
@@ -529,7 +529,7 @@ const BiizzedVideoDetail = () => {
               ) : (
                 <div className="mb-6 p-4 bg-gray-50 rounded-xl text-center">
                   <p className="text-sm text-gray-500">Login to join the conversation</p>
-                  <Link to="/biizzed/login" className="text-xs text-[#1B3766] font-medium hover:underline mt-1 inline-block">Login now</Link>
+                  <Link to="/login" className="text-xs text-[#1B3766] font-medium hover:underline mt-1 inline-block">Login now</Link>
                 </div>
               )}
 
@@ -584,7 +584,7 @@ const BiizzedVideoDetail = () => {
                     const isRelatedYouTube = v.videoType === 'youtube';
                     const isRelatedAdmin = v.authorType === 'admin';
                     return (
-                      <Link key={v._id} to={`/biizzed/videos/${v._id}`} className="flex gap-3 group">
+                      <Link key={v._id} to={`/videos/${v._id}`} className="flex gap-3 group">
                         <div className="relative w-40 h-24 rounded-lg overflow-hidden bg-black flex-shrink-0">
                           {getRelatedThumbnail(v) ? (
                             <img 

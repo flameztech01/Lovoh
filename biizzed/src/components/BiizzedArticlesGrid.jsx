@@ -277,7 +277,7 @@ const BiizzedArticlesGrid = () => {
           {/* Magazine 1 */}
           {magazines[0] && (
             <Link 
-              to={`/biizzed/${magazines[0].slug}`}
+              to={`/${magazines[0].slug}`}
               className="group block"
             >
               <div className="relative rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
@@ -312,7 +312,7 @@ const BiizzedArticlesGrid = () => {
           {/* Magazine 2 */}
           {magazines[1] && (
             <Link 
-              to={`/biizzed/${magazines[1].slug}`}
+              to={`/${magazines[1].slug}`}
               className="group block"
             >
               <div className="relative rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
@@ -342,7 +342,7 @@ const BiizzedArticlesGrid = () => {
           {/* Magazine 3 */}
           {magazines[2] && (
             <Link 
-              to={`/biizzed/${magazines[2].slug}`}
+              to={`/${magazines[2].slug}`}
               className="group block"
             >
               <div className="relative rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
@@ -380,7 +380,7 @@ const BiizzedArticlesGrid = () => {
           {/* More Editions Coming Soon */}
           {magazines[3] ? (
             <Link 
-              to={`/biizzed/${magazines[3].slug}`}
+              to={`/${magazines[3].slug}`}
               className="group block"
             >
               <div className="relative rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
@@ -430,7 +430,7 @@ const BiizzedArticlesGrid = () => {
         {/* View All Magazines Button */}
         <div className="text-center mt-10">
           <Link
-            to="/biizzed/magazines"
+            to="/magazines"
             className="inline-flex items-center gap-2 px-5 py-2 bg-[#1B3766] hover:bg-[#142952] text-white rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 text-sm"
           >
             View All Magazines

@@ -151,7 +151,7 @@ const BiizzedCreateVideo = () => {
     try {
       await uploadVideo(fd).unwrap();
       toast.success('Video uploaded successfully!');
-      navigate('/biizzed/videos');
+      navigate('/videos');
     } catch (error) {
       toast.error(error?.data?.message || 'Failed to upload');
     }
@@ -173,7 +173,7 @@ const BiizzedCreateVideo = () => {
       }).unwrap();
 
       toast.success('YouTube video posted successfully!');
-      navigate('/biizzed/videos');
+      navigate('/videos');
     } catch (error) {
       toast.error(error?.data?.message || 'Failed to post YouTube video');
     }

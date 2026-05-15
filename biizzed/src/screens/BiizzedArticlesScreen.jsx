@@ -246,7 +246,7 @@ const BiizzedArticlesScreen = () => {
   const handleShare = (article, e) => {
     e.preventDefault();
     e.stopPropagation();
-    const url = `${window.location.origin}/biizzed/articles/${article.slug}`;
+    const url = `${window.location.origin}/articles/${article.slug}`;
     if (navigator.share) {
       navigator.share({ title: article.title, url });
     } else {
@@ -353,11 +353,11 @@ const BiizzedArticlesScreen = () => {
                 </h3>
                 <nav className="space-y-0.5">
                   {[
-                    { name: "All Articles", icon: FaNewspaper, path: "/biizzed/articles" },
-                    { name: "Magazines", icon: FaBookOpen, path: "/biizzed/magazines" },
-                    { name: "Videos", icon: FaVideo, path: "/biizzed/videos" },
-                    { name: "Featured", icon: FaStar, path: "/biizzed/articles?featured=true" },
-                    { name: "Trending", icon: FaFire, path: "/biizzed/articles?sort=trending" },
+                    { name: "All Articles", icon: FaNewspaper, path: "/articles" },
+                    { name: "Magazines", icon: FaBookOpen, path: "/magazines" },
+                    { name: "Videos", icon: FaVideo, path: "/videos" },
+                    { name: "Featured", icon: FaStar, path: "/articles?featured=true" },
+                    { name: "Trending", icon: FaFire, path: "/articles?sort=trending" },
                   ].map((item) => (
                     <Link
                       key={item.name}
@@ -481,11 +481,11 @@ const BiizzedArticlesScreen = () => {
                       key={article._id}
                       className="border-b border-gray-200 hover:bg-gray-50/50 transition-colors cursor-pointer"
                     >
-                      <Link to={`/biizzed/articles/${article.slug}`} className="block">
+                      <Link to={`/articles/${article.slug}`} className="block">
                         <div className="flex">
                           {/* Avatar column */}
                           <div className="flex flex-col items-center w-[48px] pt-3 px-2 sm:px-0">
-                            <Link to={`/biizzed/user/${authorId}`} onClick={(e) => e.stopPropagation()}>
+                            <Link to={`/user/${authorId}`} onClick={(e) => e.stopPropagation()}>
                               {authorProfile ? (
                                 <img
                                   src={authorProfile}
@@ -508,7 +508,7 @@ const BiizzedArticlesScreen = () => {
                             {/* Author row */}
                             <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
                               <Link
-                                to={`/biizzed/user/${authorId}`}
+                                to={`/user/${authorId}`}
                                 onClick={(e) => e.stopPropagation()}
                                 className="font-bold text-gray-900 text-[15px] hover:underline truncate"
                               >
@@ -705,7 +705,7 @@ const BiizzedArticlesScreen = () => {
                   )
                 ) : (
                   <div className="text-center py-4">
-                    <Link to="/biizzed/login" className="text-xs text-[#1B3766] font-medium hover:underline">
+                    <Link to="/login" className="text-xs text-[#1B3766] font-medium hover:underline">
                       Login to connect
                     </Link>
                   </div>

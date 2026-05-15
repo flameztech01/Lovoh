@@ -361,7 +361,7 @@ const MagazineStoryDetail = () => {
           ) : (
             <div className="mb-6 p-4 bg-gray-50 rounded-xl text-center">
               <p className="text-sm text-gray-500">Login to comment</p>
-              <Link to="/biizzed/login" className="text-xs text-[#1B3766] font-medium hover:underline">Login now</Link>
+              <Link to="/login" className="text-xs text-[#1B3766] font-medium hover:underline">Login now</Link>
             </div>
           )}
 
@@ -405,7 +405,7 @@ const MagazineStoryDetail = () => {
             <h3 className="text-sm font-semibold text-gray-900 mb-4">More Magazines</h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {otherMagazines.map((mag) => (
-                <Link key={mag._id} to={`/biizzed/${mag.slug}`} className="group">
+                <Link key={mag._id} to={`/${mag.slug}`} className="group">
                   <div className="aspect-[3/4] rounded-xl overflow-hidden bg-gray-100 mb-2">
                     {mag.coverImage ? (
                       <img src={mag.coverImage} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />

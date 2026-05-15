@@ -114,7 +114,7 @@ const BiizzedVideos = () => {
 
   // Get video link based on type
   const getVideoLink = (video) => {
-    return `/biizzed/videos/${video._id}`;
+    return `/videos/${video._id}`;
   };
 
   if (isLoading && videos.length === 0) {

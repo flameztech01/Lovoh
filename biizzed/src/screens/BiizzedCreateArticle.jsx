@@ -112,7 +112,7 @@ const BiizzedCreateArticle = () => {
     try {
       await createArticle(fd).unwrap();
       toast.success('Article published!');
-      navigate('/biizzed/articles');
+      navigate('/articles');
     } catch (error) {
       toast.error(error?.data?.message || 'Failed to publish');
     }

@@ -88,7 +88,7 @@ const BiizzedLogin = () => {
           {/* Sign Up Link */}
           <p className="text-center text-sm text-gray-500 mt-6">
             Don't have an account?{' '}
-            <Link to={redirect ? `/biizzed/signup?redirect=${redirect}` : '/biizzed/signup'} className="text-[#1B3766] font-medium hover:underline">
+            <Link to={redirect ? `/signup?redirect=${redirect}` : '/signup'} className="text-[#1B3766] font-medium hover:underline">
               Sign up
             </Link>
           </p>
