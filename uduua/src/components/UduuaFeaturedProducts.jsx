@@ -160,7 +160,7 @@ const UduuaFeaturedProducts = () => {
           </div>
 
           <Link
-            to="/uduua/shop"
+            to="/shop"
             className="mt-4 sm:mt-0 inline-flex items-center gap-2 text-[#0043FC] font-semibold hover:gap-3 transition-all text-sm"
           >
             View All Products <FaArrowRight />
@@ -176,7 +176,7 @@ const UduuaFeaturedProducts = () => {
             return (
               <Link
                 key={product._id}
-                to={`/uduua/shop/product/${product._id}`}
+                to={`/shop/product/${product._id}`}
                 className="group bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 border border-gray-100"
               >
                 {/* Product Image - Smaller aspect ratio */}
@@ -271,7 +271,7 @@ const UduuaFeaturedProducts = () => {
         {/* Shop Button */}
         <div className="mt-10 text-center">
           <Link
-            to="/uduua/shop"
+            to="/shop"
             className="inline-flex items-center gap-2 bg-[#0043FC] hover:bg-[#0038D4] text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-md"
           >
             <FaShoppingCart />

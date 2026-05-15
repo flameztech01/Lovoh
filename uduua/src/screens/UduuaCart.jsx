@@ -172,7 +172,7 @@ const UduuaCart = () => {
   const handleCheckout = () => {
     if (!userInfo) {
       toast.error('Please login to proceed to checkout');
-      navigate('/uduua/shop/login', { state: { from: '/uduua/checkout' } });
+      navigate('/shop/login', { state: { from: '/checkout' } });
       return;
     }
     
@@ -181,12 +181,12 @@ const UduuaCart = () => {
       return;
     }
     
-    navigate('/uduua/checkout');
+    navigate('/checkout');
   };
 
   // Handle continue shopping
   const handleContinueShopping = () => {
-    navigate('/uduua/shop');
+    navigate('/shop');
   };
 
   // Loading state
@@ -329,7 +329,7 @@ const UduuaCart = () => {
                                 <div className="flex flex-col sm:flex-row sm:justify-between gap-4">
                                   <div>
                                     <Link 
-                                      to={`/uduua/shop/product/${productId}`}
+                                      to={`/shop/product/${productId}`}
                                       className="text-base font-medium text-gray-900 hover:text-[#0043FC] transition-colors"
                                     >
                                       {itemName}

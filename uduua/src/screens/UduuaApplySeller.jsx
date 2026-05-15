@@ -81,7 +81,7 @@ const UduuaApplySeller = () => {
   useEffect(() => {
     if (!userInfo) {
       toast.error('Please login to apply as a seller');
-      navigate('/uduua/shop/login', { state: { from: '/uduua/apply-seller' } });
+      navigate('/shop/login', { state: { from: '/apply-seller' } });
     }
   }, [userInfo, navigate]);
 
@@ -90,7 +90,7 @@ const UduuaApplySeller = () => {
     if (applicationStatus) {
       if (applicationStatus.isSeller) {
         toast.success('You are already a seller!');
-        navigate('/uduua/seller/dashboard');
+        navigate('/seller/dashboard');
       } else if (applicationStatus.sellerStatus === 'pending') {
         toast.info('Your application is already pending review');
       }
@@ -263,7 +263,7 @@ const UduuaApplySeller = () => {
     try {
       await applyForSeller(submitData).unwrap();
       toast.success('Application submitted successfully!');
-      navigate('/uduua/shop');
+      navigate('/shop');
     } catch (error) {
       console.error('Submit error:', error);
       toast.error(error?.data?.message || 'Failed to submit application');
@@ -298,7 +298,7 @@ const UduuaApplySeller = () => {
                 You will be notified once your application is approved.
               </p>
               <Link
-                to="/uduua/shop"
+                to="/shop"
                 className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#0043FC] text-white rounded-lg hover:bg-[#0038D4] transition-colors"
               >
                 <FaArrowLeft className="text-sm" /> Back to Shop
@@ -332,7 +332,7 @@ const UduuaApplySeller = () => {
                 </div>
               )}
               <Link
-                to="/uduua/shop"
+                to="/shop"
                 className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#0043FC] text-white rounded-lg hover:bg-[#0038D4] transition-colors"
               >
                 <FaArrowLeft className="text-sm" /> Back to Shop

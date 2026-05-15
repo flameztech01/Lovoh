@@ -781,7 +781,7 @@ const UduuaSellerOrders = () => {
                 <FaTruck className="text-sm" /> Update Delivery Status
               </button>
               <button
-                onClick={() => navigate(`/uduua/shop/orders/${selectedOrder._id}`)}
+                onClick={() => navigate(`/shop/orders/${selectedOrder._id}`)}
                 className="flex-1 py-2 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
               >
                 <FaEye className="text-sm" /> Full Details

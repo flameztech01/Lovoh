@@ -69,7 +69,7 @@ const UduuaCheckout = () => {
   useEffect(() => {
     if (!isLoadingCart && cartData && (!cartData.cart || cartData.cart.length === 0)) {
       toast.error('Your cart is empty. Please add items to cart before checkout.');
-      navigate('/uduua/shop/cart');
+      navigate('/shop/cart');
     }
   }, [cartData, isLoadingCart, navigate]);
 
@@ -195,11 +195,11 @@ const handleSubmit = async (e) => {
       const orderId = result.orders?.[0]?._id || result.order?._id;
       if (orderId) {
         setTimeout(() => {
-          navigate(`/uduua/shop/orders/${orderId}`);
+          navigate(`/shop/orders/${orderId}`);
         }, 2000);
       } else {
         setTimeout(() => {
-          navigate('/uduua/shop/orders');
+          navigate('/shop/orders');
         }, 2000);
       }
     }
@@ -224,7 +224,7 @@ const handleSubmit = async (e) => {
       sessionStorage.removeItem('pending_order_ids');
       sessionStorage.removeItem('uduua_checkout_cart');
       window.dispatchEvent(new Event('cartUpdated'));
-      navigate('/uduua/shop/orders');
+      navigate('/shop/orders');
     } else if (paymentStatus === 'failed') {
       toast.error('Payment failed. Please try again or use another payment method.');
     }
@@ -286,7 +286,7 @@ const handleSubmit = async (e) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
           <button
-            onClick={() => navigate('/uduua/shop/cart')}
+            onClick={() => navigate('/shop/cart')}
             className="flex items-center gap-2 text-gray-600 hover:text-[#0043FC] mb-5 transition-colors group"
           >
             <FaArrowLeft className="text-sm group-hover:-translate-x-1 transition-transform" />

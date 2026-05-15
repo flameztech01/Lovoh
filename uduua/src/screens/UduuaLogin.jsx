@@ -33,7 +33,7 @@ const UduuaLogin = () => {
   const [googleAuth] = useGoogleAuthMutation();
   const { userInfo } = useSelector((state) => state.auth);
   
-  const redirect = location.search ? location.search.split('=')[1] : '/uduua/shop';
+  const redirect = location.search ? location.search.split('=')[1] : '/shop';
 
   useEffect(() => {
     if (userInfo) {
@@ -70,7 +70,7 @@ const UduuaLogin = () => {
     <div className="min-h-screen w-full bg-white relative overflow-hidden">
       {/* Back Button */}
       <button
-        onClick={() => navigate('/uduua/shop')}
+        onClick={() => navigate('/shop')}
         className="fixed top-6 left-6 z-20 flex items-center gap-2 text-gray-500 hover:text-[#0043FC] transition-all duration-300 group bg-white/90 backdrop-blur-sm px-3 py-2 rounded-full shadow-sm"
       >
         <FaArrowLeft className="text-sm group-hover:-translate-x-1 transition-transform" />
@@ -240,7 +240,7 @@ const UduuaLogin = () => {
                 <p className="text-sm text-gray-600">
                   Don't have an account?{' '}
                   <Link 
-                    to="/uduua/shop/signup"
+                    to="/shop/signup"
                     className="font-semibold text-[#0043FC] hover:text-[#0033cc] hover:underline inline-flex items-center gap-1 transition-colors"
                   >
                     Create account

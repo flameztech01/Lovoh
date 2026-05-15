@@ -107,15 +107,15 @@ const ShopNavbar = () => {
     e.preventDefault();
     const value = searchTerm.trim();
     
-    if (location.pathname === '/uduua/shop') {
+    if (location.pathname === '/shop') {
       window.dispatchEvent(new CustomEvent('shopSearch', { detail: { searchTerm: value } }));
       setIsMobileSearchOpen(false);
       setSearchTerm('');
     } else {
       if (value) {
-        navigate(`/uduua/shop?search=${encodeURIComponent(value)}`);
+        navigate(`/shop?search=${encodeURIComponent(value)}`);
       } else {
-        navigate('/uduua/shop');
+        navigate('/shop');
       }
       setIsMobileSearchOpen(false);
       setSearchTerm('');
@@ -123,14 +123,14 @@ const ShopNavbar = () => {
   };
 
   const handleBack = () => {
-    navigate('/uduua');
+    navigate('/');
   };
 
   const handleLogout = async () => {
     try {
       await logoutApiCall().unwrap();
       dispatch(logout());
-      navigate('/uduua/shop');
+      navigate('/shop');
     } catch (err) {
       console.error(err);
     }
@@ -162,7 +162,7 @@ const ShopNavbar = () => {
 
                   <div className="h-5 w-px bg-gray-200 hidden sm:block"></div>
 
-                  <Link to="/uduua/shop" className="flex items-center gap-2 group">
+                  <Link to="/shop" className="flex items-center gap-2 group">
                     <img
                       src="/uduua.png"
                       alt="Logo"
@@ -206,7 +206,7 @@ const ShopNavbar = () => {
 
                   {/* Help */}
                   <Link
-                    to="/uduua/shop/help"
+                    to="/shop/help"
                     className="hidden sm:flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-[#0043FC] transition-colors duration-200"
                   >
                     <FaQuestionCircle className="text-base" />
@@ -215,7 +215,7 @@ const ShopNavbar = () => {
 
                   {/* Cart */}
                   <Link
-                    to="/uduua/shop/cart"
+                    to="/shop/cart"
                     className="relative flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-[#0043FC] transition-colors duration-200"
                   >
                     <div className="relative">
@@ -277,7 +277,7 @@ const ShopNavbar = () => {
                         
                         {/* Regular User Links */}
                         <Link 
-                          to="/uduua/shop/orders"
+                          to="/shop/orders"
                           className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-[#0043FC]"
                         >
                           <FaBox className="text-xs" /> My Orders
@@ -291,31 +291,31 @@ const ShopNavbar = () => {
                               Seller Dashboard
                             </div>
                             <Link 
-                              to="/uduua/seller/dashboard"
+                              to="/seller/dashboard"
                               className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-[#0043FC]"
                             >
                               <FaTachometerAlt className="text-xs" /> Dashboard
                             </Link>
                             <Link 
-                              to="/uduua/seller/products"
+                              to="/seller/products"
                               className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-[#0043FC]"
                             >
                               <FaStore className="text-xs" /> My Products
                             </Link>
                             <Link 
-                              to="/uduua/seller/orders"
+                              to="/seller/orders"
                               className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-[#0043FC]"
                             >
                               <FaBox className="text-xs" /> Seller Orders
                             </Link>
                             <Link 
-                              to="/uduua/seller/wallet"
+                              to="/seller/wallet"
                               className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-[#0043FC]"
                             >
                               <FaWallet className="text-xs" /> Wallet
                             </Link>
                             <Link 
-                              to="/uduua/seller/payment-history"
+                              to="/seller/payment-history"
                               className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-[#0043FC]"
                             >
                               <FaHistory className="text-xs" /> Payment History
@@ -337,7 +337,7 @@ const ShopNavbar = () => {
                   ) : (
                     <>
                       <Link
-                        to="/uduua/shop/login"
+                        to="/shop/login"
                         className="hidden sm:flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-[#0043FC] transition-colors duration-200"
                       >
                         <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
@@ -347,7 +347,7 @@ const ShopNavbar = () => {
                       </Link>
 
                       <Link
-                        to="/uduua/shop/signup"
+                        to="/shop/signup"
                         className="text-sm font-semibold text-white bg-[#0043FC] hover:bg-[#0033cc] px-5 py-2 rounded-xl transition-colors duration-200"
                       >
                         Sign Up
@@ -373,7 +373,7 @@ const ShopNavbar = () => {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="h-12 flex items-center gap-6">
                 <Link 
-                  to="/uduua/shop" 
+                  to="/shop" 
                   className="flex items-center gap-2 text-sm font-semibold text-[#0043FC] transition-colors"
                 >
                   <FaBars className="text-sm" />
@@ -384,20 +384,20 @@ const ShopNavbar = () => {
 
                 <div className="flex items-center gap-6">
                   <Link 
-                    to="/uduua/shop/help" 
+                    to="/shop/help" 
                     className="text-sm font-medium text-gray-600 hover:text-[#0043FC] transition-colors"
                   >
                     Help Center
                   </Link>
                   <Link 
-                    to="/uduua/shop/orders" 
+                    to="/shop/orders" 
                     className="text-sm font-medium text-gray-600 hover:text-[#0043FC] transition-colors"
                   >
                     My Orders
                   </Link>
                   {isApprovedSeller && (
                     <Link 
-                      to="/uduua/seller/dashboard" 
+                      to="/seller/dashboard" 
                       className="text-sm font-medium text-[#0043FC] hover:text-[#0033cc] transition-colors flex items-center gap-1"
                     >
                       <FaStore className="text-xs" /> Seller Dashboard
@@ -420,7 +420,7 @@ const ShopNavbar = () => {
               </div>
               <div className="p-2">
                 <Link
-                  to="/uduua/seller/dashboard"
+                  to="/seller/dashboard"
                   onClick={() => setShowSellerMenu(false)}
                   className="flex items-center gap-3 px-3 py-2 text-sm text-gray-700 rounded-lg hover:bg-gray-50 hover:text-[#0043FC] transition-colors"
                 >
@@ -428,7 +428,7 @@ const ShopNavbar = () => {
                   <span>Dashboard</span>
                 </Link>
                 <Link
-                  to="/uduua/seller/products"
+                  to="/seller/products"
                   onClick={() => setShowSellerMenu(false)}
                   className="flex items-center gap-3 px-3 py-2 text-sm text-gray-700 rounded-lg hover:bg-gray-50 hover:text-[#0043FC] transition-colors"
                 >
@@ -436,7 +436,7 @@ const ShopNavbar = () => {
                   <span>My Products</span>
                 </Link>
                 <Link
-                  to="/uduua/seller/orders"
+                  to="/seller/orders"
                   onClick={() => setShowSellerMenu(false)}
                   className="flex items-center gap-3 px-3 py-2 text-sm text-gray-700 rounded-lg hover:bg-gray-50 hover:text-[#0043FC] transition-colors"
                 >
@@ -444,7 +444,7 @@ const ShopNavbar = () => {
                   <span>Orders</span>
                 </Link>
                 <Link
-                  to="/uduua/seller/wallet"
+                  to="/seller/wallet"
                   onClick={() => setShowSellerMenu(false)}
                   className="flex items-center gap-3 px-3 py-2 text-sm text-gray-700 rounded-lg hover:bg-gray-50 hover:text-[#0043FC] transition-colors"
                 >
@@ -460,7 +460,7 @@ const ShopNavbar = () => {
                   <span>Payment History</span>
                 </Link>
                 <Link
-                  to="/uduua/seller/analytics"
+                  to="/seller/analytics"
                   onClick={() => setShowSellerMenu(false)}
                   className="flex items-center gap-3 px-3 py-2 text-sm text-gray-700 rounded-lg hover:bg-gray-50 hover:text-[#0043FC] transition-colors"
                 >
@@ -478,7 +478,7 @@ const ShopNavbar = () => {
                 <button
                   onClick={() => {
                     setShowSellerMenu(false);
-                    navigate('/uduua/seller/withdraw');
+                    navigate('/seller/withdraw');
                   }}
                   className="w-full mt-2 py-1.5 bg-[#0043FC] text-white rounded-lg text-xs font-medium hover:bg-[#0038D4] transition-colors"
                 >
@@ -588,7 +588,7 @@ const ShopNavbar = () => {
 
           <div className="p-4 space-y-2 overflow-y-auto max-h-[calc(100vh-200px)]">
             <Link
-              to="/uduua/shop"
+              to="/shop"
               onClick={() => setIsMobileMenuOpen(false)}
               className="flex items-center gap-3 px-4 py-3 text-[#0043FC] font-semibold rounded-xl hover:bg-gray-50 transition-all duration-200"
             >
@@ -597,7 +597,7 @@ const ShopNavbar = () => {
             </Link>
 
             <Link
-              to="/uduua/shop"
+              to="/shop"
               onClick={() => setIsMobileMenuOpen(false)}
               className="flex items-center gap-3 px-4 py-3 text-gray-700 font-medium rounded-xl hover:bg-gray-50 hover:text-[#0043FC] transition-all duration-200"
             >
@@ -608,7 +608,7 @@ const ShopNavbar = () => {
             {userInfo ? (
               <>
                 <Link
-                  to="/uduua/shop/orders"
+                  to="/shop/orders"
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center gap-3 px-4 py-3 text-gray-700 font-medium rounded-xl hover:bg-gray-50 hover:text-[#0043FC] transition-all duration-200"
                 >
@@ -624,7 +624,7 @@ const ShopNavbar = () => {
                       Seller Dashboard
                     </p>
                     <Link
-                      to="/uduua/seller/dashboard"
+                      to="/seller/dashboard"
                       onClick={() => setIsMobileMenuOpen(false)}
                       className="flex items-center gap-3 px-4 py-3 text-gray-700 font-medium rounded-xl hover:bg-gray-50 hover:text-[#0043FC] transition-all duration-200"
                     >
@@ -632,7 +632,7 @@ const ShopNavbar = () => {
                       <span>Dashboard</span>
                     </Link>
                     <Link
-                      to="/uduua/seller/products"
+                      to="/seller/products"
                       onClick={() => setIsMobileMenuOpen(false)}
                       className="flex items-center gap-3 px-4 py-3 text-gray-700 font-medium rounded-xl hover:bg-gray-50 hover:text-[#0043FC] transition-all duration-200"
                     >
@@ -640,7 +640,7 @@ const ShopNavbar = () => {
                       <span>My Products</span>
                     </Link>
                     <Link
-                      to="/uduua/seller/orders"
+                      to="/seller/orders"
                       onClick={() => setIsMobileMenuOpen(false)}
                       className="flex items-center gap-3 px-4 py-3 text-gray-700 font-medium rounded-xl hover:bg-gray-50 hover:text-[#0043FC] transition-all duration-200"
                     >
@@ -648,7 +648,7 @@ const ShopNavbar = () => {
                       <span>Seller Orders</span>
                     </Link>
                     <Link
-                      to="/uduua/seller/wallet"
+                      to="/seller/wallet"
                       onClick={() => setIsMobileMenuOpen(false)}
                       className="flex items-center gap-3 px-4 py-3 text-gray-700 font-medium rounded-xl hover:bg-gray-50 hover:text-[#0043FC] transition-all duration-200"
                     >
@@ -656,7 +656,7 @@ const ShopNavbar = () => {
                       <span>Wallet</span>
                     </Link>
                     <Link
-                      to="/uduua/seller/payment-history"
+                      to="/seller/payment-history"
                       onClick={() => setIsMobileMenuOpen(false)}
                       className="flex items-center gap-3 px-4 py-3 text-gray-700 font-medium rounded-xl hover:bg-gray-50 hover:text-[#0043FC] transition-all duration-200"
                     >
@@ -680,7 +680,7 @@ const ShopNavbar = () => {
             ) : (
               <>
                 <Link
-                  to="/uduua/shop/login"
+                  to="/shop/login"
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center gap-3 px-4 py-3 text-gray-700 font-medium rounded-xl hover:bg-gray-50 hover:text-[#0043FC] transition-all duration-200"
                 >
@@ -689,7 +689,7 @@ const ShopNavbar = () => {
                 </Link>
 
                 <Link
-                  to="/uduua/shop/signup"
+                  to="/shop/signup"
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center justify-center w-full px-4 py-3 mt-2 rounded-xl text-white font-semibold bg-[#0043FC] hover:bg-[#0033cc] transition-all duration-200"
                 >
@@ -701,7 +701,7 @@ const ShopNavbar = () => {
             <div className="border-t border-gray-100 my-2"></div>
 
             <Link
-              to="/uduua/shop/help"
+              to="/shop/help"
               onClick={() => setIsMobileMenuOpen(false)}
               className="flex items-center gap-3 px-4 py-3 text-gray-700 font-medium rounded-xl hover:bg-gray-50 hover:text-[#0043FC] transition-all duration-200"
             >
@@ -710,7 +710,7 @@ const ShopNavbar = () => {
             </Link>
 
             <Link
-              to="/uduua/shop/cart"
+              to="/shop/cart"
               onClick={() => setIsMobileMenuOpen(false)}
               className="flex items-center gap-3 px-4 py-3 text-gray-700 font-medium rounded-xl hover:bg-gray-50 hover:text-[#0043FC] transition-all duration-200"
             >

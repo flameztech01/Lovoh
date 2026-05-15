@@ -39,10 +39,10 @@ import usePushNotifications from "./hooks/usePushNotifications";
 
 // ==================== ROUTES (Uduua only) ====================
 const router = createBrowserRouter([
-  {path: "/", element: <UduuaScreen />},
+  {path: "/uduua", element: <UduuaScreen />},
   {path: "*", element: <NotFound />},
   {
-    path: "/uduua",
+    path: "/",
     element: <UduuaLayout />,
     children: [
       { index: true, element: <UduuaScreen /> },

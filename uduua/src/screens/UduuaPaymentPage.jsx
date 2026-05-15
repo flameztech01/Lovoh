@@ -60,13 +60,13 @@ const UduuaPaymentPage = () => {
 
     if (order.isPaid) {
       toast.error('This order has already been paid for');
-      navigate(`/uduua/shop/orders/${id}`);
+      navigate(`/shop/orders/${id}`);
       return;
     }
 
     if (order.status === 'cancelled') {
       toast.error('This order has been cancelled');
-      navigate('/uduua/shop/orders');
+      navigate('/shop/orders');
       return;
     }
 
@@ -84,7 +84,7 @@ const UduuaPaymentPage = () => {
         window.location.href = result.paymentUrl;
       } else if (selectedPaymentMethod === 'ondelivery') {
         toast.success('Order updated to Pay on Delivery. You will pay when you receive your order.');
-        navigate(`/uduua/shop/orders/${id}`);
+        navigate(`/shop/orders/${id}`);
       } else {
         toast.error('Failed to initialize payment. Please try again.');
       }
@@ -130,7 +130,7 @@ const UduuaPaymentPage = () => {
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Please Login</h2>
             <p className="text-gray-500 mb-6">You need to be logged in to make a payment.</p>
             <button
-              onClick={() => navigate('/uduua/shop/login')}
+              onClick={() => navigate('/shop/login')}
               className="px-6 py-2.5 bg-[#0043FC] hover:bg-[#0033cc] text-white rounded-md font-medium transition-colors"
             >
               Login Now
@@ -167,7 +167,7 @@ const UduuaPaymentPage = () => {
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Order Not Found</h2>
             <p className="text-gray-500 mb-6">The order you're trying to pay for doesn't exist.</p>
             <button
-              onClick={() => navigate('/uduua/shop/orders')}
+              onClick={() => navigate('/shop/orders')}
               className="px-6 py-2.5 bg-[#0043FC] hover:bg-[#0033cc] text-white rounded-md font-medium transition-colors"
             >
               Back to Orders
@@ -190,7 +190,7 @@ const UduuaPaymentPage = () => {
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Order Already Paid</h2>
             <p className="text-gray-500 mb-6">This order has already been paid for.</p>
             <button
-              onClick={() => navigate(`/uduua/shop/orders/${id}`)}
+              onClick={() => navigate(`/shop/orders/${id}`)}
               className="px-6 py-2.5 bg-[#0043FC] hover:bg-[#0033cc] text-white rounded-md font-medium transition-colors"
             >
               View Order
@@ -213,7 +213,7 @@ const UduuaPaymentPage = () => {
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Order Cancelled</h2>
             <p className="text-gray-500 mb-6">This order has been cancelled and cannot be paid for.</p>
             <button
-              onClick={() => navigate('/uduua/shop/orders')}
+              onClick={() => navigate('/shop/orders')}
               className="px-6 py-2.5 bg-[#0043FC] hover:bg-[#0033cc] text-white rounded-md font-medium transition-colors"
             >
               Back to Orders
@@ -230,7 +230,7 @@ const UduuaPaymentPage = () => {
       <div className="min-h-screen bg-gray-50 pt-24 pb-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <button
-            onClick={() => navigate(`/uduua/shop/orders/${id}`)}
+            onClick={() => navigate(`/shop/orders/${id}`)}
             className="flex items-center gap-2 text-gray-600 hover:text-[#0043FC] mb-6 transition-colors group"
           >
             <FaArrowLeft className="text-sm group-hover:-translate-x-1 transition-transform" />

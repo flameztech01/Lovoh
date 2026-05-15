@@ -175,7 +175,7 @@ const UduuaSellerWallet = () => {
           {/* Header */}
           <div className="mb-8">
             <button
-              onClick={() => navigate('/uduua/seller/dashboard')}
+              onClick={() => navigate('/seller/dashboard')}
               className="flex items-center gap-2 text-gray-600 hover:text-[#0043FC] mb-4 transition-colors group"
             >
               <FaArrowLeft className="text-sm group-hover:-translate-x-1 transition-transform" />
@@ -303,7 +303,7 @@ const UduuaSellerWallet = () => {
                     When you make sales, your earnings will appear here.
                   </p>
                   <Link
-                    to="/uduua/shop"
+                    to="/shop"
                     className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-[#0043FC] text-white rounded-lg text-sm font-medium hover:bg-[#0038D4] transition-colors"
                   >
                     <FaShoppingCart className="text-sm" />
@@ -361,7 +361,7 @@ const UduuaSellerWallet = () => {
                               </td>
                               <td className="px-4 py-3">
                                 <Link
-                                  to={`/uduua/shop/orders/${transaction.id}`}
+                                  to={`/shop/orders/${transaction.id}`}
                                   className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1"
                                 >
                                   <FaEye className="text-xs" /> View Order
@@ -402,7 +402,7 @@ const UduuaSellerWallet = () => {
                             <span className="text-xs text-gray-500">{formatDate(transaction.createdAt)}</span>
                           </div>
                           <Link
-                            to={`/uduua/shop/orders/${transaction.id}`}
+                            to={`/shop/orders/${transaction.id}`}
                             className="w-full inline-flex items-center justify-center gap-1 py-2 bg-gray-50 text-blue-600 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors"
                           >
                             <FaEye className="text-xs" /> View Order Details

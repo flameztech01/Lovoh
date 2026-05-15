@@ -71,7 +71,7 @@ const UduuaOrderId = () => {
         } finally {
           setIsVerifying(false);
           // Remove query params from URL
-          navigate(`/uduua/shop/orders/${id}`, { replace: true });
+          navigate(`/shop/orders/${id}`, { replace: true });
         }
       }
     };
@@ -343,7 +343,7 @@ const UduuaOrderId = () => {
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Please Login</h2>
             <p className="text-gray-500 mb-6">You need to be logged in to view order details.</p>
             <button
-              onClick={() => navigate('/uduua/shop/login')}
+              onClick={() => navigate('/shop/login')}
               className="px-6 py-2.5 bg-[#0043FC] hover:bg-[#0033cc] text-white rounded-md font-medium transition-colors"
             >
               Login Now
@@ -380,7 +380,7 @@ const UduuaOrderId = () => {
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Order Not Found</h2>
             <p className="text-gray-500 mb-6">The order you're looking for doesn't exist or you don't have permission to view it.</p>
             <button
-              onClick={() => navigate('/uduua/shop/orders')}
+              onClick={() => navigate('/shop/orders')}
               className="px-6 py-2.5 bg-[#0043FC] hover:bg-[#0033cc] text-white rounded-md font-medium transition-colors"
             >
               Back to Orders
@@ -418,7 +418,7 @@ const UduuaOrderId = () => {
           {/* Header */}
           <div className="mb-8">
             <button
-              onClick={() => navigate('/uduua/shop/orders')}
+              onClick={() => navigate('/shop/orders')}
               className="flex items-center gap-2 text-gray-600 hover:text-[#0043FC] mb-4 transition-colors group"
             >
               <FaArrowLeft className="text-sm group-hover:-translate-x-1 transition-transform" />
@@ -655,7 +655,7 @@ const UduuaOrderId = () => {
             <p className="text-xs text-gray-500 mb-4">Our support team is ready to assist you</p>
             <div className="flex flex-wrap gap-3 justify-center">
               <a href={`https://wa.me/2348123456789?text=Hello%2C%20I%20need%20help%20with%20order%20${order._id}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm font-medium"><FaWhatsapp className="text-sm" /> WhatsApp Support</a>
-              <button onClick={() => navigate('/uduua/shop/contact')} className="inline-flex items-center gap-2 px-5 py-2.5 border border-[#0043FC] text-[#0043FC] hover:bg-[#0043FC] hover:text-white rounded-lg transition-all text-sm font-medium"><FaEnvelope className="text-sm" /> Email Support</button>
+              <button onClick={() => navigate('/shop/contact')} className="inline-flex items-center gap-2 px-5 py-2.5 border border-[#0043FC] text-[#0043FC] hover:bg-[#0043FC] hover:text-white rounded-lg transition-all text-sm font-medium"><FaEnvelope className="text-sm" /> Email Support</button>
             </div>
           </div>
         </div>

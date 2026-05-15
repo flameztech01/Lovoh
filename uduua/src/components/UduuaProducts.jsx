@@ -195,7 +195,7 @@ const UduuaProducts = () => {
   };
 
   const handleProductClick = (productId) => {
-    navigate(`/uduua/shop/product/${productId}`);
+    navigate(`/shop/product/${productId}`);
   };
 
   const formatPrice = (price) => {
@@ -226,7 +226,7 @@ const UduuaProducts = () => {
       toast.error('Please login to add items to cart');
       // Store the intended action for after login
       sessionStorage.setItem('redirectAfterLogin', window.location.pathname);
-      navigate('/uduua/shop/login');
+      navigate('/shop/login');
       return;
     }
 

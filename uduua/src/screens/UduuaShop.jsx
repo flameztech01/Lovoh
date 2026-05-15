@@ -49,7 +49,7 @@ const UduuaShop = () => {
   }, [isPendingSeller, refetch]);
 
   const handleAddProduct = () => {
-    navigate('/uduua/seller/add-product');
+    navigate('/seller/add-product');
   };
 
   const handleCheckStatus = () => {
@@ -217,7 +217,7 @@ const UduuaShop = () => {
                   <button
                     onClick={() => {
                       setShowStatusModal(false);
-                      navigate('/uduua/apply-seller');
+                      navigate('/apply-seller');
                     }}
                     className="w-full py-2.5 bg-white text-[#0043FC] rounded-lg font-medium hover:bg-gray-50 transition-colors"
                   >

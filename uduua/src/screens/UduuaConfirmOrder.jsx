@@ -42,7 +42,7 @@ const UduuaConfirmOrder = () => {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
       return () => clearTimeout(timer);
     } else if (isConfirmed && countdown === 0) {
-      navigate('/uduua/shop/orders');
+      navigate('/shop/orders');
     }
   }, [isConfirmed, countdown, navigate]);
 
@@ -67,7 +67,7 @@ const UduuaConfirmOrder = () => {
   const handleConfirmDelivery = async () => {
     if (!userInfo) {
       toast.error('Please login to confirm delivery');
-      navigate('/uduua/shop/login');
+      navigate('/shop/login');
       return;
     }
 
@@ -94,7 +94,7 @@ const UduuaConfirmOrder = () => {
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Please Login</h2>
             <p className="text-gray-500 mb-4">You need to be logged in to confirm delivery.</p>
             <button
-              onClick={() => navigate('/uduua/shop/login')}
+              onClick={() => navigate('/shop/login')}
               className="px-6 py-2.5 bg-[#0043FC] text-white rounded-lg hover:bg-[#0038D4] transition-all"
             >
               Login Now
@@ -131,7 +131,7 @@ const UduuaConfirmOrder = () => {
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Order Not Found</h2>
             <p className="text-gray-500 mb-4">The order you're looking for doesn't exist or you don't have permission to view it.</p>
             <button
-              onClick={() => navigate('/uduua/shop/orders')}
+              onClick={() => navigate('/shop/orders')}
               className="px-6 py-2.5 bg-[#0043FC] text-white rounded-lg hover:bg-[#0038D4] transition-all"
             >
               Back to Orders
@@ -166,13 +166,13 @@ const UduuaConfirmOrder = () => {
             </div>
             <div className="flex flex-col gap-3">
               <button
-                onClick={() => navigate('/uduua/shop/orders')}
+                onClick={() => navigate('/shop/orders')}
                 className="px-6 py-3 bg-[#0043FC] text-white rounded-xl font-semibold hover:bg-[#0038D4] transition-all"
               >
                 View My Orders
               </button>
               <button
-                onClick={() => navigate('/uduua/shop')}
+                onClick={() => navigate('/shop')}
                 className="px-6 py-3 border border-gray-200 text-gray-700 rounded-xl font-semibold hover:border-[#0043FC] hover:text-[#0043FC] transition-all"
               >
                 Continue Shopping
@@ -206,7 +206,7 @@ const UduuaConfirmOrder = () => {
               {!order.status && 'This order cannot be confirmed at this time.'}
             </p>
             <button
-              onClick={() => navigate(`/uduua/shop/orders/${id}`)}
+              onClick={() => navigate(`/shop/orders/${id}`)}
               className="px-6 py-2.5 bg-[#0043FC] text-white rounded-lg hover:bg-[#0038D4] transition-all"
             >
               View Order Details
@@ -224,7 +224,7 @@ const UduuaConfirmOrder = () => {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Back Button */}
           <button
-            onClick={() => navigate(`/uduua/shop/orders/${id}`)}
+            onClick={() => navigate(`/shop/orders/${id}`)}
             className="flex items-center gap-2 text-gray-600 hover:text-[#0043FC] mb-6 transition-colors group"
           >
             <FaArrowLeft className="group-hover:-translate-x-1 transition-transform" />
@@ -327,7 +327,7 @@ const UduuaConfirmOrder = () => {
                 </button>
                 
                 <button
-                  onClick={() => navigate(`/uduua/shop/orders/${id}`)}
+                  onClick={() => navigate(`/shop/orders/${id}`)}
                   className="flex-1 py-3 border border-gray-200 text-gray-700 rounded-xl font-semibold hover:border-[#0043FC] hover:text-[#0043FC] transition-all duration-300 flex items-center justify-center gap-2"
                 >
                   <FaArrowLeft />

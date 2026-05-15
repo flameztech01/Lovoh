@@ -247,10 +247,10 @@ const UduuaHero = () => {
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
-              <Link to="/uduua/shop" className="group inline-flex items-center justify-center gap-2 bg-[#0043FC] hover:bg-[#0038D4] text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg">
+              <Link to="/shop" className="group inline-flex items-center justify-center gap-2 bg-[#0043FC] hover:bg-[#0038D4] text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg">
                 <FaShoppingBag /> Shop Marketplace <FaArrowRight className="group-hover:translate-x-1 transition-transform" />
               </Link>
-              <Link to="/uduua/services" className="inline-flex items-center justify-center gap-2 bg-white hover:bg-gray-50 border-2 border-gray-200 hover:border-[#0043FC] text-[#0043FC] hover:text-[#0043FC] px-6 py-3 rounded-xl font-semibold transition-all duration-300">
+              <Link to="/services" className="inline-flex items-center justify-center gap-2 bg-white hover:bg-gray-50 border-2 border-gray-200 hover:border-[#0043FC] text-[#0043FC] hover:text-[#0043FC] px-6 py-3 rounded-xl font-semibold transition-all duration-300">
                 <FaRocket /> Grow your Brand
               </Link>
               {/* Install App Button - Added Here */}

@@ -186,7 +186,7 @@ const UduuaSellerProducts = () => {
                 </p>
               </div>
               <Link
-                to="/uduua/seller/add-product"
+                to="/seller/add-product"
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0043FC] hover:bg-[#0038D4] text-white rounded-lg font-medium transition-all duration-300"
               >
                 <FaPlus className="text-sm" />
@@ -319,7 +319,7 @@ const UduuaSellerProducts = () => {
               </p>
               {!searchTerm && statusFilter === 'all' && (
                 <Link
-                  to="/uduua/seller/add-product"
+                  to="/seller/add-product"
                   className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0043FC] hover:bg-[#0038D4] text-white rounded-lg font-medium transition-all duration-300"
                 >
                   <FaPlus className="text-sm" />
@@ -402,14 +402,14 @@ const UduuaSellerProducts = () => {
                             <td className="px-6 py-4 text-right">
                               <div className="flex items-center justify-end gap-2">
                                 <Link
-                                  to={`/uduua/shop/product/${product._id}`}
+                                  to={`/shop/product/${product._id}`}
                                   className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                                   title="View"
                                 >
                                   <FaEye className="text-sm" />
                                 </Link>
                                 <Link
-                                  to={`/uduua/seller/edit-product/${product._id}`}
+                                  to={`/seller/edit-product/${product._id}`}
                                   className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
                                   title="Edit"
                                 >
@@ -488,13 +488,13 @@ const UduuaSellerProducts = () => {
                           </div>
                           <div className="flex gap-2 mt-3 pt-2 border-t border-gray-100">
                             <Link
-                              to={`/uduua/shop/product/${product._id}`}
+                              to={`/shop/product/${product._id}`}
                               className="flex-1 py-1.5 bg-blue-50 text-blue-600 rounded-md text-xs font-medium text-center hover:bg-blue-100 transition-colors"
                             >
                               View
                             </Link>
                             <Link
-                              to={`/uduua/seller/edit-product/${product._id}`}
+                              to={`/seller/edit-product/${product._id}`}
                               className="flex-1 py-1.5 bg-green-50 text-green-600 rounded-md text-xs font-medium text-center hover:bg-green-100 transition-colors"
                             >
                               Edit

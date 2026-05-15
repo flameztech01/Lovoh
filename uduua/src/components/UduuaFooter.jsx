@@ -155,14 +155,14 @@ const UduuaFooter = () => {
 
   const handleApplySeller = () => {
     if (!userInfo) {
-      navigate('/uduua/shop/login', { state: { from: '/uduua/apply-seller' } });
+      navigate('/shop/login', { state: { from: '/seller/apply' } });
     } else {
-      navigate('/uduua/apply-seller');
+      navigate('/seller/apply');
     }
   };
 
   const handleAddProduct = () => {
-    navigate('/uduua/seller/add-product');
+    navigate('/seller/add-product');
   };
 
   const getSellerButton = () => {
@@ -317,8 +317,8 @@ const UduuaFooter = () => {
             <div>
               <h4 className="font-semibold text-lg mb-4">Quick Links</h4>
               <ul className="space-y-2">
-                <li><Link to="/uduua/shop" className="text-gray-400 hover:text-[#0043FC] transition-colors text-sm">Shop</Link></li>
-                <li><Link to="/uduua/services" className="text-gray-400 hover:text-[#0043FC] transition-colors text-sm">Grow your Brand</Link></li>
+                <li><Link to="/shop" className="text-gray-400 hover:text-[#0043FC] transition-colors text-sm">Shop</Link></li>
+                <li><Link to="/services" className="text-gray-400 hover:text-[#0043FC] transition-colors text-sm">Grow your Brand</Link></li>
                 <li>
                   <button onClick={() => setShowPrivacyModal(true)} className="text-gray-400 hover:text-[#0043FC] transition-colors text-sm">
                     Privacy Policy

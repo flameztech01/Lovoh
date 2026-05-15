@@ -69,13 +69,13 @@ const UduuaAddProduct = () => {
 
   // Redirect if not logged in or not an approved seller
   if (!userInfo) {
-    navigate('/uduua/shop/login', { state: { from: '/uduua/seller/add-product' } });
+    navigate('/shop/login', { state: { from: '/uduua/seller/add-product' } });
     return null;
   }
 
   if (!isLoadingStatus && !isApprovedSeller) {
     toast.error('You must be an approved seller to add products');
-    navigate('/uduua/shop');
+    navigate('/shop');
     return null;
   }
 
@@ -166,7 +166,7 @@ const UduuaAddProduct = () => {
     try {
       await createProduct(submitData).unwrap();
       toast.success('Product submitted for approval! It will be visible once approved.');
-      navigate('/uduua/shop');
+      navigate('/shop');
     } catch (error) {
       toast.error(error?.data?.message || 'Failed to add product');
     }
@@ -180,7 +180,7 @@ const UduuaAddProduct = () => {
           {/* Header */}
           <div className="mb-6">
             <button
-              onClick={() => navigate('/uduua/shop')}
+              onClick={() => navigate('/shop')}
               className="flex items-center gap-2 text-gray-600 hover:text-[#0043FC] mb-4 transition-colors"
             >
               <FaArrowLeft className="text-sm" /> Back to Shop
@@ -529,7 +529,7 @@ const UduuaAddProduct = () => {
               <div className="flex gap-3">
                 <button
                   type="button"
-                  onClick={() => navigate('/uduua/shop')}
+                  onClick={() => navigate('/shop')}
                   className="flex-1 px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
                 >
                   Cancel

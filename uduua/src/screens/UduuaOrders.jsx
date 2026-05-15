@@ -358,7 +358,7 @@ const UduuaOrders = () => {
             <h2 className="text-2xl font-semibold text-gray-900 mb-2">Please Login</h2>
             <p className="text-gray-500 mb-6">You need to be logged in to view your orders.</p>
             <button
-              onClick={() => navigate('/uduua/shop/login')}
+              onClick={() => navigate('/shop/login')}
               className="px-6 py-3 bg-[#0043FC] hover:bg-[#0033cc] text-white rounded-lg font-medium transition-colors"
             >
               Login Now
@@ -421,7 +421,7 @@ const UduuaOrders = () => {
               <h3 className="text-lg font-semibold text-gray-900 mb-2">No orders yet</h3>
               <p className="text-gray-500 mb-6">You haven't placed any orders yet.</p>
               <button
-                onClick={() => navigate('/uduua/shop')}
+                onClick={() => navigate('/shop')}
                 className="px-6 py-2.5 bg-[#0043FC] hover:bg-[#0033cc] text-white rounded-md font-medium transition-colors inline-flex items-center gap-2"
               >
                 <FaBox className="text-sm" />
@@ -533,7 +533,7 @@ const UduuaOrders = () => {
                           
                           {order.paymentMethod !== 'ondelivery' && !order.isPaid && order.paymentStatus !== 'awaiting_confirmation' && (
                             <button
-                              onClick={() => navigate(`/uduua/shop/payment/${order._id}`)}
+                              onClick={() => navigate(`/shop/payment/${order._id}`)}
                               className="flex items-center gap-2 px-4 py-2 bg-[#0043FC] hover:bg-[#0033cc] text-white rounded-md transition-all font-medium text-sm"
                             >
                               <FaMoneyBillWave className="text-xs" />
@@ -543,7 +543,7 @@ const UduuaOrders = () => {
                           
                           {order.deliveryStatus === 'delivered' && !order.buyerConfirmedDelivery && (
                             <button
-                              onClick={() => navigate(`/uduua/shop/orders/${order._id}/confirm`)}
+                              onClick={() => navigate(`/shop/orders/${order._id}/confirm`)}
                               className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition-all font-medium text-sm"
                             >
                               <FaCheckCircle className="text-xs" />
@@ -653,7 +653,7 @@ const UduuaOrders = () => {
                           Your payment for this order was rejected. No items have been processed.
                         </p>
                         <button
-                          onClick={() => navigate('/uduua/shop')}
+                          onClick={() => navigate('/shop')}
                           className="inline-flex items-center gap-2 px-4 py-2 bg-[#0043FC] hover:bg-[#0033cc] text-white rounded-md transition-colors text-sm font-medium"
                         >
                           <FaBox className="text-xs" />

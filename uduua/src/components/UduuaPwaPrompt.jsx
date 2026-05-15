@@ -11,7 +11,7 @@ const UduuaPwaPrompt = () => {
   const [isIOS, setIsIOS] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
 
-  const isUduuaRoute = location.pathname.startsWith('/uduua');
+  const isUduuaRoute = location.pathname.startsWith('/');
 
   // Check if already installed or in standalone mode
   useEffect(() => {

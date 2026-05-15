@@ -1,4 +1,4 @@
-// screens/UduuaHelp.jsx
+// screens/UduuaHelp.jsx - Cleaned routes (no /uduua prefix)
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -52,7 +52,7 @@ const UduuaHelp = () => {
       category: 'orders',
       question: 'How do I place an order on Úduua?',
       answer: 'To place an order, browse products on our marketplace, select the items you want, choose the quantity (retail or bulk), and click "Add to Cart". Once you\'re ready, go to your cart and proceed to checkout. Fill in your shipping details, select a payment method, and confirm your order.',
-      relatedLinks: ['/uduua/shop', '/uduua/cart']
+      relatedLinks: ['/shop', '/cart']
     },
     {
       id: 2,
@@ -66,14 +66,14 @@ const UduuaHelp = () => {
       category: 'orders',
       question: 'How can I track my order?',
       answer: 'Once your order is confirmed and shipped, you\'ll receive a tracking number via email and SMS. You can track your order status in the "My Orders" section of your account dashboard. If you haven\'t received tracking information, please contact our support team.',
-      relatedLinks: ['/uduua/account/orders']
+      relatedLinks: ['/account/orders']
     },
     {
       id: 4,
       category: 'orders',
       question: 'What is the minimum order amount?',
       answer: 'The minimum order amount varies by product but typically starts from ₦60,000. Each product page displays its minimum order requirement. Bulk purchases (2+ units) qualify for discounted bulk pricing.',
-      relatedLinks: ['/uduua/shop']
+      relatedLinks: ['/shop']
     },
     
     // Payments
@@ -103,7 +103,7 @@ const UduuaHelp = () => {
       category: 'payments',
       question: 'How do I get a receipt for my order?',
       answer: 'A receipt is automatically generated and sent to your email after successful payment. You can also download your receipts from the "My Orders" section in your account dashboard.',
-      relatedLinks: ['/uduua/account/orders']
+      relatedLinks: ['/account/orders']
     },
 
     // Returns & Refunds
@@ -119,7 +119,7 @@ const UduuaHelp = () => {
       category: 'returns',
       question: 'How do I return an item?',
       answer: 'To initiate a return, go to "My Orders", select the order containing the item, and click "Request Return". Provide the reason for return and upload photos if applicable. Our team will review your request within 24-48 hours and provide return instructions.',
-      relatedLinks: ['/uduua/account/orders']
+      relatedLinks: ['/account/orders']
     },
     {
       id: 11,
@@ -142,21 +142,21 @@ const UduuaHelp = () => {
       category: 'account',
       question: 'How do I create an account?',
       answer: 'Click "Sign Up" in the top navigation. You can register using your email address or continue with Google. Fill in your name, phone number, and create a password. Verify your email address to activate your account.',
-      relatedLinks: ['/uduua/shop/signup']
+      relatedLinks: ['/shop/signup']
     },
     {
       id: 14,
       category: 'account',
       question: 'I forgot my password. How do I reset it?',
       answer: 'Click "Login" then "Forgot Password". Enter your registered email address, and we\'ll send you a password reset link. Click the link in the email to create a new password. The link expires after 24 hours.',
-      relatedLinks: ['/uduua/shop/login']
+      relatedLinks: ['/shop/login']
     },
     {
       id: 15,
       category: 'account',
       question: 'How do I update my account information?',
       answer: 'Log in to your account, click on your profile picture or name, and select "Account Settings". From there, you can update your name, phone number, shipping addresses, and notification preferences.',
-      relatedLinks: ['/uduua/account/settings']
+      relatedLinks: ['/account/settings']
     },
 
     // Products & Pricing
@@ -165,7 +165,7 @@ const UduuaHelp = () => {
       category: 'products',
       question: 'What is the difference between retail and bulk pricing?',
       answer: 'Retail price is for single unit purchases. Bulk price applies when you buy 2 or more units of the same product, offering a discount. Some products also have tiered bulk pricing for larger quantities (e.g., 5+ units, 10+ units).',
-      relatedLinks: ['/uduua/shop']
+      relatedLinks: ['/shop']
     },
     {
       id: 17,
@@ -179,14 +179,14 @@ const UduuaHelp = () => {
       category: 'products',
       question: 'How do I know if a product is in stock?',
       answer: 'Each product page shows real-time stock status. "In Stock" means available for immediate shipping. "Low Stock" means limited quantity available. "Out of Stock" products cannot be ordered but you can sign up for restock notifications.',
-      relatedLinks: ['/uduua/shop']
+      relatedLinks: ['/shop']
     },
     {
       id: 19,
       category: 'products',
       question: 'Can I sell my products on Úduua?',
       answer: 'Yes! We welcome brands and sellers to join our marketplace. Visit the "Grow your Brand" section or contact our seller support team. We offer market access, visibility, and support for fast-growing brands.',
-      relatedLinks: ['/uduua/services', '/uduua/seller/register']
+      relatedLinks: ['/services', '/seller/register']
     },
   ];
 
@@ -410,28 +410,28 @@ const UduuaHelp = () => {
           {/* Quick Links */}
           <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-4">
             <Link
-              to="/uduua/shop"
+              to="/shop"
               className="bg-white border border-gray-200 rounded-xl p-4 text-center hover:border-[#0043FC] hover:shadow-md transition-all group"
             >
               <FaShoppingBag className="text-2xl text-[#0043FC] mx-auto mb-2 group-hover:scale-110 transition-transform" />
               <span className="text-sm font-medium text-gray-700">Shop Products</span>
             </Link>
             <Link
-              to="/uduua/cart"
+              to="/cart"
               className="bg-white border border-gray-200 rounded-xl p-4 text-center hover:border-[#0043FC] hover:shadow-md transition-all group"
             >
               <FaBox className="text-2xl text-[#0043FC] mx-auto mb-2 group-hover:scale-110 transition-transform" />
               <span className="text-sm font-medium text-gray-700">View Cart</span>
             </Link>
             <Link
-              to="/uduua/account/orders"
+              to="/account/orders"
               className="bg-white border border-gray-200 rounded-xl p-4 text-center hover:border-[#0043FC] hover:shadow-md transition-all group"
             >
               <FaTruck className="text-2xl text-[#0043FC] mx-auto mb-2 group-hover:scale-110 transition-transform" />
               <span className="text-sm font-medium text-gray-700">Track Order</span>
             </Link>
             <Link
-              to="/uduua/account/settings"
+              to="/account/settings"
               className="bg-white border border-gray-200 rounded-xl p-4 text-center hover:border-[#0043FC] hover:shadow-md transition-all group"
             >
               <FaUser className="text-2xl text-[#0043FC] mx-auto mb-2 group-hover:scale-110 transition-transform" />

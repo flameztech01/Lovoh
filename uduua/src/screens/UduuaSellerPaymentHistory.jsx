@@ -214,7 +214,7 @@ const UduuaSellerPaymentHistory = () => {
           {/* Header */}
           <div className="mb-8">
             <button
-              onClick={() => navigate('/uduua/seller/dashboard')}
+              onClick={() => navigate('/seller/dashboard')}
               className="flex items-center gap-2 text-gray-600 hover:text-[#0043FC] mb-4 transition-colors group"
             >
               <FaArrowLeft className="text-sm group-hover:-translate-x-1 transition-transform" />
@@ -282,7 +282,7 @@ const UduuaSellerPaymentHistory = () => {
                 </div>
               </div>
               <Link
-                to="/uduua/seller/wallet"
+                to="/seller/wallet"
                 className="inline-flex items-center gap-2 px-4 py-2 bg-[#0043FC] text-white rounded-lg text-sm font-medium hover:bg-[#0038D4] transition-colors"
               >
                 <FaMoneyBillWave className="text-sm" />
@@ -413,7 +413,7 @@ const UduuaSellerPaymentHistory = () => {
               </p>
               {!searchTerm && statusFilter === 'all' && selectedTimeframe === 'all' && (
                 <Link
-                  to="/uduua/shop"
+                  to="/shop"
                   className="inline-flex items-center gap-2 px-4 py-2 bg-[#0043FC] text-white rounded-lg text-sm font-medium hover:bg-[#0038D4] transition-colors"
                 >
                   Start Selling
@@ -488,7 +488,7 @@ const UduuaSellerPaymentHistory = () => {
                             </td>
                             <td className="px-6 py-4 text-right">
                               <Link
-                                to={`/uduua/shop/orders/${transaction.id}`}
+                                to={`/shop/orders/${transaction.id}`}
                                 className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm"
                               >
                                 <FaEye className="text-xs" /> View Order
@@ -544,7 +544,7 @@ const UduuaSellerPaymentHistory = () => {
                         </div>
                       </div>
                       <Link
-                        to={`/uduua/shop/orders/${transaction.id}`}
+                        to={`/shop/orders/${transaction.id}`}
                         className="w-full inline-flex items-center justify-center gap-2 py-2 bg-gray-50 text-blue-600 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors"
                       >
                         <FaEye className="text-sm" /> View Order Details

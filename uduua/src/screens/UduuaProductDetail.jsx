@@ -180,7 +180,7 @@ const UduuaProductDetail = () => {
     if (!userInfo) {
       toast.error("Please login to add items to cart");
       setTimeout(
-        () => navigate("/login?redirect=/uduua/shop/product/" + id),
+        () => navigate("/login?redirect=/shop/product/" + id),
         2000,
       );
       return;
@@ -293,7 +293,7 @@ const UduuaProductDetail = () => {
                 : "This product doesn't exist or has been removed."}
             </p>
             <Link
-              to="/uduua/shop"
+              to="/shop"
               className="px-6 py-2.5 bg-[#0043FC] hover:bg-[#0033cc] text-white rounded-md"
             >
               Back to Shop
@@ -332,7 +332,7 @@ const UduuaProductDetail = () => {
           {/* Breadcrumb */}
           <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6 overflow-x-auto whitespace-nowrap">
             <button
-              onClick={() => navigate("/uduua/shop")}
+              onClick={() => navigate("/shop")}
               className="flex items-center gap-1 sm:gap-2 text-gray-600 hover:text-[#0043FC] transition-colors group"
             >
               <FaArrowLeft className="text-xs sm:text-sm group-hover:-translate-x-1 transition-transform" />

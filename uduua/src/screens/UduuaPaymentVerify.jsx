@@ -24,7 +24,7 @@ const UduuaPaymentVerify = () => {
     if (!reference) {
       setVerificationStatus('failed');
       toast.error('No payment reference found');
-      setTimeout(() => navigate('/uduua/shop/orders'), 3000);
+      setTimeout(() => navigate('/shop/orders'), 3000);
       return;
     }
 
@@ -55,9 +55,9 @@ const UduuaPaymentVerify = () => {
           if (prev <= 1) {
             clearInterval(timer);
             if (orderId) {
-              navigate(`/uduua/shop/orders/${orderId}`);
+              navigate(`/shop/orders/${orderId}`);
             } else {
-              navigate('/uduua/shop/orders');
+              navigate('/shop/orders');
             }
             return 0;
           }
@@ -120,7 +120,7 @@ const UduuaPaymentVerify = () => {
           )}
           
           <button
-            onClick={() => navigate('/uduua/shop')}
+            onClick={() => navigate('/shop')}
             className="mt-6 inline-flex items-center gap-2 text-[#0043FC] hover:text-[#0033cc] text-sm font-medium"
           >
             <FaShoppingBag className="text-sm" /> Continue Shopping

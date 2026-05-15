@@ -120,7 +120,7 @@ const UduuaSellerDashboard = () => {
               You need to be an approved seller to view this page.
             </p>
             <Link
-              to="/uduua/shop"
+              to="/shop"
               className="inline-flex items-center gap-2 px-6 py-3 bg-[#0043FC] hover:bg-[#0033cc] text-white rounded-md font-medium transition-colors"
             >
               Back to Shop
@@ -149,7 +149,7 @@ const UduuaSellerDashboard = () => {
                 </p>
               </div>
               <Link
-                to="/uduua/seller/add-product"
+                to="/seller/add-product"
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0043FC] hover:bg-[#0038D4] text-white rounded-lg font-medium transition-all duration-300"
               >
                 <FaPlus className="text-sm" />
@@ -228,7 +228,7 @@ const UduuaSellerDashboard = () => {
           {/* Quick Actions */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
             <Link
-              to="/uduua/seller/products"
+              to="/seller/products"
               className="bg-white border border-gray-200 rounded-xl p-4 text-center hover:shadow-md transition-shadow group"
             >
               <div className="w-10 h-10 mx-auto mb-2 bg-[#0043FC]/10 rounded-lg flex items-center justify-center group-hover:bg-[#0043FC]/20 transition-colors">
@@ -238,7 +238,7 @@ const UduuaSellerDashboard = () => {
               <p className="text-xs text-gray-500 mt-0.5">View and edit products</p>
             </Link>
             <Link
-              to="/uduua/seller/orders"
+              to="/seller/orders"
               className="bg-white border border-gray-200 rounded-xl p-4 text-center hover:shadow-md transition-shadow group"
             >
               <div className="w-10 h-10 mx-auto mb-2 bg-[#0043FC]/10 rounded-lg flex items-center justify-center group-hover:bg-[#0043FC]/20 transition-colors">
@@ -248,7 +248,7 @@ const UduuaSellerDashboard = () => {
               <p className="text-xs text-gray-500 mt-0.5">Track customer orders</p>
             </Link>
             <Link
-              to="/uduua/seller/wallet"
+              to="/seller/wallet"
               className="bg-white border border-gray-200 rounded-xl p-4 text-center hover:shadow-md transition-shadow group"
             >
               <div className="w-10 h-10 mx-auto mb-2 bg-[#0043FC]/10 rounded-lg flex items-center justify-center group-hover:bg-[#0043FC]/20 transition-colors">
@@ -258,7 +258,7 @@ const UduuaSellerDashboard = () => {
               <p className="text-xs text-gray-500 mt-0.5">View balance & withdraw</p>
             </Link>
             <Link
-              to="/uduua/seller/payment-history"
+              to="/seller/payment-history"
               className="bg-white border border-gray-200 rounded-xl p-4 text-center hover:shadow-md transition-shadow group"
             >
               <div className="w-10 h-10 mx-auto mb-2 bg-[#0043FC]/10 rounded-lg flex items-center justify-center group-hover:bg-[#0043FC]/20 transition-colors">
@@ -278,7 +278,7 @@ const UduuaSellerDashboard = () => {
                   Recent Orders
                 </h2>
                 <Link
-                  to="/uduua/seller/orders"
+                  to="/seller/orders"
                   className="text-xs text-[#0043FC] hover:text-[#0033cc] flex items-center gap-1"
                 >
                   View all <FaArrowRight className="text-[10px]" />
@@ -384,7 +384,7 @@ const UduuaSellerDashboard = () => {
 
                 <div className="pt-3 border-t border-gray-200">
                   <Link
-                    to="/uduua/seller/analytics"
+                    to="/seller/analytics"
                     className="w-full flex items-center justify-center gap-2 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
                   >
                     <FaChartLine className="text-sm" />
