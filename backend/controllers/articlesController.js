@@ -8,6 +8,9 @@ import { notifyNewContent } from './notificationController.js';   // push
 
 // ==================== CRUD OPERATIONS ====================
 
+// ==================== CREATE ARTICLE ====================
+// Allows creating an article with ONLY title, excerpt, images (cover)
+// and comingSoon = true – full content is optional.
 const createArticle = asyncHandler(async (req, res) => {
   const {
     title,
@@ -18,16 +21,27 @@ const createArticle = asyncHandler(async (req, res) => {
     isFeatured,
     isEditorsPick,
     status,
+    comingSoon,
   } = req.body;
 
-  if (!title || !excerpt || !content || !category) {
+  const isComingSoon = comingSoon === 'true' || comingSoon === true;
+
+  // Basic required fields: title, excerpt, category, and at least one image
+  if (!title || !excerpt || !category) {
     res.status(400);
-    throw new Error('Please provide title, excerpt, content, and category');
+    throw new Error('Please provide title, excerpt, and category');
+  }
+
+  // Content is required only if NOT coming soon and status is 'published'
+  const isPublished = status === 'published';
+  if (!isComingSoon && isPublished && (!content || content.trim().length < 20)) {
+    res.status(400);
+    throw new Error('Full content is required for published articles. For coming soon, set comingSoon=true.');
   }
 
   if (!req.files || req.files.length === 0) {
     res.status(400);
-    throw new Error('At least one image is required');
+    throw new Error('At least one image is required (cover image)');
   }
 
   const imageUrls = [];
@@ -59,7 +73,7 @@ const createArticle = asyncHandler(async (req, res) => {
   const article = await Article.create({
     title,
     excerpt,
-    content,
+    content: content || '<p><em>Coming soon – full article will be available shortly.</em></p>',
     category,
     tags: tags ? (Array.isArray(tags) ? tags : tags.split(',')) : [],
     images: imageUrls,
@@ -69,23 +83,27 @@ const createArticle = asyncHandler(async (req, res) => {
     authorType: req.user.role === 'admin' ? 'admin' : 'user',
     isFeatured: isFeatured === 'true' || isFeatured === true,
     isEditorsPick: isEditorsPick === 'true' || isEditorsPick === true,
-    status: status || 'published',
+    status: isComingSoon ? 'coming_soon' : (status || 'published'),
     slug,
-    publishedAt: status !== 'draft' ? new Date() : null,
+    publishedAt: (status === 'published' && !isComingSoon) ? new Date() : null,
     createdBy: req.user._id,
+    comingSoon: isComingSoon,
   });
 
-  if (article.status === 'published') {
-    // Email subscribers (fire-and-forget is okay for email)
+  // Send notifications only if the article is actually published (not coming soon)
+  if (article.status === 'published' && !article.comingSoon) {
+    // Email subscribers (fire-and-forget)
     notifySubscribersOfNewContent(article, 'article');
-    
-    // Push + in-app notifications (must await to ensure delivery)
+    // Push + in‑app notifications
     const notifyResult = await notifyNewContent({ type: 'article', content: article });
     console.log('Article publish notification result:', notifyResult);
+  } else if (article.status === 'coming_soon') {
+    console.log(`Article "${article.title}" saved as coming soon.`);
   }
 
   res.status(201).json(article);
 });
+
 
 const getArticles = asyncHandler(async (req, res) => {
   const {
@@ -196,6 +214,7 @@ const getArticleById = asyncHandler(async (req, res) => {
   res.json(article);
 });
 
+// ==================== UPDATE ARTICLE ====================
 const updateArticle = asyncHandler(async (req, res) => {
   const article = await Article.findById(req.params.id);
   if (!article) {
@@ -210,9 +229,20 @@ const updateArticle = asyncHandler(async (req, res) => {
 
   const {
     title, excerpt, content, category, tags,
-    isFeatured, isEditorsPick, status, keepImages,
+    isFeatured, isEditorsPick, status, keepImages, comingSoon,
   } = req.body;
 
+  const isComingSoon = comingSoon === 'true' || comingSoon === true;
+  const newStatus = status || article.status;
+  const willBePublished = (newStatus === 'published') && !isComingSoon;
+
+  // If transitioning to published (and not coming soon), full content is required
+  if (willBePublished && (!content || content.trim().length < 20)) {
+    res.status(400);
+    throw new Error('Cannot publish an article without full content. Add content or keep it as coming soon.');
+  }
+
+  // Handle image updates
   let updatedImages = article.images;
   let featuredImage = article.featuredImage;
 
@@ -237,6 +267,7 @@ const updateArticle = asyncHandler(async (req, res) => {
       imagesToKeep = Array.isArray(keepImages) ? keepImages : [keepImages];
     }
 
+    // Delete removed old images
     for (const oldImage of article.images) {
       if (!imagesToKeep.includes(oldImage)) {
         try {
@@ -252,6 +283,7 @@ const updateArticle = asyncHandler(async (req, res) => {
     featuredImage = updatedImages[0];
   }
 
+  // Update slug if title changed
   if (title && title !== article.title) {
     const baseSlug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     let newSlug = baseSlug;
@@ -262,37 +294,38 @@ const updateArticle = asyncHandler(async (req, res) => {
     article.slug = newSlug;
   }
 
+  // Apply field updates
   if (title) article.title = title;
   if (excerpt) article.excerpt = excerpt;
   if (content) article.content = content;
   if (category) article.category = category;
   if (tags) article.tags = Array.isArray(tags) ? tags : tags.split(',');
+  if (updatedImages) article.images = updatedImages;
+  if (featuredImage) article.featuredImage = featuredImage;
+  article.comingSoon = isComingSoon;
 
+  // Admin-only fields
   if (req.user.role === 'admin') {
     if (isFeatured !== undefined) article.isFeatured = isFeatured === 'true' || isFeatured === true;
     if (isEditorsPick !== undefined) article.isEditorsPick = isEditorsPick === 'true' || isEditorsPick === true;
   }
 
-  if (updatedImages) article.images = updatedImages;
-  if (featuredImage) article.featuredImage = featuredImage;
+  // Handle status transition
+  const oldStatus = article.status;
+  article.status = newStatus;
 
-  if (status) {
-    const oldStatus = article.status;
-    article.status = status;
-    
-    if (oldStatus !== 'published' && status === 'published') {
-      article.publishedAt = new Date();
-      await article.save(); // persist before notifying
+  const isBecomingPublished = (oldStatus !== 'published' && newStatus === 'published') && !isComingSoon;
+  if (isBecomingPublished) {
+    article.publishedAt = new Date();
+    await article.save(); // save before notifying
 
-      // Email subscribers
-      notifySubscribersOfNewContent(article, 'article');
-      
-      // Push + in-app notifications (must await)
-      const notifyResult = await notifyNewContent({ type: 'article', content: article });
-      console.log('Article status-change notification result:', notifyResult);
-      
-      return res.json(article);
-    }
+    // Email subscribers
+    notifySubscribersOfNewContent(article, 'article');
+    // Push + in‑app notifications
+    const notifyResult = await notifyNewContent({ type: 'article', content: article });
+    console.log('Article publish on update notification result:', notifyResult);
+
+    return res.json(article);
   }
 
   const updatedArticle = await article.save();

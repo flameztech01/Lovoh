@@ -119,20 +119,24 @@ const googleAuth = asyncHandler(async (req, res) => {
       throw new Error("No account found with this email. Please sign up first.");
     }
 
+    // Only add Google ID if not already present
     if (!user.googleId) {
       user.googleId = googleId;
     }
 
+    // Update profile picture only if user doesn't have one
     if (!user.profile && picture) {
       user.profile = picture;
     }
 
+    // Update name only if user doesn't have one
     if (!user.name && name) {
       user.name = name;
     }
 
     user.isVerified = true;
-    user.authMethod = "google";
+    // DO NOT change authMethod to 'google' for existing email/password users
+    // Only set authMethod to 'google' during signup.
     await user.save();
   }
 
@@ -148,7 +152,6 @@ const googleAuth = asyncHandler(async (req, res) => {
     token,
   });
 });
-
 
 
 
@@ -334,9 +337,10 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new Error('Invalid email or password');
   }
 
-  if (user.authMethod !== 'email') {
+  // If the user's password is auto-generated for Google auth, they cannot use email login
+  if (!user.password || user.password.startsWith('google-auth-')) {
     res.status(401);
-    throw new Error('This account uses a different sign-in method');
+    throw new Error('This account uses Google Sign-In. Please log in with Google.');
   }
 
   if (!user.isVerified) {
@@ -363,7 +367,6 @@ const loginUser = asyncHandler(async (req, res) => {
     token,
   });
 });
-
 
 // @desc    Update user profile (name and profile picture)
 // @route   PUT /api/users/profile

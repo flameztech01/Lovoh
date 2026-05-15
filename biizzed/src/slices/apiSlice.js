@@ -39,7 +39,7 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
 
     if (isUserEndpoint) {
       api.dispatch(logout());
-      window.location.href = '/uduua/shop/login';
+      window.location.href = '/login';
     }
   }
 

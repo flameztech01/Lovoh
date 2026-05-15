@@ -7,27 +7,36 @@ import { notifyNewContent } from './notificationController.js';   // push
 
 // ==================== CRUD ====================
 
+// ==================== CREATE MAGAZINE ====================
+// Allows creating a magazine with ONLY a cover image (comingSoon = true)
+// or with full PDF (comingSoon = false or status = 'published')
 const createMagazine = asyncHandler(async (req, res) => {
-  const { title, summary, author, category, tags, isFeatured, status } = req.body;
-
-  if (!title || !summary || !author || !req.files?.pdf || !req.files?.coverImage) {
+  const { title, summary, author, category, tags, isFeatured, status, comingSoon } = req.body;
+  
+  // comingSoon: if true, PDF is optional; otherwise PDF is required for published
+  const isComingSoon = comingSoon === 'true' || comingSoon === true;
+  
+  if (!title || !summary || !author) {
     res.status(400);
-    throw new Error('Please provide title, summary, author, PDF file, and cover image');
+    throw new Error('Please provide title, summary, and author');
   }
-
+  
+  // PDF required only if NOT coming soon and status is 'published'
+  const isPublished = status === 'published';
+  if (!isComingSoon && isPublished && !req.files?.pdf) {
+    res.status(400);
+    throw new Error('PDF file is required for published magazines. For coming soon, set comingSoon=true.');
+  }
+  
+  // Cover image is always required for display
+  if (!req.files?.coverImage) {
+    res.status(400);
+    throw new Error('Cover image is required');
+  }
+  
   const { v2: cloudinary } = await import('cloudinary');
-
-  // Upload PDF
-  const pdfFile = req.files.pdf[0];
-  const pdfB64 = Buffer.from(pdfFile.buffer).toString('base64');
-  const pdfDataURI = `data:${pdfFile.mimetype};base64,${pdfB64}`;
-  const pdfResult = await cloudinary.uploader.upload(pdfDataURI, {
-    folder: 'LovohCreate_Magazines',
-    resource_type: 'raw',
-    format: 'pdf',
-  });
-
-  // Upload Cover
+  
+  // Upload cover image
   const coverFile = req.files.coverImage[0];
   const coverB64 = Buffer.from(coverFile.buffer).toString('base64');
   const coverDataURI = `data:${coverFile.mimetype};base64,${coverB64}`;
@@ -35,40 +44,58 @@ const createMagazine = asyncHandler(async (req, res) => {
     folder: 'LovohCreate_Magazines_Covers',
     transformation: [{ width: 800, height: 600, crop: 'limit' }],
   });
-
+  
+  let pdfUrl = '';
+  if (req.files?.pdf) {
+    const pdfFile = req.files.pdf[0];
+    const pdfB64 = Buffer.from(pdfFile.buffer).toString('base64');
+    const pdfDataURI = `data:${pdfFile.mimetype};base64,${pdfB64}`;
+    const pdfResult = await cloudinary.uploader.upload(pdfDataURI, {
+      folder: 'LovohCreate_Magazines',
+      resource_type: 'raw',
+      format: 'pdf',
+    });
+    pdfUrl = pdfResult.secure_url;
+  }
+  
+  // Generate slug
   const baseSlug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
   let slug = baseSlug;
   let counter = 1;
   while (await Magazine.findOne({ slug })) {
     slug = `${baseSlug}-${counter++}`;
   }
-
-  const magazine = await Magazine.create({
+  
+  const magazineData = {
     title,
     summary,
     author: author || req.admin?.name || req.user?.name,
     category,
     tags: tags ? (Array.isArray(tags) ? tags : tags.split(',')) : [],
-    pdfUrl: pdfResult.secure_url,
     coverImage: coverResult.secure_url,
+    pdfUrl,
     isFeatured: isFeatured === 'true' || isFeatured === true,
-    status: status || 'published',
+    status: isComingSoon ? 'coming_soon' : (status || 'draft'),
     slug,
-    publishedAt: status === 'published' ? new Date() : null,
+    publishedAt: (status === 'published' && !isComingSoon) ? new Date() : null,
     createdBy: req.admin?._id || req.user?._id,
     authorType: req.admin ? 'admin' : 'user',
-  });
-
-  // Notify if published
-  if (magazine.status === 'published') {
-    // Email subscribers (fire-and-forget is okay for email)
+    comingSoon: isComingSoon,
+  };
+  
+  const magazine = await Magazine.create(magazineData);
+  
+  // Send notifications only if the magazine is actually published (not coming soon, has PDF)
+  if (magazine.status === 'published' && magazine.pdfUrl) {
+    // Email subscribers (fire-and-forget)
     notifySubscribersOfNewContent(magazine, 'magazine');
-    
-    // Push + in-app notifications (must await to ensure delivery)
+    // Push + in‑app notifications
     const notifyResult = await notifyNewContent({ type: 'magazine', content: magazine });
     console.log('Magazine publish notification result:', notifyResult);
+  } else if (magazine.status === 'coming_soon') {
+    console.log(`Magazine "${magazine.title}" saved as coming soon.`);
   }
-
+  
   res.status(201).json(magazine);
 });
 
@@ -156,22 +183,37 @@ const getMagazineById = asyncHandler(async (req, res) => {
   res.json(magazine);
 });
 
+// ==================== UPDATE MAGAZINE ====================
 const updateMagazine = asyncHandler(async (req, res) => {
   const magazine = await Magazine.findById(req.params.id);
   if (!magazine) {
     res.status(404);
     throw new Error('Magazine not found');
   }
-
-  const { title, summary, author, category, tags, isFeatured, status } = req.body;
+  
+  const { title, summary, author, category, tags, isFeatured, status, comingSoon } = req.body;
   const { v2: cloudinary } = await import('cloudinary');
-
+  
+  // Determine if the magazine should be considered "coming soon" after update
+  const isComingSoon = comingSoon === 'true' || comingSoon === true;
+  const newStatus = status || magazine.status;
+  const willBePublished = (newStatus === 'published') && !isComingSoon;
+  
+  // If updating to published (and not coming soon), we must have a PDF
+  if (willBePublished && !magazine.pdfUrl && !req.files?.pdf) {
+    res.status(400);
+    throw new Error('Cannot publish a magazine without a PDF file. Upload a PDF or keep it as coming soon.');
+  }
+  
+  // Handle PDF upload if provided
   if (req.files?.pdf) {
     try {
-      const oldId = magazine.pdfUrl.split('/').pop().split('.')[0];
-      await cloudinary.uploader.destroy(`LovohCreate_Magazines/${oldId}`, { resource_type: 'raw' });
+      if (magazine.pdfUrl) {
+        const oldId = magazine.pdfUrl.split('/').pop().split('.')[0];
+        await cloudinary.uploader.destroy(`LovohCreate_Magazines/${oldId}`, { resource_type: 'raw' });
+      }
     } catch (err) { console.error('Error deleting old PDF:', err); }
-
+    
     const pdfFile = req.files.pdf[0];
     const pdfB64 = Buffer.from(pdfFile.buffer).toString('base64');
     const pdfDataURI = `data:${pdfFile.mimetype};base64,${pdfB64}`;
@@ -181,13 +223,16 @@ const updateMagazine = asyncHandler(async (req, res) => {
     });
     magazine.pdfUrl = pdfResult.secure_url;
   }
-
+  
+  // Handle cover image upload if provided
   if (req.files?.coverImage) {
     try {
-      const oldId = magazine.coverImage.split('/').pop().split('.')[0];
-      await cloudinary.uploader.destroy(`LovohCreate_Magazines_Covers/${oldId}`);
+      if (magazine.coverImage) {
+        const oldId = magazine.coverImage.split('/').pop().split('.')[0];
+        await cloudinary.uploader.destroy(`LovohCreate_Magazines_Covers/${oldId}`);
+      }
     } catch (err) { console.error('Error deleting old cover:', err); }
-
+    
     const coverFile = req.files.coverImage[0];
     const coverB64 = Buffer.from(coverFile.buffer).toString('base64');
     const coverDataURI = `data:${coverFile.mimetype};base64,${coverB64}`;
@@ -197,7 +242,8 @@ const updateMagazine = asyncHandler(async (req, res) => {
     });
     magazine.coverImage = coverResult.secure_url;
   }
-
+  
+  // Update slug if title changed
   if (title && title !== magazine.title) {
     const baseSlug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     let newSlug = baseSlug;
@@ -207,33 +253,35 @@ const updateMagazine = asyncHandler(async (req, res) => {
     }
     magazine.slug = newSlug;
   }
-
+  
+  // Apply field updates
   if (title) magazine.title = title;
   if (summary) magazine.summary = summary;
   if (author) magazine.author = author;
   if (category) magazine.category = category;
   if (tags) magazine.tags = Array.isArray(tags) ? tags : tags.split(',');
   if (isFeatured !== undefined) magazine.isFeatured = isFeatured === 'true' || isFeatured === true;
+  magazine.comingSoon = isComingSoon;
   
-  if (status) {
-    const oldStatus = magazine.status;
-    magazine.status = status;
+  // Handle status transition
+  const oldStatus = magazine.status;
+  magazine.status = newStatus;
+  
+  // If transitioning from non‑published to published (and has PDF), set publishedAt and notify
+  const isBecomingPublished = (oldStatus !== 'published' && newStatus === 'published') && magazine.pdfUrl;
+  if (isBecomingPublished) {
+    magazine.publishedAt = new Date();
+    await magazine.save(); // save before notifying
     
-    if (oldStatus !== 'published' && status === 'published') {
-      magazine.publishedAt = new Date();
-      await magazine.save(); // persist before notifying
-
-      // Email subscribers
-      notifySubscribersOfNewContent(magazine, 'magazine');
-      
-      // Push + in-app notifications (must await)
-      const notifyResult = await notifyNewContent({ type: 'magazine', content: magazine });
-      console.log('Magazine status-change notification result:', notifyResult);
-      
-      return res.json(magazine);
-    }
+    // Email subscribers
+    notifySubscribersOfNewContent(magazine, 'magazine');
+    // Push + in‑app notifications
+    const notifyResult = await notifyNewContent({ type: 'magazine', content: magazine });
+    console.log('Magazine publish on update notification result:', notifyResult);
+    
+    return res.json(magazine);
   }
-
+  
   await magazine.save();
   res.json(magazine);
 });

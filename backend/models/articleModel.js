@@ -1,4 +1,4 @@
-// models/articleModel.js - Fixed ref issue
+// models/articleModel.js - Added comingSoon support
 import mongoose from 'mongoose';
 
 const replySchema = mongoose.Schema({
@@ -64,7 +64,7 @@ const articleSchema = mongoose.Schema(
     },
     content: {
       type: String,
-      required: true,
+      default: '', // Not required – allows coming soon articles
     },
     category: {
       type: String,
@@ -79,7 +79,6 @@ const articleSchema = mongoose.Schema(
       type: String,
       required: true,
     },
-    // FIXED: Use simple ref to User instead of refPath
     authorId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -121,13 +120,18 @@ const articleSchema = mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['published', 'draft'],
+      enum: ['published', 'draft', 'coming_soon'],
       default: 'draft',
     },
     publishedAt: Date,
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
+    },
+    // NEW: comingSoon flag – for frontend convenience
+    comingSoon: {
+      type: Boolean,
+      default: false,
     },
   },
   { timestamps: true }
@@ -141,12 +145,14 @@ articleSchema.index({ likes: 1 });
 articleSchema.index({ bookmarks: 1 });
 articleSchema.index({ 'comments.user': 1 });
 
-// Calculate read time
+// Calculate read time (only if content exists and is not empty)
 articleSchema.pre('save', function(next) {
-  if (this.isModified('content')) {
+  if (this.isModified('content') && this.content && this.content.trim().length > 0) {
     const words = this.content.trim().split(/\s+/).length;
     const minutes = Math.ceil(words / 200);
     this.readTime = `${minutes} min read`;
+  } else if (this.comingSoon || this.status === 'coming_soon') {
+    this.readTime = 'Coming Soon';
   }
   next();
 });

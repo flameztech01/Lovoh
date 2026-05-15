@@ -1,14 +1,21 @@
-// screens/BiizzedSignup.jsx - Phone number field before Google signup
+// screens/BiizzedSignup.jsx - Email/Password + Google Signup with OTP Modal
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { useGoogleAuthMutation } from '../slices/userApiSlice';
+import {
+  useGoogleAuthMutation,
+  useRegisterMutation,
+  useVerifyEmailMutation,
+  useResendOTPMutation,
+} from '../slices/userApiSlice';
 import { setCredentials } from '../slices/authslice';
 import { toast } from 'react-toastify';
 import { GoogleLogin } from '@react-oauth/google';
 import {
   FaArrowLeft, FaSpinner, FaNewspaper, FaCheck,
   FaBookOpen, FaVideo, FaUsers, FaPhone, FaGoogle,
+  FaEnvelope, FaLock, FaUser, FaEye, FaEyeSlash,
+  FaTimes,
 } from 'react-icons/fa';
 
 const BiizzedSignup = () => {
@@ -16,10 +23,32 @@ const BiizzedSignup = () => {
   const dispatch = useDispatch();
   const location = useLocation();
   const { userInfo } = useSelector((state) => state.auth);
-  const [googleAuth, { isLoading }] = useGoogleAuthMutation();
 
-  const [step, setStep] = useState('phone');
-  const [phone, setPhone] = useState('');
+  // API hooks
+  const [googleAuth, { isLoading: googleLoading }] = useGoogleAuthMutation();
+  const [register, { isLoading: registerLoading }] = useRegisterMutation();
+  const [verifyEmail, { isLoading: verifyLoading }] = useVerifyEmailMutation();
+  const [resendOTP, { isLoading: resendLoading }] = useResendOTPMutation();
+
+  // UI state
+  const [signupMethod, setSignupMethod] = useState('email'); // 'email' or 'google'
+  const [step, setStep] = useState('form'); // 'form' or 'otp'
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Form data
+  const [formData, setFormData] = useState({
+    name: '',
+    username: '',
+    email: '',
+    password: '',
+    phone: '',
+  });
+
+  // OTP state
+  const [otp, setOtp] = useState('');
+  const [registeredEmail, setRegisteredEmail] = useState('');
+  const [countdown, setCountdown] = useState(0);
+  const [canResend, setCanResend] = useState(false);
 
   const redirect = location.search?.split('=')[1] || '/feed';
 
@@ -27,35 +56,87 @@ const BiizzedSignup = () => {
     if (userInfo) navigate(redirect);
   }, [userInfo, navigate, redirect]);
 
-  const handlePhoneNext = (e) => {
-    e.preventDefault();
-    const cleanedPhone = phone.replace(/[\s\-\(\)]/g, '');
-    
-    if (!cleanedPhone || cleanedPhone.length < 10) {
-      toast.error('Please enter a valid phone number (at least 10 digits)');
-      return;
+  // Countdown timer for resend OTP
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
+    } else {
+      setCanResend(true);
     }
-    
-    setPhone(cleanedPhone);
-    setStep('google');
+  }, [countdown]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  // Email/Password Registration
+  const handleEmailSignup = async (e) => {
+    e.preventDefault();
+    const { name, username, email, password, phone } = formData;
+
+    if (!name.trim()) { toast.error('Full name is required'); return; }
+    if (!username.trim()) { toast.error('Username is required'); return; }
+    if (!email.trim()) { toast.error('Email is required'); return; }
+    if (!password.trim() || password.length < 6) { toast.error('Password must be at least 6 characters'); return; }
+
+    try {
+      const res = await register({ name, username, email, password, phone }).unwrap();
+      setRegisteredEmail(res.email);
+      setStep('otp');
+      setCountdown(60);
+      setCanResend(false);
+      toast.success('Verification code sent to your email');
+    } catch (error) {
+      toast.error(error?.data?.message || 'Registration failed');
+    }
+  };
+
+  // Verify OTP
+  const handleVerifyOTP = async (e) => {
+    e.preventDefault();
+    if (!otp || otp.length !== 6) {
+      toast.error('Please enter the 6-digit code');
+      return;
+    }
+    try {
+      const res = await verifyEmail({ email: registeredEmail, otp }).unwrap();
+      dispatch(setCredentials({ ...res }));
+      toast.success(`Welcome to Biizzed, ${res.name}! 🎉`);
+      navigate(redirect);
+    } catch (error) {
+      toast.error(error?.data?.message || 'Invalid or expired OTP');
+    }
+  };
+
+  // Resend OTP
+  const handleResendOTP = async () => {
+    if (!canResend) return;
+    try {
+      await resendOTP({ email: registeredEmail }).unwrap();
+      toast.success('New OTP sent to your email');
+      setCountdown(60);
+      setCanResend(false);
+    } catch (error) {
+      toast.error(error?.data?.message || 'Failed to resend OTP');
+    }
+  };
+
+  // Google Signup
   const handleGoogleSuccess = async (credentialResponse) => {
     const { credential } = credentialResponse;
-
     try {
       const res = await googleAuth({
         token: credential,
         mode: 'signup',
-        phone: phone,
+        phone: formData.phone || '',
       }).unwrap();
-
       dispatch(setCredentials({ ...res }));
       toast.success(`Welcome to Biizzed, ${res.name || 'Creator'}! 🎉`);
       navigate(redirect);
     } catch (error) {
-      toast.error(error?.data?.message || 'Signup failed. Account may already exist.');
-      setStep('phone');
+      toast.error(error?.data?.message || 'Google signup failed. Account may already exist.');
     }
   };
 
@@ -68,9 +149,11 @@ const BiizzedSignup = () => {
     { icon: FaUsers, title: 'Community', desc: 'Connect with creators' },
   ];
 
+  const isLoading = registerLoading || verifyLoading || resendLoading;
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Simple Header */}
+      {/* Header */}
       <div className="bg-white border-b border-gray-100 px-4 py-4">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <button onClick={() => navigate(-1)} className="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-600">
@@ -89,81 +172,136 @@ const BiizzedSignup = () => {
             <div className="w-16 h-16 bg-[#1B3766]/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <FaNewspaper className="text-[#1B3766] text-2xl" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              {step === 'phone' ? 'Join Biizzed' : 'Verify with Google'}
-            </h1>
-            <p className="text-gray-500 mt-2">
-              {step === 'phone' 
-                ? 'Create, publish, and connect with a global audience' 
-                : 'Sign in with Google to complete registration'}
-            </p>
+            <h1 className="text-2xl font-bold text-gray-900">Join Biizzed</h1>
+            <p className="text-gray-500 mt-2">Create, publish, and connect with a global audience</p>
           </div>
 
-          {/* Features Grid - Only show on phone step */}
-          {step === 'phone' && (
-            <div className="grid grid-cols-2 gap-3 mb-6">
-              {features.map((feature) => (
-                <div key={feature.title} className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 text-center">
-                  <div className="w-10 h-10 bg-[#1B3766]/10 rounded-xl flex items-center justify-center mx-auto mb-2">
-                    <feature.icon className="text-[#1B3766] text-lg" />
-                  </div>
-                  <h3 className="text-sm font-semibold text-gray-900">{feature.title}</h3>
-                  <p className="text-xs text-gray-400 mt-0.5">{feature.desc}</p>
+          {/* Method Toggle */}
+          <div className="flex gap-2 bg-gray-100 p-1 rounded-xl mb-6">
+            <button
+              onClick={() => setSignupMethod('email')}
+              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+                signupMethod === 'email' ? 'bg-white text-[#1B3766] shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Email Signup
+            </button>
+            <button
+              onClick={() => setSignupMethod('google')}
+              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+                signupMethod === 'google' ? 'bg-white text-[#1B3766] shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Google Signup
+            </button>
+          </div>
+
+          {/* Features Grid */}
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            {features.map((feature) => (
+              <div key={feature.title} className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 text-center">
+                <div className="w-10 h-10 bg-[#1B3766]/10 rounded-xl flex items-center justify-center mx-auto mb-2">
+                  <feature.icon className="text-[#1B3766] text-lg" />
                 </div>
-              ))}
-            </div>
-          )}
+                <h3 className="text-sm font-semibold text-gray-900">{feature.title}</h3>
+                <p className="text-xs text-gray-400 mt-0.5">{feature.desc}</p>
+              </div>
+            ))}
+          </div>
 
           {/* Signup Card */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-            {step === 'phone' ? (
-              /* Phone Step */
-              <form onSubmit={handlePhoneNext}>
-                <div className="text-center mb-5">
-                  <div className="w-14 h-14 bg-[#1B3766]/10 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <FaPhone className="text-[#1B3766] text-xl" />
+            {signupMethod === 'email' ? (
+              /* Email Signup Form (no OTP page – modal shown after submission) */
+              step === 'form' ? (
+                <form onSubmit={handleEmailSignup} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Full Name *</label>
+                    <div className="relative">
+                      <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+                      <input
+                        type="text" name="name" value={formData.name} onChange={handleChange}
+                        required placeholder="John Doe"
+                        className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
+                      />
+                    </div>
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900">Phone Number</h3>
-                  <p className="text-sm text-gray-500 mt-1">Enter your phone number to get started</p>
-                </div>
-
-                <div className="mb-4">
-                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Phone Number</label>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Username *</label>
+                    <div className="relative">
+                      <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+                      <input
+                        type="text" name="username" value={formData.username} onChange={handleChange}
+                        required placeholder="johndoe"
+                        className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Email *</label>
+                    <div className="relative">
+                      <FaEnvelope className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+                      <input
+                        type="email" name="email" value={formData.email} onChange={handleChange}
+                        required placeholder="you@example.com"
+                        className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Password *</label>
+                    <div className="relative">
+                      <FaLock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+                      <input
+                        type={showPassword ? 'text' : 'password'} name="password" value={formData.password} onChange={handleChange}
+                        required placeholder="•••••••• (min 6 chars)"
+                        className="w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
+                      />
+                      <button
+                        type="button" onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        {showPassword ? <FaEyeSlash className="text-sm" /> : <FaEye className="text-sm" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Phone (Optional)</label>
+                    <div className="relative">
+                      <FaPhone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+                      <input
+                        type="tel" name="phone" value={formData.phone} onChange={handleChange}
+                        placeholder="08012345678"
+                        className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full py-2.5 bg-[#1B3766] text-white rounded-xl font-medium text-sm hover:bg-[#142952] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {registerLoading ? <FaSpinner className="animate-spin" /> : null}
+                    Create Account
+                  </button>
+                </form>
+              ) : null
+            ) : (
+              /* Google Signup */
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Phone (Optional)</label>
                   <div className="relative">
-                    <FaPhone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+                    <FaPhone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
                     <input
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      type="tel" value={formData.phone} onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
                       placeholder="08012345678"
-                      className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766] focus:border-transparent"
-                      autoFocus
+                      className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
                     />
                   </div>
                 </div>
-
-                <button
-                  type="submit"
-                  className="w-full py-3 bg-[#1B3766] text-white rounded-xl font-semibold text-sm hover:bg-[#142952] transition-colors flex items-center justify-center gap-2"
-                >
-                  Continue with Google <FaGoogle className="text-sm" />
-                </button>
-              </form>
-            ) : (
-              /* Google Step */
-              <>
-                <div className="text-center mb-5">
-                  <div className="w-14 h-14 bg-[#1B3766]/10 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <FaPhone className="text-[#1B3766] text-xl" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    {phone.replace(/(\d{4})(\d{3})(\d{4})/, '$1 $2 $3')}
-                  </h3>
-                  <p className="text-sm text-gray-500 mt-1">Verify with Google to complete</p>
-                </div>
-
-                <div className="flex justify-center mb-5">
-                  {isLoading ? (
+                <div className="flex justify-center">
+                  {googleLoading ? (
                     <div className="flex items-center gap-3 px-8 py-3 bg-gray-100 rounded-xl">
                       <FaSpinner className="animate-spin text-[#1B3766]" />
                       <span className="text-gray-600 text-sm">Creating account...</span>
@@ -180,14 +318,11 @@ const BiizzedSignup = () => {
                     />
                   )}
                 </div>
-
-                <div className="relative mb-5">
+                <div className="relative my-3">
                   <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
                   <div className="relative flex justify-center text-xs"><span className="bg-white px-3 text-gray-400">free forever</span></div>
                 </div>
-
-                {/* Benefits */}
-                <div className="space-y-2 mb-5">
+                <div className="space-y-2">
                   {[
                     'Publish articles, magazines & videos',
                     'Build your audience & followers',
@@ -201,15 +336,7 @@ const BiizzedSignup = () => {
                     </div>
                   ))}
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => setStep('phone')}
-                  className="w-full py-2.5 text-sm text-gray-600 hover:text-gray-900 transition-colors"
-                >
-                  ← Change phone number
-                </button>
-              </>
+              </div>
             )}
           </div>
 
@@ -229,6 +356,67 @@ const BiizzedSignup = () => {
           </p>
         </div>
       </div>
+
+      {/* OTP Modal */}
+      {step === 'otp' && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl relative">
+            <button
+              onClick={() => setStep('form')}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              <FaTimes />
+            </button>
+            <div className="text-center mb-4">
+              <div className="w-16 h-16 bg-[#1B3766]/10 rounded-full flex items-center justify-center mx-auto mb-3">
+                <FaEnvelope className="text-[#1B3766] text-2xl" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-900">Verify Your Email</h2>
+              <p className="text-sm text-gray-500 mt-1">
+                We sent a 6-digit code to <strong>{registeredEmail}</strong>
+              </p>
+            </div>
+
+            <form onSubmit={handleVerifyOTP}>
+              <div className="mb-5">
+                <label className="block text-xs font-medium text-gray-500 mb-1">Enter OTP</label>
+                <input
+                  type="text"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="123456"
+                  className="w-full px-4 py-3 text-center text-2xl tracking-widest border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
+                  autoFocus
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={verifyLoading}
+                className="w-full py-2.5 bg-[#1B3766] text-white rounded-xl font-medium text-sm hover:bg-[#142952] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {verifyLoading ? <FaSpinner className="animate-spin" /> : null}
+                Verify & Continue
+              </button>
+
+              <div className="text-center mt-4">
+                {countdown > 0 ? (
+                  <p className="text-xs text-gray-400">Resend code in {countdown}s</p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleResendOTP}
+                    disabled={resendLoading}
+                    className="text-xs text-[#1B3766] hover:underline disabled:opacity-50"
+                  >
+                    {resendLoading ? 'Sending...' : 'Resend OTP'}
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

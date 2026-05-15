@@ -1,4 +1,4 @@
-// models/magazineModel.js - Updated with social features
+// models/magazineModel.js - Updated with comingSoon field and 'coming_soon' status
 import mongoose from 'mongoose';
 
 const replySchema = mongoose.Schema({
@@ -27,7 +27,7 @@ const magazineSchema = mongoose.Schema(
     author: { type: String, required: true },
     category: { type: String, required: true },
     tags: [String],
-    pdfUrl: { type: String, required: true },
+    pdfUrl: { type: String, default: '' }, // now optional – can be empty for coming soon
     coverImage: { type: String, required: true },
     slug: { type: String, required: true, unique: true },
     views: { type: Number, default: 0 },
@@ -36,13 +36,19 @@ const magazineSchema = mongoose.Schema(
     bookmarks: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     comments: [commentSchema],
     shares: { type: Number, default: 0 },
-    // Existing
+    // Existing fields
     isFeatured: { type: Boolean, default: false },
     featuredAt: Date,
-    status: { type: String, enum: ['published', 'draft'], default: 'draft' },
+    status: { 
+      type: String, 
+      enum: ['published', 'draft', 'coming_soon'], 
+      default: 'draft' 
+    },
     publishedAt: Date,
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin', required: true },
     authorType: { type: String, enum: ['admin', 'user'], default: 'admin' },
+    // NEW: comingSoon flag – useful for frontend display
+    comingSoon: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

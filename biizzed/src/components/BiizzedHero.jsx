@@ -1,4 +1,4 @@
-// components/BiizzedHero.jsx - Simplified with Explore button
+// components/BiizzedHero.jsx - Always‑playing headlines ticker
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -15,14 +15,12 @@ import {
   FaBookOpen,
   FaFileAlt,
   FaCompass,
-  FaPlay,
-  FaPause,
+  // Removed FaPlay and FaPause
 } from 'react-icons/fa';
 import { useGetMagazinesQuery, useGetMagazineStatsQuery } from '../slices/magApiSlice';
 
 const BiizzedHero = () => {
   const [currentHeadline, setCurrentHeadline] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
   
   const { data: magazinesData, isLoading } = useGetMagazinesQuery({
     status: 'published',
@@ -43,14 +41,14 @@ const BiizzedHero = () => {
   const featuredMagazines = magazines.filter(m => m.isFeatured).slice(0, 2);
   const displayMagazines = featuredMagazines.length >= 2 ? featuredMagazines : magazines.slice(0, 2);
 
+  // Auto‑rotate headlines every 3 seconds – always playing
   useEffect(() => {
-    if (isPlaying && headlines.length > 0) {
-      const interval = setInterval(() => {
-        setCurrentHeadline((prev) => (prev + 1) % headlines.length);
-      }, 3000);
-      return () => clearInterval(interval);
-    }
-  }, [isPlaying, headlines.length]);
+    if (headlines.length === 0) return;
+    const interval = setInterval(() => {
+      setCurrentHeadline((prev) => (prev + 1) % headlines.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [headlines.length]);
 
   const formatDate = () => {
     return new Date().toLocaleDateString('en-US', { 
@@ -123,7 +121,7 @@ const BiizzedHero = () => {
               </p>
             </div>
 
-            {/* Breaking News Ticker */}
+            {/* Breaking News Ticker - Always playing (no play/pause) */}
             <div className="bg-gray-900 rounded-lg p-3">
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1.5">
@@ -144,18 +142,13 @@ const BiizzedHero = () => {
                     </div>
                   ))}
                 </div>
-                <button 
-                  onClick={() => setIsPlaying(!isPlaying)}
-                  className="text-white/60 hover:text-white transition-colors text-xs"
-                >
-                  {isPlaying ? <FaPause /> : <FaPlay />}
-                </button>
+                {/* No play/pause button */}
               </div>
               <div className="flex gap-1 mt-2 justify-end">
                 {headlines.map((_, index) => (
                   <button
                     key={index}
-                    onClick={() => { setCurrentHeadline(index); setIsPlaying(false); }}
+                    onClick={() => setCurrentHeadline(index)}   // manual control – auto‑rotation continues
                     className={`h-0.5 rounded-full transition-all ${
                       index === currentHeadline ? 'w-4 bg-[#1B3766]' : 'w-2 bg-white/30'
                     }`}
