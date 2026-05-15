@@ -164,7 +164,7 @@ const userSchema = mongoose.Schema(
     ],
     storySubscribeAt: Date,
     storyUnsubscribeAt: Date,
-    
+
     // Cart field
     cart: [cartItemSchema],
 
@@ -209,13 +209,28 @@ const userSchema = mongoose.Schema(
       responseTime: { type: Number, default: 0 },
       followers: { type: Number, default: 0 },
     },
+    // Duplicate fields kept for compatibility (existing code uses both)
     paystackRecipientCode: { type: String, default: "" },
     paystackSubaccountCode: { type: String, default: "" },
     hasPaystackAccount: { type: Boolean, default: false },
   },
   {
-    timestamps: true,
-  },
+    timestamps: true, // adds createdAt and updatedAt automatically
+  }
+);
+
+// ============================================================
+// 🔥 AUTO-DELETE UNVERIFIED ACCOUNTS AFTER 10 MINUTES
+// ============================================================
+// This TTL index will automatically remove any user document
+// where isVerified = false, 10 minutes after its createdAt time.
+// Once verified, the document is no longer eligible for deletion.
+userSchema.index(
+  { createdAt: 1 },
+  {
+    expireAfterSeconds: 600, // 10 minutes = 600 seconds
+    partialFilterExpression: { isVerified: false },
+  }
 );
 
 // Encrypt password before saving (only for local auth)

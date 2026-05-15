@@ -162,31 +162,56 @@ const generateOTP = () => {
 // @desc    Register new user with email & password (OTP sent)
 // @route   POST /api/users/register
 // @access  Public
+// @desc    Register new user with email & password (OTP sent)
+// @route   POST /api/users/register
+// @access  Public
 const registerUser = asyncHandler(async (req, res) => {
-  const { name, username, email, password, phone } = req.body;  // <-- add name
+  const { name, username, email, password, phone } = req.body;
 
-  if (!name || !username || !email || !password) {              // <-- validate name
+  if (!name || !username || !email || !password) {
     res.status(400);
     throw new Error('Name, username, email, and password are required');
   }
 
-  // Check if user already exists
+  // Check if user already exists (verified or unverified)
   const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+
   if (existingUser) {
-    res.status(400);
-    throw new Error('User with that email or username already exists');
+    // If the user is already verified → block re-registration
+    if (existingUser.isVerified) {
+      res.status(400);
+      throw new Error('User with that email or username already exists. Please login instead.');
+    }
+
+    // Unverified user → update their information and send a new OTP
+    existingUser.name = name;
+    existingUser.username = username;
+    existingUser.password = password;        // model's pre-save will hash it
+    existingUser.phone = phone || '';
+    existingUser.otp = generateOTP();
+    existingUser.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+    await existingUser.save();
+
+    // Send new OTP email (fire and forget)
+    sendOTPEmail(existingUser.email, existingUser.otp).catch((err) =>
+      console.error('OTP email error:', err)
+    );
+
+    return res.status(200).json({
+      message: 'An unverified account already exists. A new OTP has been sent to your email.',
+      email: existingUser.email,
+    });
   }
 
-  // Generate OTP
+  // No existing user – create a brand new account
   const otp = generateOTP();
   const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
 
-  // CREATE user – password will be hashed automatically by the model's pre-save hook
   const user = await User.create({
-    name,                   // <-- pass name
+    name,
     username,
     email,
-    password,               // plain password
+    password,
     phone: phone || '',
     isVerified: false,
     authMethod: 'email',
