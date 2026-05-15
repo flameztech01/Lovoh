@@ -9,6 +9,7 @@ import {
   FaVideo, FaTicketAlt, FaTimes, FaUsers, FaUser, FaCamera,
   FaClipboardList, FaCheckSquare, FaDotCircle, FaFont, FaHashtag,
   FaCalendar, FaEnvelope, FaPhone, FaChevronDown, FaChevronUp,
+  FaInfoCircle,
 } from "react-icons/fa";
 import { useCreateEventMutation } from "../slices/eventApiSlice";
 import { toast } from "react-toastify";
@@ -276,7 +277,8 @@ const EventDashboardCreateEvent = () => {
           if (!tt.price || Number(tt.price) <= 0) { toast.error(`Price is required for "${tt.name}" ticket type`); return; }
         }
       } else if (!formData.price || Number(formData.price) <= 0) {
-        toast.error("Please set a valid ticket price"); return;
+        toast.error("Please set a valid ticket price");
+        return;
       }
     }
 
@@ -488,8 +490,21 @@ const EventDashboardCreateEvent = () => {
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2"><FaClipboardList className="text-[#1B3766]" /> Custom Registration Form</h3>
-                {/* Top add field button removed */}
               </div>
+
+              {/* 🔔 HARDCODED INFO NOTICE */}
+              <div className="mb-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded-md flex items-start gap-2 text-sm">
+                <FaInfoCircle className="text-blue-500 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="font-medium text-blue-800">Important: Default fields already included</p>
+                  <p className="text-blue-700 text-xs">
+                    The main registration form already collects <strong>Name, Email, and Phone number</strong>. 
+                    Use the custom form only for <strong>additional</strong> information (e.g., dietary preferences, T‑shirt size, session choices). 
+                    <span className="block mt-1 text-yellow-800">⚠️ Avoid asking for password, PIN, or financial details.</span>
+                  </p>
+                </div>
+              </div>
+
               <p className="text-xs text-gray-500 mb-4">Collect extra info from attendees (e.g., "What do you hope to learn?"). These questions will appear during registration.</p>
 
               <div className="space-y-4">
@@ -571,7 +586,7 @@ const EventDashboardCreateEvent = () => {
             </div>
           </div>
 
-          {/* Right Column */}
+          {/* Right Column (unchanged) */}
           <div className="lg:col-span-2 space-y-6">
             {/* Images */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
