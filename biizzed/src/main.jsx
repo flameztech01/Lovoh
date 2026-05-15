@@ -37,10 +37,10 @@ import usePushNotifications from "./hooks/usePushNotifications";
 
 // ==================== ROUTES (Biizzed only) ====================
 const router = createBrowserRouter([
-  { path: "/", element: <BiizzedScreen /> },
+  { path: "/biizzed", element: <BiizzedScreen /> },
   {path: "*", element: <NotFound />},
   {
-    path: "/biizzed",
+    path: "/",
     element: <BiizzedLayout />,
     children: [
       {index: true, element: <BiizzedScreen />},
