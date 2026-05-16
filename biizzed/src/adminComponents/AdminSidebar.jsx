@@ -38,7 +38,6 @@ const AdminSidebar = () => {
     { path: '/admin/dashboard', label: 'Dashboard', icon: FaTachometerAlt },
     { path: '/admin/ads', label: 'Ads Manager', icon: FaAd },
     { path: '/admin/subscribers', label: 'Subscribers', icon: FaUsers },
-    { path: '/admin/messages', label: 'Messages', icon: FaEnvelope },
     { path: '/admin/articles', label: 'Articles', icon: FaNewspaper },
     { path: '/admin/magazines', label: 'Magazines', icon: FaBookOpen },
     { path: '/admin/videos', label: 'Videos', icon: FaVideo },
