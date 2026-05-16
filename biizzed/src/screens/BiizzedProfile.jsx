@@ -1,4 +1,4 @@
-// screens/BiizzedProfile.jsx – Fixed with proper coming soon & draft support
+// screens/BiizzedProfile.jsx – Fixed dropdown menu overflow issue
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -34,8 +34,9 @@ const BiizzedProfile = () => {
   const { userInfo } = useSelector((state) => state.auth);
   const [activeTab, setActiveTab] = useState("articles");
   const [menuOpenId, setMenuOpenId] = useState(null);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const [showDrafts, setShowDrafts] = useState(true);
-  const menuRef = useRef(null);
+  const menuButtonRef = useRef(null);
 
   // Edit Profile Modal state
   const [showEditModal, setShowEditModal] = useState(false);
@@ -46,20 +47,22 @@ const BiizzedProfile = () => {
   // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
+      if (menuButtonRef.current && !menuButtonRef.current.contains(e.target)) {
         setMenuOpenId(null);
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+    if (menuOpenId) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [menuOpenId]);
 
   // Profile
   const {
     data: profile, isLoading: profileLoading, refetch: refetchProfile,
   } = useGetProfileInfoQuery(undefined, { skip: !userInfo });
 
-  // User's own content — fetch ALL statuses including drafts and coming_soon
+  // User's own content
   const {
     data: myArticlesData, isLoading: articlesLoading, refetch: refetchArticles,
   } = useGetMyArticlesQuery({ limit: 50, status: "published,coming_soon,draft" }, { skip: !userInfo });
@@ -71,15 +74,6 @@ const BiizzedProfile = () => {
   const {
     data: myVideosData, isLoading: videosLoading, refetch: refetchVideos,
   } = useGetMyVideosQuery({ limit: 50 }, { skip: !userInfo });
-
-  // Debug logging
-  useEffect(() => {
-    if (myMagazinesData) {
-      console.log('Magazines data:', myMagazinesData);
-      console.log('Magazines array:', myMagazinesData.magazines);
-      console.log('Magazines count:', myMagazinesData.magazines?.length);
-    }
-  }, [myMagazinesData]);
 
   // Mutations
   const [deleteArticle] = useDeleteArticleMutation();
@@ -123,7 +117,7 @@ const BiizzedProfile = () => {
   const isDraft = useCallback((item) => getItemStatus(item) === "draft", [getItemStatus]);
   const isPublished = useCallback((item) => getItemStatus(item) === "published", [getItemStatus]);
 
-  // Filter content based on showDrafts toggle
+  // Filter content
   const filterContent = useCallback((items) => {
     if (showDrafts) return items;
     return items.filter(item => isPublished(item) || isComingSoon(item));
@@ -173,9 +167,9 @@ const BiizzedProfile = () => {
   // ====== EDIT NAVIGATION ======
   const handleEdit = (type, id) => {
     const routes = {
-      article: `/biizzed/edit-article/${id}`,
-      magazine: `/biizzed/edit-magazine/${id}`,
-      video: `/biizzed/edit-video/${id}`,
+      article: `/edit-article/${id}`,
+      magazine: `/edit-magazine/${id}`,
+      video: `/edit-video/${id}`,
     };
     navigate(routes[type]);
     setMenuOpenId(null);
@@ -280,7 +274,7 @@ const BiizzedProfile = () => {
         <div className="flex flex-col items-center justify-center h-[60vh]">
           <FaUser className="text-5xl text-gray-300 mb-4" />
           <p className="text-gray-500 mb-4">Login to view your profile</p>
-          <Link to="/biizzed/login" className="px-6 py-2.5 bg-[#1B3766] text-white rounded-xl text-sm font-medium">
+          <Link to="/login" className="px-6 py-2.5 bg-[#1B3766] text-white rounded-xl text-sm font-medium">
             Login
           </Link>
         </div>
@@ -334,99 +328,85 @@ const BiizzedProfile = () => {
     );
   };
 
-  // Three-dot menu renderer
-  const renderMenu = (type, item) => {
-    const isOpen = menuOpenId === `${type}-${item._id}`;
+  // ====== FIXED MENU RENDERER ======
+  const MenuDropdown = ({ type, item }) => {
     const isFeatured = item.isFeatured === true;
     const isFeaturedRequested = item.featuredRequest === true;
     const showFeaturedRequest = type === "article" || type === "magazine";
     const status = getItemStatus(item);
 
     return (
-      <div className="relative" ref={isOpen ? menuRef : null}>
+      <div className="bg-white rounded-xl shadow-lg border border-gray-200 py-1 z-[100] min-w-[160px]">
+        <div className="px-3 py-1.5 text-[10px] text-gray-400 border-b border-gray-100 mb-1">
+          Status: <span className="font-medium capitalize">{status}</span>
+        </div>
+        
+        {showFeaturedRequest && status !== "draft" && (
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              handleRequestFeatured(type, item._id);
+            }}
+            disabled={isFeaturedRequested || isFeatured}
+            className={`flex items-center gap-2 px-3 py-2 text-xs w-full text-left transition-colors ${
+              isFeaturedRequested || isFeatured
+                ? "text-gray-400 cursor-not-allowed"
+                : "text-[#1B3766] hover:bg-gray-50"
+            }`}
+          >
+            <FaStar className="text-[10px]" />
+            {isFeatured ? "Already Featured" : isFeaturedRequested ? "Request Pending" : "Request Featured"}
+          </button>
+        )}
+        
         <button
           onClick={(e) => {
             e.preventDefault();
-            e.stopPropagation();
-            setMenuOpenId(isOpen ? null : `${type}-${item._id}`);
+            handleEdit(type, item._id);
           }}
-          className="p-1.5 bg-white/90 backdrop-blur rounded-full shadow-sm border border-gray-100 hover:bg-gray-50 transition-colors"
+          className="flex items-center gap-2 px-3 py-2 text-xs text-gray-600 hover:bg-gray-50 w-full text-left transition-colors"
         >
-          <FaEllipsisV className="text-gray-500 text-xs" />
+          <FaEdit className="text-[10px]" /> Edit
         </button>
-        {isOpen && (
-          <div className="absolute right-0 top-8 bg-white rounded-xl shadow-lg border border-gray-200 py-1 z-30 min-w-[160px]">
-            <div className="px-3 py-1.5 text-[10px] text-gray-400 border-b border-gray-100 mb-1">
-              Status: <span className="font-medium capitalize">{status}</span>
-            </div>
-            
-            {showFeaturedRequest && status !== "draft" && (
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleRequestFeatured(type, item._id);
-                }}
-                disabled={isFeaturedRequested || isFeatured}
-                className={`flex items-center gap-2 px-3 py-2 text-xs w-full text-left transition-colors ${
-                  isFeaturedRequested || isFeatured
-                    ? "text-gray-400 cursor-not-allowed"
-                    : "text-[#1B3766] hover:bg-gray-50"
-                }`}
-              >
-                <FaStar className="text-[10px]" />
-                {isFeatured ? "Already Featured" : isFeaturedRequested ? "Request Pending" : "Request Featured"}
-              </button>
-            )}
-            
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                handleEdit(type, item._id);
-              }}
-              className="flex items-center gap-2 px-3 py-2 text-xs text-gray-600 hover:bg-gray-50 w-full text-left transition-colors"
-            >
-              <FaEdit className="text-[10px]" /> Edit
-            </button>
-            
-            {status === "coming_soon" && (
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigate(`/biizzed/edit-${type}/${item._id}?publish=true`);
-                }}
-                className="flex items-center gap-2 px-3 py-2 text-xs text-green-600 hover:bg-green-50 w-full text-left transition-colors"
-              >
-                <FaCheck className="text-[10px]" /> Publish Now
-              </button>
-            )}
-            
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                handleDelete(type, item._id);
-              }}
-              className="flex items-center gap-2 px-3 py-2 text-xs text-red-500 hover:bg-red-50 w-full text-left transition-colors"
-            >
-              <FaTrashAlt className="text-[10px]" /> Delete
-            </button>
-          </div>
+        
+        {status === "coming_soon" && (
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              navigate(`/edit-${type}/${item._id}?publish=true`);
+            }}
+            className="flex items-center gap-2 px-3 py-2 text-xs text-green-600 hover:bg-green-50 w-full text-left transition-colors"
+          >
+            <FaCheck className="text-[10px]" /> Publish Now
+          </button>
         )}
+        
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            handleDelete(type, item._id);
+          }}
+          className="flex items-center gap-2 px-3 py-2 text-xs text-red-500 hover:bg-red-50 w-full text-left transition-colors"
+        >
+          <FaTrashAlt className="text-[10px]" /> Delete
+        </button>
       </div>
     );
   };
 
-  // Content card renderer for articles/magazines
+  // ====== FIXED CONTENT CARD - NO overflow-hidden ======
   const ContentCard = ({ item, type }) => {
     const status = getItemStatus(item);
     const imageUrl = type === "magazine" 
       ? (item.coverImage || "/placeholder-article.jpg")
       : (item.featuredImage || item.images?.[0] || "/placeholder-article.jpg");
     const linkTo = type === "magazine" 
-      ? `/biizzed/${item.slug}` 
-      : `/biizzed/articles/${item.slug}`;
+      ? `/${item.slug}` 
+      : `/articles/${item.slug}`;
+    const isMenuOpen = menuOpenId === `${type}-${item._id}`;
 
     return (
-      <div key={item._id} className={`relative bg-white rounded-xl shadow-sm border overflow-hidden group transition-all hover:shadow-md ${
+      <div key={item._id} className={`relative bg-white rounded-xl shadow-sm border transition-all hover:shadow-md ${
         status === "draft" ? "border-gray-200 opacity-75" : 
         status === "coming_soon" ? "border-orange-200" : "border-gray-100"
       }`}>
@@ -458,9 +438,49 @@ const BiizzedProfile = () => {
             </div>
           </div>
         </Link>
-        <div className="absolute top-2 right-2">{renderMenu(type, item)}</div>
+        
+        {/* Menu button */}
+        <div className="absolute top-2 right-2 z-10">
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const newId = isMenuOpen ? null : `${type}-${item._id}`;
+              setMenuOpenId(newId);
+            }}
+            className="p-1.5 bg-white/90 backdrop-blur rounded-full shadow-sm border border-gray-100 hover:bg-gray-50 transition-colors"
+          >
+            <FaEllipsisV className="text-gray-500 text-xs" />
+          </button>
+        </div>
+
+        {/* Fixed dropdown - portal-like behavior with fixed positioning */}
+        {isMenuOpen && (
+          <div className="fixed inset-0 z-[90]" onClick={() => setMenuOpenId(null)}>
+            <div 
+              className="absolute z-[100]"
+              style={{
+                top: menuPosition.top,
+                left: menuPosition.left,
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <MenuDropdown type={type} item={item} />
+            </div>
+          </div>
+        )}
       </div>
     );
+  };
+
+  // Calculate menu position when opening
+  const handleMenuOpen = (e, type, id) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMenuPosition({
+      top: rect.bottom + window.scrollY + 4,
+      left: rect.left + window.scrollX - 140, // align right edge of menu with button
+    });
+    setMenuOpenId(`${type}-${id}`);
   };
 
   return (
@@ -485,11 +505,11 @@ const BiizzedProfile = () => {
               {profile?.bio && <p className="text-sm text-gray-600 mt-1">{profile.bio}</p>}
 
               <div className="flex items-center justify-center sm:justify-start gap-6 mt-3">
-                <button onClick={() => navigate("/biizzed/followers")} className="text-center hover:opacity-80 transition-opacity">
+                <button onClick={() => navigate("/followers")} className="text-center hover:opacity-80 transition-opacity">
                   <p className="text-lg font-bold text-gray-900">{profile?.followersCount || 0}</p>
                   <p className="text-xs text-gray-500">Followers</p>
                 </button>
-                <button onClick={() => navigate("/biizzed/followers?tab=following")} className="text-center hover:opacity-80 transition-opacity">
+                <button onClick={() => navigate("/followers?tab=following")} className="text-center hover:opacity-80 transition-opacity">
                   <p className="text-lg font-bold text-gray-900">{profile?.followingCount || 0}</p>
                   <p className="text-xs text-gray-500">Following</p>
                 </button>
@@ -505,7 +525,7 @@ const BiizzedProfile = () => {
                 <button onClick={openEditModal} className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors">
                   <FaEdit className="text-xs" /> Edit Profile
                 </button>
-                <Link to="/biizzed/settings" className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors">
+                <Link to="/settings" className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors">
                   <FaCog className="text-xs" /> Settings
                 </Link>
               </div>
@@ -581,7 +601,7 @@ const BiizzedProfile = () => {
               <p className="text-gray-500 mb-3">
                 {showDrafts ? "No articles yet" : "No published articles yet"}
               </p>
-              <Link to="/biizzed/create-article" className="inline-flex items-center gap-1 px-4 py-2 bg-[#1B3766] text-white rounded-lg text-sm hover:bg-[#142952] transition-colors">
+              <Link to="/create-article" className="inline-flex items-center gap-1 px-4 py-2 bg-[#1B3766] text-white rounded-lg text-sm hover:bg-[#142952] transition-colors">
                 <FaPlus className="text-xs" /> Write Article
               </Link>
             </div>
@@ -604,7 +624,7 @@ const BiizzedProfile = () => {
               <p className="text-gray-500 mb-3">
                 {showDrafts ? "No magazines yet" : "No published magazines yet"}
               </p>
-              <Link to="/biizzed/create-magazine" className="inline-flex items-center gap-1 px-4 py-2 bg-[#1B3766] text-white rounded-lg text-sm hover:bg-[#142952] transition-colors">
+              <Link to="/create-magazine" className="inline-flex items-center gap-1 px-4 py-2 bg-[#1B3766] text-white rounded-lg text-sm hover:bg-[#142952] transition-colors">
                 <FaPlus className="text-xs" /> Create Magazine
               </Link>
             </div>
@@ -625,15 +645,15 @@ const BiizzedProfile = () => {
             <div className="text-center py-12 bg-white rounded-2xl">
               <FaVideo className="text-4xl text-gray-300 mx-auto mb-3" />
               <p className="text-gray-500 mb-3">No videos yet</p>
-              <Link to="/biizzed/create-video" className="inline-flex items-center gap-1 px-4 py-2 bg-[#1B3766] text-white rounded-lg text-sm hover:bg-[#142952] transition-colors">
+              <Link to="/create-video" className="inline-flex items-center gap-1 px-4 py-2 bg-[#1B3766] text-white rounded-lg text-sm hover:bg-[#142952] transition-colors">
                 <FaPlus className="text-xs" /> Upload Video
               </Link>
             </div>
           ) : (
             <div className="space-y-3">
               {myVideos.map((video) => (
-                <div key={video._id} className="relative bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden group">
-                  <Link to={`/biizzed/videos/${video._id}`} className="flex gap-3 p-4">
+                <div key={video._id} className="relative bg-white rounded-xl shadow-sm border border-gray-100 transition-all hover:shadow-md">
+                  <Link to={`/videos/${video._id}`} className="flex gap-3 p-4">
                     <div className="relative w-32 h-20 rounded-lg overflow-hidden bg-black flex-shrink-0">
                       {video.thumbnail ? (
                         <img src={video.thumbnail} alt="" className="w-full h-full object-cover" />
@@ -655,7 +675,61 @@ const BiizzedProfile = () => {
                       </div>
                     </div>
                   </Link>
-                  <div className="absolute top-2 right-2">{renderMenu("video", video)}</div>
+                  {/* Video menu button */}
+                  <div className="absolute top-2 right-2 z-10">
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const isOpen = menuOpenId === `video-${video._id}`;
+                        if (!isOpen) {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setMenuPosition({
+                            top: rect.bottom + window.scrollY + 4,
+                            left: rect.left + window.scrollX - 140,
+                          });
+                        }
+                        setMenuOpenId(isOpen ? null : `video-${video._id}`);
+                      }}
+                      className="p-1.5 bg-white/90 backdrop-blur rounded-full shadow-sm border border-gray-100 hover:bg-gray-50 transition-colors"
+                    >
+                      <FaEllipsisV className="text-gray-500 text-xs" />
+                    </button>
+                  </div>
+                  {/* Video dropdown */}
+                  {menuOpenId === `video-${video._id}` && (
+                    <div className="fixed inset-0 z-[90]" onClick={() => setMenuOpenId(null)}>
+                      <div 
+                        className="absolute z-[100]"
+                        style={{
+                          top: menuPosition.top,
+                          left: menuPosition.left,
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="bg-white rounded-xl shadow-lg border border-gray-200 py-1 z-[100] min-w-[160px]">
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handleEdit("video", video._id);
+                            }}
+                            className="flex items-center gap-2 px-3 py-2 text-xs text-gray-600 hover:bg-gray-50 w-full text-left transition-colors"
+                          >
+                            <FaEdit className="text-[10px]" /> Edit
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handleDelete("video", video._id);
+                            }}
+                            className="flex items-center gap-2 px-3 py-2 text-xs text-red-500 hover:bg-red-50 w-full text-left transition-colors"
+                          >
+                            <FaTrashAlt className="text-[10px]" /> Delete
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -672,7 +746,7 @@ const BiizzedProfile = () => {
           ) : (
             <div className="space-y-3">
               {likedArticles.map((article) => (
-                <Link key={article._id} to={`/biizzed/articles/${article.slug}`} className="flex gap-3 bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                <Link key={article._id} to={`/articles/${article.slug}`} className="flex gap-3 bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
                   <img src={article.featuredImage || article.images?.[0] || "/placeholder-article.jpg"} alt="" className="w-20 h-20 rounded-lg object-cover flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-bold text-gray-900 line-clamp-2">{article.title}</h3>
@@ -694,7 +768,7 @@ const BiizzedProfile = () => {
           ) : (
             <div className="space-y-3">
               {bookmarkedArticles.map((article) => (
-                <Link key={article._id} to={`/biizzed/articles/${article.slug}`} className="flex gap-3 bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                <Link key={article._id} to={`/articles/${article.slug}`} className="flex gap-3 bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
                   <img src={article.featuredImage || article.images?.[0] || "/placeholder-article.jpg"} alt="" className="w-20 h-20 rounded-lg object-cover flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-bold text-gray-900 line-clamp-2">{article.title}</h3>
@@ -703,7 +777,7 @@ const BiizzedProfile = () => {
                 </Link>
               ))}
               {bookmarkedMagazines.map((magazine) => (
-                <Link key={magazine._id} to={`/biizzed/${magazine.slug}`} className="flex gap-3 bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                <Link key={magazine._id} to={`/${magazine.slug}`} className="flex gap-3 bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
                   <img src={magazine.coverImage || "/placeholder-article.jpg"} alt="" className="w-16 h-20 rounded-lg object-cover flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-bold text-gray-900 line-clamp-2">{magazine.title}</h3>

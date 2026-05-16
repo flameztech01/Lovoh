@@ -10,7 +10,9 @@ import {
   sendUnsubscribeConfirmation,
 } from '../utils/magazineEmailService.js';
 
-// @desc    Subscribe (or update preferences)
+// ==================== PUBLIC ====================
+
+// @desc    Subscribe or update preferences
 // @route   POST /api/subscribe
 // @access  Public
 const subscribe = asyncHandler(async (req, res) => {
@@ -50,7 +52,7 @@ const subscribe = asyncHandler(async (req, res) => {
   res.json({ message: 'Subscription successful', subscriber });
 });
 
-// @desc    Unsubscribe
+// @desc    Unsubscribe (public)
 // @route   POST /api/subscribe/unsubscribe
 // @access  Public
 const unsubscribe = asyncHandler(async (req, res) => {
@@ -77,7 +79,22 @@ const unsubscribe = asyncHandler(async (req, res) => {
   res.json({ message: 'Unsubscribed successfully' });
 });
 
-// @desc    Get all subscribers (Admin)
+// @desc    Get subscription status (public)
+// @route   GET /api/subscribe/status
+// @access  Public
+const getSubscriptionStatus = asyncHandler(async (req, res) => {
+  const { email } = req.query;
+  if (!email) {
+    res.status(400);
+    throw new Error('Email is required');
+  }
+  const subscriber = await Subscribe.findOne({ email: email.toLowerCase(), active: true });
+  res.json({ subscribed: !!subscriber });
+});
+
+// ==================== ADMIN ====================
+
+// @desc    Get all subscribers (active only) – legacy
 // @route   GET /api/subscribe/subscribers
 // @access  Private/Admin
 const getSubscribers = asyncHandler(async (req, res) => {
@@ -98,7 +115,76 @@ const getSubscribers = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Manually trigger weekly digest
+// @desc    Get ALL subscribers (both active and inactive) with search & pagination
+// @route   GET /api/subscribe/admin/all
+// @access  Private/Admin
+const getAllSubscribers = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 50, search = '', status = 'all' } = req.query;
+
+  let query = {};
+  if (status === 'active') query.active = true;
+  else if (status === 'inactive') query.active = false;
+  // 'all' – no filter
+
+  if (search) {
+    query.$or = [
+      { email: { $regex: search, $options: 'i' } },
+      { name: { $regex: search, $options: 'i' } },
+    ];
+  }
+
+  const subscribers = await Subscribe.find(query)
+    .select('email name preferences subscribedAt unsubscribedAt active')
+    .sort({ subscribedAt: -1 })
+    .limit(limit * 1)
+    .skip((page - 1) * limit);
+
+  const count = await Subscribe.countDocuments(query);
+
+  res.json({
+    subscribers,
+    page: Number(page),
+    pages: Math.ceil(count / limit),
+    total: count,
+  });
+});
+
+// @desc    Admin force unsubscribe (soft delete)
+// @route   POST /api/subscribe/admin/unsubscribe
+// @access  Private/Admin
+const adminUnsubscribe = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    res.status(400);
+    throw new Error('Email is required');
+  }
+
+  const subscriber = await Subscribe.findOne({ email: email.toLowerCase() });
+
+  if (!subscriber) {
+    res.status(404);
+    throw new Error('Subscriber not found');
+  }
+
+  if (!subscriber.active) {
+    res.status(400);
+    throw new Error('Already unsubscribed');
+  }
+
+  subscriber.active = false;
+  subscriber.unsubscribedAt = new Date();
+  await subscriber.save();
+
+  // Optionally send an unsubscribe confirmation email
+  await sendUnsubscribeConfirmation(subscriber.email, subscriber.name).catch(err =>
+    console.error('Unsubscribe confirmation email failed:', err)
+  );
+
+  res.json({ message: `Successfully unsubscribed ${subscriber.email}`, subscriber });
+});
+
+// @desc    Manually trigger weekly digest (admin)
 // @route   POST /api/subscribe/send-digest
 // @access  Private/Admin
 const sendWeeklyDigestManual = asyncHandler(async (req, res) => {
@@ -169,11 +255,7 @@ const sendWeeklyDigestManual = asyncHandler(async (req, res) => {
   });
 });
 
-/**
- * Notify subscribers about new content (magazine or article)
- * @param {Object} content - the magazine or article document
- * @param {String} type    - 'magazine' or 'article'
- */
+// ==================== NOTIFICATION HELPER ====================
 const notifySubscribersOfNewContent = async (content, type) => {
   try {
     const preferenceField = type === 'magazine' ? 'preferences.magazines' : 'preferences.articles';
@@ -211,21 +293,13 @@ const notifySubscribersOfNewContent = async (content, type) => {
   }
 };
 
-const getSubscriptionStatus = asyncHandler(async (req, res) => {
-  const { email } = req.query;
-  if (!email) {
-    res.status(400);
-    throw new Error('Email is required');
-  }
-  const subscriber = await Subscribe.findOne({ email: email.toLowerCase(), active: true });
-  res.json({ subscribed: !!subscriber });
-});
-
 export {
   subscribe,
   unsubscribe,
-  getSubscribers,
+  getSubscriptionStatus,
+  getSubscribers,          // active only (legacy)
+  getAllSubscribers,      // all with search & status filter
+  adminUnsubscribe,
   sendWeeklyDigestManual,
   notifySubscribersOfNewContent,
-  getSubscriptionStatus
 };

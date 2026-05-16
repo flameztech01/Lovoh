@@ -1,14 +1,14 @@
 // main.jsx (Biizzed only)
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import "./index.css";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { Provider } from "react-redux";
-import store from "./store.js";
-import { Analytics } from "@vercel/analytics/react";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { GoogleOAuthProvider } from "@react-oauth/google";
+import { Analytics } from "@vercel/analytics/react";
+import store from "./store.js";
+import "./index.css";
 
-// Layout & screens (Biizzed only)
+// Layout & screens (Biizzed)
 import BiizzedLayout from "./screens/BiizzedLayout.jsx";
 import BiizzedScreen from "./screens/BiizzedScreen.jsx";
 import BiizzedLogin from "./screens/BiizzedLogin.jsx";
@@ -29,21 +29,37 @@ import BiizzedSearch from "./screens/BiizzedSearch.jsx";
 import BiizzedResubscribeScreen from "./screens/BiizzedResubscribeScreen.jsx";
 import BiizzedSettings from "./screens/BiizzedSettings.jsx";
 import BiizzedNotifications from "./screens/BiizzedNotifications.jsx";
-
 import NotFound from "./screens/NotFound.jsx";
+
+// Admin screens (will be created step by step)
+import AdminLogin from "./adminScreen/AdminLogin.jsx";
+import AdminDashboard from "./adminScreen/AdminDashboard.jsx";
+import AdminAds from "./adminScreen/AdminAds.jsx";
+import AdminSubscribers from "./adminScreen/AdminSubscribers.jsx";
+import AdminArticles from "./adminScreen/AdminArticles.jsx";
+import AdminMagazines from "./adminScreen/AdminMagazines.jsx";
+import AdminVideos from "./adminScreen/AdminVideos.jsx";
+import AdminAnalytics from "./adminScreen/AdminAnalytics.jsx";
+
+// Components
+import AdminLayout from "./adminComponents/AdminLayout.jsx";
+import PrivateAdminRoute from "./adminComponents/PrivateAdminRoute.jsx";
 
 // Push notifications hook
 import usePushNotifications from "./hooks/usePushNotifications";
 
-// ==================== ROUTES (Biizzed only) ====================
+// ==================== ROUTES ====================
 const router = createBrowserRouter([
+  // Public /biizzed entry (maybe redundant, kept for compatibility)
   { path: "/biizzed", element: <BiizzedScreen /> },
-  {path: "*", element: <NotFound />},
+  { path: "*", element: <NotFound /> },
+
+  // Main Biizzed routes (no admin prefix)
   {
     path: "/",
     element: <BiizzedLayout />,
     children: [
-      {index: true, element: <BiizzedScreen />},
+      { index: true, element: <BiizzedScreen /> },
       { path: "login", element: <BiizzedLogin /> },
       { path: "signup", element: <BiizzedSignup /> },
       { path: "feed", element: <BiizzedFeed /> },
@@ -64,6 +80,31 @@ const router = createBrowserRouter([
       { path: "notifications", element: <BiizzedNotifications /> },
     ],
   },
+
+  // Admin routes (protected by PrivateAdminRoute)
+  {
+    path: "/admin",
+    element: <PrivateAdminRoute />,
+    children: [
+      {
+        path: "",
+        element: <AdminLayout />,
+        children: [
+          { index: true, element: <AdminDashboard /> },
+          { path: "dashboard", element: <AdminDashboard /> },
+          { path: "ads", element: <AdminAds /> },
+          { path: "subscribers", element: <AdminSubscribers /> },
+          { path: "articles", element: <AdminArticles /> },
+          { path: "magazines", element: <AdminMagazines /> },
+          { path: "videos", element: <AdminVideos /> },
+          { path: "analytics", element: <AdminAnalytics /> },
+        ],
+      },
+    ],
+  },
+
+  // Admin login (no layout, standalone)
+  { path: "/admin/login", element: <AdminLogin /> },
 ]);
 
 const GOOGLE_CLIENT_ID =
@@ -84,7 +125,6 @@ if ("serviceWorker" in navigator) {
   });
 }
 
-// Wrapper to activate web‑push subscription
 const AppWithNotifications = () => {
   usePushNotifications();
   return <RouterProvider router={router} />;

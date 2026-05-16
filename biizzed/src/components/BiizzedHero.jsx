@@ -1,6 +1,8 @@
 // components/BiizzedHero.jsx – Always‑playing headlines ticker + fallback to coming soon magazines
+// with "Get Notified" that redirects to settings or login
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { 
   FaBook, 
   FaArrowRight, 
@@ -20,11 +22,13 @@ import {
 import { useGetMagazinesQuery, useGetMagazineStatsQuery } from '../slices/magApiSlice';
 
 const BiizzedHero = () => {
+  const navigate = useNavigate();
+  const { userInfo } = useSelector((state) => state.auth);
   const [currentHeadline, setCurrentHeadline] = useState(0);
   
   // Fetch both published and coming soon magazines
   const { data: magazinesData, isLoading } = useGetMagazinesQuery({
-    status: 'published,coming_soon',   // include coming soon for the right column fallback
+    status: 'published,coming_soon',
     limit: 20
   });
   
@@ -32,7 +36,6 @@ const BiizzedHero = () => {
 
   const allMagazines = magazinesData?.magazines || [];
 
-  // Separate featured and coming soon
   const featuredMagazines = allMagazines.filter(m => m.isFeatured === true);
   const comingSoonMagazines = allMagazines.filter(m => m.status === 'coming_soon');
 
@@ -41,13 +44,11 @@ const BiizzedHero = () => {
   if (featuredMagazines.length >= 2) {
     displayMagazines = featuredMagazines.slice(0, 2);
   } else {
-    // Take all featured (1 or 0) and fill with coming soon
     displayMagazines = [...featuredMagazines];
     const needed = 2 - displayMagazines.length;
     if (needed > 0 && comingSoonMagazines.length > 0) {
       displayMagazines.push(...comingSoonMagazines.slice(0, needed));
     }
-    // If still not enough, fallback to any published (non‑featured) magazine
     if (displayMagazines.length < 2) {
       const otherPublished = allMagazines.filter(m => m.status === 'published' && !m.isFeatured);
       const moreNeeded = 2 - displayMagazines.length;
@@ -57,7 +58,7 @@ const BiizzedHero = () => {
     }
   }
 
-  // Headlines: use first 4 titles from any magazines (published or coming soon)
+  // Headlines
   const headlines = allMagazines.slice(0, 4).map(m => m.title) || [
     "The Future of Business Innovation",
     "Leadership Strategies for Modern Enterprises",
@@ -65,7 +66,7 @@ const BiizzedHero = () => {
     "Sustainable Business Practices"
   ];
 
-  // Auto‑rotate headlines every 3 seconds – always playing
+  // Auto‑rotate headlines every 3 seconds
   useEffect(() => {
     if (headlines.length === 0) return;
     const interval = setInterval(() => {
@@ -87,6 +88,17 @@ const BiizzedHero = () => {
     const newsletterSection = document.getElementById('newsletter-section');
     if (newsletterSection) {
       newsletterSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  // NEW: Handle "Get Notified" click for coming soon magazines
+  const handleGetNotified = (e, magazineSlug) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (userInfo) {
+      navigate('/settings');
+    } else {
+      navigate('/login');
     }
   };
 
@@ -295,10 +307,21 @@ const BiizzedHero = () => {
                             </span>
                           )}
                         </div>
-                        <span className="inline-flex items-center gap-1 text-[#1B3766] font-semibold text-[10px] group-hover:gap-1.5 transition-all">
-                          {isComingSoon ? 'Get Notified' : 'Read More'}
-                          <FaArrowRight className="text-[8px]" />
-                        </span>
+                        {/* Modified bottom right action */}
+                        {isComingSoon ? (
+                          <button
+                            onClick={(e) => handleGetNotified(e, magazine.slug)}
+                            className="inline-flex items-center gap-1 text-[#1B3766] font-semibold text-[10px] hover:gap-1.5 transition-all"
+                          >
+                            Get Notified
+                            <FaArrowRight className="text-[8px]" />
+                          </button>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[#1B3766] font-semibold text-[10px] group-hover:gap-1.5 transition-all">
+                            Read More
+                            <FaArrowRight className="text-[8px]" />
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
