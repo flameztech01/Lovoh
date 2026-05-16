@@ -1,5 +1,5 @@
-// screens/BiizzedArticlesScreen.jsx – Full code with subscription status check
-import React, { useState, useEffect } from "react";
+// screens/BiizzedArticlesScreen.jsx – Full code with inline & sidebar ads
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   FaSpinner,
@@ -21,6 +21,7 @@ import {
   FaCheckCircle,
   FaPaperPlane,
   FaEnvelope,
+  FaAd,
 } from "react-icons/fa";
 import {
   useGetArticlesQuery,
@@ -38,6 +39,7 @@ import {
   useUnsubscribeMutation,
   useGetSubscriptionStatusQuery,
 } from "../slices/subscribeApiSlice";
+import { useGetAdsQuery, useTrackAdViewMutation, useTrackAdClickMutation } from "../slices/adsApiSlice";
 import BiizzedArticlesNavbar from "../components/BiizzedArticlesNavbar";
 import BiizzedBottomBar from "../components/BiizzedBottomBar";
 import { useSelector } from "react-redux";
@@ -64,6 +66,30 @@ const extractId = (v) => {
   return toStr(v);
 };
 
+// Ad view tracker component
+const AdTracker = ({ ad, id }) => {
+  const ref = useRef(null);
+  const tracked = useRef(false);
+  const [trackAdView] = useTrackAdViewMutation();
+  useEffect(() => {
+    if (!ad?._id || tracked.current) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting && !tracked.current) {
+            trackAdView(ad._id).catch(err => console.error('Ad view track error:', err));
+            tracked.current = true;
+          }
+        });
+      },
+      { threshold: 0.5 }
+    );
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [ad, trackAdView]);
+  return <div ref={ref} data-ad-id={id} />;
+};
+
 const BiizzedArticlesScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [currentPage, setCurrentPage] = useState(1);
@@ -85,11 +111,32 @@ const BiizzedArticlesScreen = () => {
   const [followUser] = useFollowUserMutation();
   const [unfollowUser] = useUnfollowUserMutation();
 
+  // ========== ADS ==========
+  const { data: inlineAdsData } = useGetAdsQuery({ page: 'biizzed', placement: 'inline', limit: 10 });
+  const { data: sidebarAdsData } = useGetAdsQuery({ page: 'biizzed', placement: 'sidebar', limit: 10 });
+  const { data: bannerAdsData } = useGetAdsQuery({ page: 'biizzed', placement: 'banner', limit: 3 });
+  const [trackAdClick] = useTrackAdClickMutation();
+
+  const inlineAds = inlineAdsData?.ads || [];
+  const sidebarAds = sidebarAdsData?.ads || [];
+  const bannerAds = bannerAdsData?.ads || [];
+
+  // Sidebar slider state
+  const [sidebarAdIndex, setSidebarAdIndex] = useState(0);
+  const sidebarAdTimer = useRef(null);
+  useEffect(() => {
+    if (sidebarAds.length > 1) {
+      sidebarAdTimer.current = setInterval(() => {
+        setSidebarAdIndex(prev => (prev + 1) % sidebarAds.length);
+      }, 5000);
+      return () => clearInterval(sidebarAdTimer.current);
+    }
+  }, [sidebarAds.length]);
+
   // Subscription hooks
   const [subscribe, { isLoading: isSubscribing }] = useSubscribeMutation();
   const [unsubscribe, { isLoading: isUnsubscribing }] = useUnsubscribeMutation();
 
-  // Subscription status for logged-in users
   const {
     data: subStatus,
     isLoading: subStatusLoading,
@@ -97,12 +144,10 @@ const BiizzedArticlesScreen = () => {
     skip: !userInfo?.email,
   });
 
-  // Local UI state
   const [sidebarSubscribed, setSidebarSubscribed] = useState(false);
   const [subEmail, setSubEmail] = useState("");
   const [subName, setSubName] = useState("");
 
-  // Sync UI with server status whenever it loads/changes
   useEffect(() => {
     if (subStatus) {
       setSidebarSubscribed(subStatus.subscribed);
@@ -142,6 +187,18 @@ const BiizzedArticlesScreen = () => {
   const totalPages = articlesData?.pages || 1;
   const suggestions = suggestionsData || [];
 
+  // Build display list with inline ads inserted after every 3 articles (positions 1,4,7...)
+  const itemsWithAds = [];
+  let adIndex = 0;
+  for (let i = 0; i < articles.length; i++) {
+    itemsWithAds.push(articles[i]);
+    // Insert ad after indices 1,4,7,10... (0‑based: 1,4,7,10)
+    if ((i === 1 || i === 4 || i === 7 || i === 10) && adIndex < inlineAds.length) {
+      itemsWithAds.push({ type: 'ad', ad: inlineAds[adIndex] });
+      adIndex++;
+    }
+  }
+
   useEffect(() => {
     setCurrentPage(1);
   }, [urlSearch, urlCategory, urlFeatured, urlSort]);
@@ -165,7 +222,6 @@ const BiizzedArticlesScreen = () => {
     return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
-  // ====== ADMIN CHECK ======
   const isAdmin = (item) => {
     if (!item || item.type === "magazine") return false;
     const at = item.authorType;
@@ -173,7 +229,6 @@ const BiizzedArticlesScreen = () => {
     return String(at).toLowerCase().trim() === "admin";
   };
 
-  // ====== OPTIMISTIC HANDLERS ======
   const handleLike = async (item, e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -256,7 +311,14 @@ const BiizzedArticlesScreen = () => {
     }
   };
 
-  // ====== SUBSCRIPTION HANDLERS ======
+  const handleAdClick = (ad, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    trackAdClick(ad._id).catch(err => console.error('Ad click track error:', err));
+    if (ad.ctaLink) window.open(ad.ctaLink, '_blank');
+  };
+
+  // Subscription handlers
   const handleAuthSubscribeToggle = async () => {
     if (!userInfo?.email) {
       toast.error("No email address on your account");
@@ -347,6 +409,7 @@ const BiizzedArticlesScreen = () => {
           {/* Left Sidebar */}
           <aside className="hidden lg:block w-[280px] flex-shrink-0">
             <div className="fixed top-[120px] w-[280px] h-[calc(100vh-140px)] overflow-y-auto space-y-4 pb-8 no-scrollbar">
+              {/* Browse Card */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
                   Browse
@@ -369,6 +432,197 @@ const BiizzedArticlesScreen = () => {
                     </Link>
                   ))}
                 </nav>
+              </div>
+
+              {/* Sidebar Ad Slider (carousel) */}
+              {sidebarAds.length > 0 && (
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-3 overflow-hidden">
+                  <div className="relative">
+                    <div
+                      className="flex transition-transform duration-500 ease-in-out"
+                      style={{ transform: `translateX(-${sidebarAdIndex * 100}%)` }}
+                    >
+                      {sidebarAds.map((ad) => (
+                        <div
+                          key={ad._id}
+                          className="w-full flex-shrink-0 cursor-pointer"
+                          onClick={(e) => handleAdClick(ad, e)}
+                        >
+                          <AdTracker ad={ad} id={ad._id} />
+                          {ad.mediaType === 'image' && ad.image && (
+                            <img src={ad.image} alt={ad.title} className="w-full rounded-xl" />
+                          )}
+                          {ad.mediaType === 'video' && ad.video && (
+                            <video src={ad.video} className="w-full rounded-xl" autoPlay muted loop playsInline />
+                          )}
+                          <div className="mt-2 text-xs text-gray-500 text-center">
+                            <FaAd className="inline mr-1 text-[10px]" /> Sponsored
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {sidebarAds.length > 1 && (
+                      <div className="flex justify-center gap-1.5 mt-2">
+                        {sidebarAds.map((_, i) => (
+                          <button
+                            key={i}
+                            onClick={() => setSidebarAdIndex(i)}
+                            className={`w-1.5 h-1.5 rounded-full transition-colors ${
+                              i === sidebarAdIndex ? 'bg-[#1B3766]' : 'bg-gray-300'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Banner Ad Cards (stacked) */}
+              {bannerAds.map((ad) => (
+                <div
+                  key={ad._id}
+                  className="bg-white rounded-2xl shadow-sm border border-gray-200 p-3 cursor-pointer"
+                  onClick={(e) => handleAdClick(ad, e)}
+                >
+                  <AdTracker ad={ad} id={ad._id} />
+                  {ad.mediaType === 'image' && ad.image && <img src={ad.image} alt={ad.title} className="w-full rounded-xl" />}
+                  {ad.mediaType === 'video' && ad.video && <video src={ad.video} className="w-full rounded-xl" autoPlay muted loop playsInline />}
+                  <div className="mt-2 text-xs text-gray-500 text-center"><FaAd className="inline mr-1 text-[10px]" /> Sponsored</div>
+                </div>
+              ))}
+
+              {/* People You May Know – keep as is */}
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                  People You May Know
+                </h3>
+                {userInfo ? (
+                  suggestions.length > 0 ? (
+                    <div className="space-y-3">
+                      {suggestions
+                        .filter((u) => extractId(u._id) !== myId)
+                        .slice(0, 3)
+                        .map((user) => {
+                          const uid = extractId(user._id);
+                          const ff = isF(uid);
+                          return (
+                            <div key={uid} className="flex items-center gap-3">
+                              {user.profile ? (
+                                <img
+                                  src={user.profile}
+                                  alt=""
+                                  className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                                />
+                              ) : (
+                                <div className="w-10 h-10 rounded-full bg-[#1B3766] text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
+                                  {(user.name || "U")[0].toUpperCase()}
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">{user.name}</p>
+                                <p className="text-xs text-gray-500">{user.followersCount || 0} followers</p>
+                              </div>
+                              <button
+                                onClick={(e) => handleFollowToggle(uid, user.name, e)}
+                                className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-full flex-shrink-0 ${
+                                  ff
+                                    ? "bg-[#1B3766] text-white"
+                                    : "text-[#1B3766] border border-[#1B3766] hover:bg-[#1B3766] hover:text-white"
+                                }`}
+                              >
+                                {ff ? (
+                                  <><FaCheck className="text-[8px]" /> Following</>
+                                ) : (
+                                  <><FaPlus className="text-[8px]" /> Follow</>
+                                )}
+                              </button>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-400 text-center py-4">No suggestions yet</p>
+                  )
+                ) : (
+                  <div className="text-center py-4">
+                    <Link to="/login" className="text-xs text-[#1B3766] font-medium hover:underline">
+                      Login to connect
+                    </Link>
+                  </div>
+                )}
+              </div>
+
+              {/* Weekly Digest Subscription Card */}
+              <div className="bg-[#1B3766] rounded-2xl shadow-sm p-5 text-white">
+                <FaEnvelope className="text-3xl mx-auto mb-3 text-[#79FFFF]" />
+
+                {userInfo ? (
+                  subStatusLoading ? (
+                    <div className="text-center py-4">
+                      <FaSpinner className="animate-spin text-2xl mx-auto text-white/70" />
+                    </div>
+                  ) : (
+                    <>
+                      <h4 className="font-semibold text-lg mb-2">Weekly Digest</h4>
+                      <p className="text-xs text-white/70 mb-4 leading-relaxed">
+                        {sidebarSubscribed
+                          ? "You’re receiving our weekly highlights. Toggle to unsubscribe."
+                          : "Get the best articles & magazines every Friday, straight to your inbox."}
+                      </p>
+                      <button
+                        onClick={handleAuthSubscribeToggle}
+                        disabled={isSubscribing || isUnsubscribing}
+                        className={`w-full py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60 ${
+                          sidebarSubscribed
+                            ? "bg-white/20 text-white hover:bg-white/30"
+                            : "bg-white text-[#1B3766] hover:bg-gray-100"
+                        }`}
+                      >
+                        {isSubscribing || isUnsubscribing
+                          ? "Updating..."
+                          : sidebarSubscribed
+                          ? "Unsubscribe"
+                          : "Subscribe Free"}
+                      </button>
+                      {sidebarSubscribed && <FaCheckCircle className="text-white/50 text-xs mx-auto mt-2" />}
+                    </>
+                  )
+                ) : (
+                  <>
+                    <h4 className="font-semibold text-lg mb-2">Weekly Digest</h4>
+                    <p className="text-xs text-white/70 mb-4 leading-relaxed">
+                      Best articles & magazines every Friday. No spam.
+                    </p>
+                    <form onSubmit={handleSidebarSubscribe}>
+                      <input
+                        type="email"
+                        placeholder="Your email"
+                        value={subEmail}
+                        onChange={(e) => setSubEmail(e.target.value)}
+                        className="w-full px-3 py-2 mb-2 rounded-lg text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50"
+                        required
+                      />
+                      <input
+                        type="text"
+                        placeholder="First name (optional)"
+                        value={subName}
+                        onChange={(e) => setSubName(e.target.value)}
+                        className="w-full px-3 py-2 mb-3 rounded-lg text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50"
+                      />
+                      <button
+                        type="submit"
+                        disabled={isSubscribing}
+                        className="w-full py-2 bg-white text-[#1B3766] rounded-xl text-sm font-semibold hover:bg-gray-100 transition-colors disabled:opacity-60"
+                      >
+                        {isSubscribing ? "Subscribing..." : "Subscribe Free"}
+                      </button>
+                    </form>
+                    <p className="text-[10px] text-white/50 mt-3 text-center">
+                      No spam, unsubscribe any time.
+                    </p>
+                  </>
+                )}
               </div>
             </div>
           </aside>
@@ -454,8 +708,8 @@ const BiizzedArticlesScreen = () => {
               </div>
             )}
 
-            {/* Articles list */}
-            {articles.length === 0 ? (
+            {/* Articles list with inline ads */}
+            {itemsWithAds.length === 0 ? (
               <div className="text-center py-16 px-4">
                 <p className="text-gray-500">No articles found</p>
                 <button onClick={clearFilters} className="mt-4 text-[#1B3766] hover:underline text-sm">
@@ -464,7 +718,38 @@ const BiizzedArticlesScreen = () => {
               </div>
             ) : (
               <div>
-                {articles.map((article, index) => {
+                {itemsWithAds.map((item, idx) => {
+                  if (item.type === 'ad') {
+                    const ad = item.ad;
+                    return (
+                      <div
+                        key={`ad-${ad._id}-${idx}`}
+                        className="border-b border-gray-200 p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                        onClick={(e) => handleAdClick(ad, e)}
+                      >
+                        <AdTracker ad={ad} id={ad._id} />
+                        <div className="flex items-center gap-2 mb-2">
+                          <FaAd className="text-gray-400 text-sm" />
+                          <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Sponsored</span>
+                        </div>
+                        {ad.mediaType === 'image' && ad.image && (
+                          <img src={ad.image} alt={ad.title} className="w-full rounded-xl mb-2" />
+                        )}
+                        {ad.mediaType === 'video' && ad.video && (
+                          <video src={ad.video} className="w-full rounded-xl mb-2" controls autoPlay muted playsInline />
+                        )}
+                        <h3 className="font-semibold text-gray-900 mt-2">{ad.title}</h3>
+                        <p className="text-sm text-gray-600 mt-1">{ad.subtitle || ad.description}</p>
+                        {ad.ctaText && ad.ctaLink && (
+                          <div className="mt-3 text-sm font-medium text-[#1B3766] hover:underline inline-block">
+                            {ad.ctaText} →
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  const article = item;
                   const authorId = extractId(
                     article.authorId?._id || article.authorId || article.createdBy
                   );
@@ -498,7 +783,8 @@ const BiizzedArticlesScreen = () => {
                                 </div>
                               )}
                             </Link>
-                            {index < articles.length - 1 && (
+                            {/* vertical line (only between articles, not after ads) */}
+                            {idx < itemsWithAds.length - 1 && (
                               <div className="w-[2px] flex-1 bg-gray-200 mt-2" />
                             )}
                           </div>
@@ -648,10 +934,10 @@ const BiizzedArticlesScreen = () => {
             )}
           </main>
 
-          {/* Right Sidebar */}
+          {/* Right Sidebar – unchanged (only subscription) */}
           <aside className="hidden xl:block w-[280px] flex-shrink-0">
             <div className="fixed top-[120px] w-[280px] h-[calc(100vh-140px)] overflow-y-auto space-y-4 pb-8 no-scrollbar">
-              {/* People You May Know */}
+              {/* People You May Know – keep as is */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
                   People You May Know
@@ -748,7 +1034,6 @@ const BiizzedArticlesScreen = () => {
                     </>
                   )
                 ) : (
-                  /* Non-authenticated user – email form */
                   <>
                     <h4 className="font-semibold text-lg mb-2">Weekly Digest</h4>
                     <p className="text-xs text-white/70 mb-4 leading-relaxed">

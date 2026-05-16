@@ -1,4 +1,4 @@
-// screens/MagazineStoryDetail.jsx - Social Media Style with Comments
+// screens/MagazineStoryDetail.jsx – Handles both published and coming‑soon magazines
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
@@ -6,8 +6,7 @@ import {
   FaSpinner, FaBookOpen, FaEye, FaUser, FaCalendarAlt,
   FaTwitter, FaFacebookF, FaLinkedinIn, FaLink, FaCheck,
   FaHeart, FaRegHeart, FaBookmark, FaRegBookmark, FaShare,
-  FaComment, FaReply, FaTrashAlt, FaChevronUp, FaChevronDown,
-  FaPlus,
+  FaComment, FaReply, FaTrashAlt, FaHourglassHalf,
 } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { useSelector } from 'react-redux';
@@ -39,7 +38,7 @@ const MagazineStoryDetail = () => {
   const mobileCanvasRef = useRef(null);
 
   const { data: magazine, isLoading, error, refetch } = useGetMagazineBySlugQuery(slug);
-  const { data: otherMagazinesData } = useGetMagazinesQuery({ status: 'published', limit: 4 });
+  const { data: otherMagazinesData } = useGetMagazinesQuery({ status: 'published,coming_soon', limit: 4 });
   const otherMagazines = otherMagazinesData?.magazines?.filter(m => m.slug !== slug)?.slice(0, 4) || [];
 
   const [likeMagazine] = useLikeMagazineMutation();
@@ -47,11 +46,12 @@ const MagazineStoryDetail = () => {
   const [addComment] = useAddMagazineCommentMutation();
   const [likeComment] = useLikeMagazineCommentMutation();
   const [deleteComment] = useDeleteMagazineCommentMutation();
-  const [followUser] = useFollowUserMutation();
-  const [unfollowUser] = useUnfollowUserMutation();
+
+  // Check if magazine is coming soon
+  const isComingSoon = magazine?.status === 'coming_soon' || magazine?.comingSoon === true;
 
   useEffect(() => {
-    if (magazine?.pdfUrl && !pdfDoc) {
+    if (magazine?.pdfUrl && !pdfDoc && !isComingSoon) {
       setLoadingPdf(true);
       const loadPDF = async () => {
         try {
@@ -64,19 +64,19 @@ const MagazineStoryDetail = () => {
       };
       loadPDF();
     }
-  }, [magazine?.pdfUrl]);
+  }, [magazine?.pdfUrl, isComingSoon]);
 
   useEffect(() => {
-    if (pdfDoc && leftCanvasRef.current && rightCanvasRef.current && window.innerWidth >= 768) {
+    if (pdfDoc && leftCanvasRef.current && rightCanvasRef.current && window.innerWidth >= 768 && !isComingSoon) {
       renderDesktopPages();
     }
-  }, [pdfDoc, currentPage]);
+  }, [pdfDoc, currentPage, isComingSoon]);
 
   useEffect(() => {
-    if (pdfDoc && mobileCanvasRef.current && window.innerWidth < 768) {
+    if (pdfDoc && mobileCanvasRef.current && window.innerWidth < 768 && !isComingSoon) {
       renderMobilePage();
     }
-  }, [pdfDoc, currentMobilePage]);
+  }, [pdfDoc, currentMobilePage, isComingSoon]);
 
   const renderDesktopPages = async () => {
     const leftPageNum = currentPage + 1;
@@ -170,7 +170,7 @@ const MagazineStoryDetail = () => {
   };
 
   const handleDownload = async () => {
-    if (!magazine?.pdfUrl) return;
+    if (!magazine?.pdfUrl || isComingSoon) return;
     setDownloading(true);
     try {
       const response = await fetch(magazine.pdfUrl);
@@ -211,11 +211,14 @@ const MagazineStoryDetail = () => {
             <FaArrowLeft /> Back
           </button>
           <span className="text-sm font-medium text-gray-700 truncate max-w-[200px]">{magazine.title}</span>
-          <button onClick={handleDownload} disabled={downloading}
-            className="flex items-center gap-1.5 px-4 py-2 bg-[#1B3766] text-white rounded-full text-sm font-medium hover:bg-[#142952] disabled:opacity-70">
-            {downloading ? <FaSpinner className="animate-spin text-xs" /> : <FaDownload className="text-xs" />}
-            <span className="hidden sm:inline">{downloading ? 'Downloading...' : 'Download'}</span>
-          </button>
+          {!isComingSoon && (
+            <button onClick={handleDownload} disabled={downloading}
+              className="flex items-center gap-1.5 px-4 py-2 bg-[#1B3766] text-white rounded-full text-sm font-medium hover:bg-[#142952] disabled:opacity-70">
+              {downloading ? <FaSpinner className="animate-spin text-xs" /> : <FaDownload className="text-xs" />}
+              <span className="hidden sm:inline">{downloading ? 'Downloading...' : 'Download'}</span>
+            </button>
+          )}
+          {isComingSoon && <div className="w-20" />}
         </div>
       </div>
 
@@ -235,8 +238,9 @@ const MagazineStoryDetail = () => {
               <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 mb-3">
                 <span><FaUser className="inline mr-1" />{magazine.author || 'Editorial'}</span>
                 <span><FaCalendarAlt className="inline mr-1" />{formatDate(magazine.createdAt)}</span>
-                <span><FaEye className="inline mr-1" />{magazine.views || 0} views</span>
-                <span className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded-full text-[10px] font-medium">{totalPages} Pages</span>
+                {!isComingSoon && <span><FaEye className="inline mr-1" />{magazine.views || 0} views</span>}
+                {!isComingSoon && <span className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded-full text-[10px] font-medium">{totalPages} Pages</span>}
+                {isComingSoon && <span className="px-2 py-0.5 bg-orange-100 text-orange-600 rounded-full text-xs font-medium flex items-center gap-1"><FaHourglassHalf className="text-[10px]" /> Coming Soon</span>}
               </div>
               {/* Stats & Actions */}
               <div className="flex items-center gap-2">
@@ -254,68 +258,92 @@ const MagazineStoryDetail = () => {
           </div>
         </div>
 
-        {/* PDF Reader */}
-        {loadingPdf ? (
-          <div className="bg-white rounded-2xl p-8 text-center mb-4">
-            <FaSpinner className="w-10 h-10 text-[#1B3766] animate-spin mx-auto mb-2" />
-            <p className="text-gray-500">Loading magazine...</p>
+        {/* Coming Soon Hero Section – replaces PDF reader */}
+        {isComingSoon ? (
+          <div className="relative bg-gradient-to-r from-[#1B3766] via-[#142952] to-[#1B3766] rounded-2xl shadow-xl overflow-hidden mb-4 min-h-[400px] flex flex-col items-center justify-center text-center p-8">
+            {/* Animated scrolling text from right to left */}
+            <div className="overflow-hidden whitespace-nowrap w-full mb-8">
+              <div className="animate-scrollRightToLeft text-3xl sm:text-5xl md:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 inline-block">
+                Coming Soon! Anticipate!!
+              </div>
+            </div>
+            <FaHourglassHalf className="text-6xl sm:text-8xl text-white/20 mb-6 animate-pulse" />
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">Something Great is Coming</h2>
+            <p className="text-white/80 max-w-md mx-auto text-sm sm:text-base">
+              This magazine is not yet published. Stay tuned for exclusive insights, deep dives, and premium content.
+            </p>
+            <div className="mt-8 flex gap-3">
+              <button onClick={handleBookmark} className="px-6 py-2.5 bg-white/10 backdrop-blur-sm text-white rounded-full text-sm font-medium hover:bg-white/20 transition-colors">
+                <FaBookmark className="inline mr-2" /> Notify Me
+              </button>
+              <button onClick={() => handleShare('copy')} className="px-6 py-2.5 bg-white/10 backdrop-blur-sm text-white rounded-full text-sm font-medium hover:bg-white/20 transition-colors">
+                <FaShare className="inline mr-2" /> Share
+              </button>
+            </div>
           </div>
         ) : (
-          <>
-            {/* Desktop */}
-            <div className="hidden md:block bg-gradient-to-b from-[#f8f6f0] to-[#efe9df] rounded-2xl shadow-lg p-6 border border-gray-200 mb-4">
-              <div className="flex gap-4 justify-center">
-                <div className="flex-1 bg-white rounded-xl shadow-md overflow-hidden">
-                  <div className="p-4 flex items-center justify-center min-h-[500px]">
-                    <canvas ref={leftCanvasRef} className="w-full h-auto rounded" />
-                  </div>
-                  <div className="text-center py-2 text-xs text-gray-500 bg-gray-50 border-t">Page {currentPage + 1} of {totalPages}</div>
-                </div>
-                <div className="flex-1 bg-white rounded-xl shadow-md overflow-hidden">
-                  <div className="p-4 flex items-center justify-center min-h-[500px]">
-                    <canvas ref={rightCanvasRef} className="w-full h-auto rounded" />
-                  </div>
-                  <div className="text-center py-2 text-xs text-gray-500 bg-gray-50 border-t">Page {currentPage + 2} of {totalPages}</div>
-                </div>
-              </div>
-              <div className="flex justify-between items-center mt-6">
-                <button onClick={() => currentPage > 0 && setCurrentPage(c => c - 2)}
-                  disabled={currentPage === 0}
-                  className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full text-sm disabled:opacity-40">
-                  <FaChevronLeft /> Previous
-                </button>
-                <span className="text-sm text-gray-500">{currentPage + 1}–{Math.min(currentPage + 2, totalPages)} of {totalPages}</span>
-                <button onClick={() => currentPage + 2 < totalPages && setCurrentPage(c => c + 2)}
-                  disabled={currentPage + 2 >= totalPages}
-                  className="flex items-center gap-2 px-4 py-2 bg-[#1B3766] text-white rounded-full text-sm disabled:opacity-40">
-                  Next <FaChevronRight />
-                </button>
-              </div>
+          /* Normal PDF Reader (unchanged) */
+          loadingPdf ? (
+            <div className="bg-white rounded-2xl p-8 text-center mb-4">
+              <FaSpinner className="w-10 h-10 text-[#1B3766] animate-spin mx-auto mb-2" />
+              <p className="text-gray-500">Loading magazine...</p>
             </div>
-
-            {/* Mobile */}
-            <div className="md:hidden bg-gradient-to-b from-[#f8f6f0] to-[#efe9df] rounded-2xl shadow-lg p-4 border border-gray-200 mb-4">
-              <div className="bg-white rounded-xl shadow-md overflow-hidden min-h-[400px] flex items-center justify-center">
-                <canvas ref={mobileCanvasRef} className="w-full h-auto" />
+          ) : (
+            <>
+              {/* Desktop view */}
+              <div className="hidden md:block bg-gradient-to-b from-[#f8f6f0] to-[#efe9df] rounded-2xl shadow-lg p-6 border border-gray-200 mb-4">
+                <div className="flex gap-4 justify-center">
+                  <div className="flex-1 bg-white rounded-xl shadow-md overflow-hidden">
+                    <div className="p-4 flex items-center justify-center min-h-[500px]">
+                      <canvas ref={leftCanvasRef} className="w-full h-auto rounded" />
+                    </div>
+                    <div className="text-center py-2 text-xs text-gray-500 bg-gray-50 border-t">Page {currentPage + 1} of {totalPages}</div>
+                  </div>
+                  <div className="flex-1 bg-white rounded-xl shadow-md overflow-hidden">
+                    <div className="p-4 flex items-center justify-center min-h-[500px]">
+                      <canvas ref={rightCanvasRef} className="w-full h-auto rounded" />
+                    </div>
+                    <div className="text-center py-2 text-xs text-gray-500 bg-gray-50 border-t">Page {currentPage + 2} of {totalPages}</div>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center mt-6">
+                  <button onClick={() => currentPage > 0 && setCurrentPage(c => c - 2)}
+                    disabled={currentPage === 0}
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full text-sm disabled:opacity-40">
+                    <FaChevronLeft /> Previous
+                  </button>
+                  <span className="text-sm text-gray-500">{currentPage + 1}–{Math.min(currentPage + 2, totalPages)} of {totalPages}</span>
+                  <button onClick={() => currentPage + 2 < totalPages && setCurrentPage(c => c + 2)}
+                    disabled={currentPage + 2 >= totalPages}
+                    className="flex items-center gap-2 px-4 py-2 bg-[#1B3766] text-white rounded-full text-sm disabled:opacity-40">
+                    Next <FaChevronRight />
+                  </button>
+                </div>
               </div>
-              <div className="text-center py-2 text-sm text-gray-600">Page {currentMobilePage + 1} of {totalPages}</div>
-              <div className="flex justify-between gap-3 mt-3">
-                <button onClick={() => currentMobilePage > 0 && setCurrentMobilePage(p => p - 1)}
-                  disabled={currentMobilePage === 0}
-                  className="flex-1 py-2.5 bg-white border border-gray-200 rounded-full text-sm disabled:opacity-40">
-                  <FaChevronLeft className="inline mr-1" /> Prev
-                </button>
-                <button onClick={() => currentMobilePage < totalPages - 1 && setCurrentMobilePage(p => p + 1)}
-                  disabled={currentMobilePage >= totalPages - 1}
-                  className="flex-1 py-2.5 bg-[#1B3766] text-white rounded-full text-sm disabled:opacity-40">
-                  Next <FaChevronRight className="inline ml-1" />
-                </button>
+              {/* Mobile view */}
+              <div className="md:hidden bg-gradient-to-b from-[#f8f6f0] to-[#efe9df] rounded-2xl shadow-lg p-4 border border-gray-200 mb-4">
+                <div className="bg-white rounded-xl shadow-md overflow-hidden min-h-[400px] flex items-center justify-center">
+                  <canvas ref={mobileCanvasRef} className="w-full h-auto" />
+                </div>
+                <div className="text-center py-2 text-sm text-gray-600">Page {currentMobilePage + 1} of {totalPages}</div>
+                <div className="flex justify-between gap-3 mt-3">
+                  <button onClick={() => currentMobilePage > 0 && setCurrentMobilePage(p => p - 1)}
+                    disabled={currentMobilePage === 0}
+                    className="flex-1 py-2.5 bg-white border border-gray-200 rounded-full text-sm disabled:opacity-40">
+                    <FaChevronLeft className="inline mr-1" /> Prev
+                  </button>
+                  <button onClick={() => currentMobilePage < totalPages - 1 && setCurrentMobilePage(p => p + 1)}
+                    disabled={currentMobilePage >= totalPages - 1}
+                    className="flex-1 py-2.5 bg-[#1B3766] text-white rounded-full text-sm disabled:opacity-40">
+                    Next <FaChevronRight className="inline ml-1" />
+                  </button>
+                </div>
               </div>
-            </div>
-          </>
+            </>
+          )
         )}
 
-        {/* Summary */}
+        {/* Summary – always shown */}
         {magazine.summary && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 mb-4">
             <h3 className="text-sm font-semibold text-gray-900 mb-2">About This Edition</h3>
@@ -330,12 +358,11 @@ const MagazineStoryDetail = () => {
           </div>
         )}
 
-        {/* Comments Section */}
+        {/* Comments Section (unchanged) */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 mb-4">
           <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
             <FaComment className="text-[#1B3766]" /> Comments ({magazine.comments?.length || 0})
           </h3>
-
           {userInfo ? (
             <form onSubmit={handleAddComment} className="mb-6">
               {replyTo && (
@@ -364,11 +391,9 @@ const MagazineStoryDetail = () => {
               <Link to="/login" className="text-xs text-[#1B3766] font-medium hover:underline">Login now</Link>
             </div>
           )}
-
           <div className="space-y-4">
             {magazine.comments?.map((comment) => {
               const isCommentLiked = comment.likes?.includes(userInfo?._id);
-              const showReply = showReplies[comment._id];
               return (
                 <div key={comment._id} className="flex gap-3">
                   {comment.userProfile ? (
@@ -399,19 +424,24 @@ const MagazineStoryDetail = () => {
           </div>
         </div>
 
-        {/* Related Magazines */}
+        {/* Related Magazines (includes coming soon) */}
         {otherMagazines.length > 0 && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
             <h3 className="text-sm font-semibold text-gray-900 mb-4">More Magazines</h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {otherMagazines.map((mag) => (
                 <Link key={mag._id} to={`/${mag.slug}`} className="group">
-                  <div className="aspect-[3/4] rounded-xl overflow-hidden bg-gray-100 mb-2">
+                  <div className="aspect-[3/4] rounded-xl overflow-hidden bg-gray-100 mb-2 relative">
                     {mag.coverImage ? (
                       <img src={mag.coverImage} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                     ) : (
                       <div className="w-full h-full bg-gradient-to-br from-purple-600 to-indigo-800 flex items-center justify-center">
                         <FaBookOpen className="text-white text-2xl" />
+                      </div>
+                    )}
+                    {mag.status === 'coming_soon' && (
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                        <span className="px-2 py-1 bg-orange-500 text-white text-[10px] font-bold rounded-full">Coming Soon</span>
                       </div>
                     )}
                   </div>
@@ -424,6 +454,17 @@ const MagazineStoryDetail = () => {
       </div>
 
       <BiizzedBottomBar />
+
+      {/* Custom CSS animation for scrolling text */}
+      <style jsx>{`
+        @keyframes scrollRightToLeft {
+          0% { transform: translateX(100%); }
+          100% { transform: translateX(-100%); }
+        }
+        .animate-scrollRightToLeft {
+          animation: scrollRightToLeft 12s linear infinite;
+        }
+      `}</style>
     </div>
   );
 };

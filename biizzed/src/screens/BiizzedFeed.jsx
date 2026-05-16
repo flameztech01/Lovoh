@@ -1,4 +1,4 @@
-// screens/BiizzedFeed.jsx – Full code with subscription status in sidebar
+// screens/BiizzedFeed.jsx – Full code with sidebar slider & inline ads
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -8,7 +8,7 @@ import {
   FaNewspaper, FaBookOpen, FaVideo, FaPlus, FaPlay, FaVolumeMute, FaVolumeUp,
   FaCheck, FaCheckCircle, FaStar, FaArrowRight, FaBolt, FaArrowUp,
   FaChevronLeft, FaChevronRight, FaYoutube, FaPaperPlane, FaExternalLinkAlt,
-  FaEnvelope,
+  FaEnvelope, FaAd,
 } from 'react-icons/fa';
 import { useGetArticlesQuery, useLikeArticleMutation, useBookmarkArticleMutation } from '../slices/articlesApiSlice';
 import { useGetMagazinesQuery, useLikeMagazineMutation, useBookmarkMagazineMutation } from '../slices/magApiSlice';
@@ -24,6 +24,7 @@ import {
   useUnsubscribeMutation,
   useGetSubscriptionStatusQuery,
 } from '../slices/subscribeApiSlice';
+import { useGetAdsQuery, useTrackAdViewMutation, useTrackAdClickMutation } from '../slices/adsApiSlice';
 import BiizzedArticlesNavbar from '../components/BiizzedArticlesNavbar';
 import BiizzedBottomBar from '../components/BiizzedBottomBar';
 import { useSelector } from 'react-redux';
@@ -62,6 +63,30 @@ const BiizzedFeed = () => {
   const touchS = useRef(0);
   const touchE = useRef(0);
 
+  // Ads
+  const { data: inlineAdsData } = useGetAdsQuery({ page: 'biizzed', placement: 'inline', limit: 10 });
+  const { data: sidebarAdsData } = useGetAdsQuery({ page: 'biizzed', placement: 'sidebar', limit: 10 });
+  const { data: bannerAdsData } = useGetAdsQuery({ page: 'biizzed', placement: 'banner', limit: 3 });
+  const [trackAdView] = useTrackAdViewMutation();
+  const [trackAdClick] = useTrackAdClickMutation();
+
+  const inlineAds = inlineAdsData?.ads || [];
+  const sidebarAds = sidebarAdsData?.ads || [];
+  const bannerAds = bannerAdsData?.ads || [];
+
+  // Sidebar slider state
+  const [sidebarAdIndex, setSidebarAdIndex] = useState(0);
+  const sidebarAdTimer = useRef(null);
+
+  useEffect(() => {
+    if (sidebarAds.length > 1) {
+      sidebarAdTimer.current = setInterval(() => {
+        setSidebarAdIndex(prev => (prev + 1) % sidebarAds.length);
+      }, 5000);
+      return () => clearInterval(sidebarAdTimer.current);
+    }
+  }, [sidebarAds.length]);
+
   // Mutations
   const [likeA] = useLikeArticleMutation();
   const [bookA] = useBookmarkArticleMutation();
@@ -75,11 +100,7 @@ const BiizzedFeed = () => {
   const [subscribe, { isLoading: isSubscribing }] = useSubscribeMutation();
   const [unsubscribe, { isLoading: isUnsubscribing }] = useUnsubscribeMutation();
 
-  // Check if logged-in user is subscribed
-  const {
-    data: subStatus,
-    isLoading: subStatusLoading,
-  } = useGetSubscriptionStatusQuery(userInfo?.email, {
+  const { data: subStatus, isLoading: subStatusLoading } = useGetSubscriptionStatusQuery(userInfo?.email, {
     skip: !userInfo?.email,
   });
 
@@ -88,9 +109,7 @@ const BiizzedFeed = () => {
   const [subName, setSubName] = useState('');
 
   useEffect(() => {
-    if (subStatus) {
-      setSidebarSubscribed(subStatus.subscribed);
-    }
+    if (subStatus) setSidebarSubscribed(subStatus.subscribed);
   }, [subStatus]);
 
   // Data queries
@@ -98,8 +117,6 @@ const BiizzedFeed = () => {
     { status: 'published', page: 1, limit: 12, sort: '-createdAt' },
     { pollingInterval: 60000 }
   );
-  useEffect(() => { refetchArticles(); }, []);
-
   const { data: mD } = useGetMagazinesQuery(
     { status: 'published', page: 1, limit: 6, sort: '-createdAt' },
     { pollingInterval: 60000 }
@@ -115,25 +132,36 @@ const BiizzedFeed = () => {
   const vids = vD?.videos || [];
   const sugs = sugD || [];
 
-  // Detect new posts
+  // Merge feed items and inject inline ads
+  const allContent = [
+    ...arts.filter(a => !a.isFeatured).map(a => ({ ...a, type: 'article' })),
+    ...mags.filter(m => !m.isFeatured).map(m => ({ ...m, type: 'magazine' })),
+    ...vids.map(v => ({ ...v, type: 'video' })),
+  ].sort((a, b) => new Date(b.createdAt || b.publishedAt) - new Date(a.createdAt || a.publishedAt));
+
+  // Insert inline ads after positions 2, 6, 10, 14... (0‑based)
+  const items = [];
+  let adIndex = 0;
+  for (let i = 0; i < allContent.length; i++) {
+    items.push(allContent[i]);
+    if ((i === 2 || i === 6 || i === 10 || i === 14) && adIndex < inlineAds.length) {
+      items.push({ ad: inlineAds[adIndex], type: 'ad' });
+      adIndex++;
+    }
+  }
+
+  // New posts detection
   useEffect(() => {
-    const t = arts.length + mags.length + vids.length;
+    const t = allContent.length;
     if (lastPostCount > 0 && t > lastPostCount && window.scrollY > 200) setShowNewPosts(true);
     setLastPostCount(t);
-  }, [arts.length, mags.length, vids.length]);
+  }, [allContent.length]);
 
   // Featured items
   const feat = [
     ...arts.filter(a => a.isFeatured).slice(0, 2).map(a => ({ ...a, type: 'article' })),
     ...mags.filter(m => m.isFeatured).slice(0, 2).map(m => ({ ...m, type: 'magazine' })),
   ];
-
-  // Merged feed items
-  const items = [
-    ...arts.filter(a => !a.isFeatured).map(a => ({ ...a, type: 'article' })),
-    ...mags.filter(m => !m.isFeatured).map(m => ({ ...m, type: 'magazine' })),
-    ...vids.map(v => ({ ...v, type: 'video' })),
-  ].sort((a, b) => new Date(b.createdAt || b.publishedAt) - new Date(a.createdAt || a.publishedAt));
 
   // Helpers
   const fmtD = (d) => {
@@ -259,12 +287,39 @@ const BiizzedFeed = () => {
     if (dir === 'prev' && featIdx > 0) setFeatIdx(i => i - 1);
   };
 
+  // Ad handlers
+  const handleAdClick = (ad, e) => {
+    e.preventDefault(); e.stopPropagation();
+    trackAdClick(ad._id).catch(err => console.error('Ad click track error:', err));
+    if (ad.ctaLink) window.open(ad.ctaLink, '_blank');
+  };
+
+  // Track ad view when it appears in viewport
+  const AdTracker = ({ ad, id }) => {
+    const ref = useRef(null);
+    const tracked = useRef(false);
+    useEffect(() => {
+      if (!ad?._id || tracked.current) return;
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting && !tracked.current) {
+              trackAdView(ad._id).catch(err => console.error('Ad view track error:', err));
+              tracked.current = true;
+            }
+          });
+        },
+        { threshold: 0.5 }
+      );
+      if (ref.current) observer.observe(ref.current);
+      return () => observer.disconnect();
+    }, [ad]);
+    return <div ref={ref} data-ad-id={id} />;
+  };
+
   // Subscription handlers
   const handleAuthSubscribeToggle = async () => {
-    if (!userInfo?.email) {
-      toast.error('No email address on your account');
-      return;
-    }
+    if (!userInfo?.email) { toast.error('No email address on your account'); return; }
     try {
       if (sidebarSubscribed) {
         await unsubscribe({ email: userInfo.email }).unwrap();
@@ -286,10 +341,7 @@ const BiizzedFeed = () => {
 
   const handleSidebarSubscribe = async (e) => {
     e.preventDefault();
-    if (!subEmail) {
-      toast.error('Please enter your email address');
-      return;
-    }
+    if (!subEmail) { toast.error('Please enter your email address'); return; }
     try {
       await subscribe({
         email: subEmail,
@@ -336,6 +388,7 @@ const BiizzedFeed = () => {
           {/* Left Sidebar */}
           <aside className="hidden lg:block w-[280px] flex-shrink-0">
             <div className="fixed top-[120px] w-[280px] h-[calc(100vh-140px)] overflow-y-auto space-y-4 pb-8 no-scrollbar">
+              {/* Browse Card */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Browse</h3>
                 <nav className="space-y-0.5">
@@ -351,6 +404,98 @@ const BiizzedFeed = () => {
                   ))}
                 </nav>
               </div>
+
+              {/* Sidebar Ad Slider (horizontal carousel) */}
+              {sidebarAds.length > 0 && (
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-3 overflow-hidden">
+                  <div className="relative">
+                    <div
+                      className="flex transition-transform duration-500 ease-in-out"
+                      style={{ transform: `translateX(-${sidebarAdIndex * 100}%)` }}
+                    >
+                      {sidebarAds.map((ad) => (
+                        <div
+                          key={ad._id}
+                          className="w-full flex-shrink-0 cursor-pointer"
+                          onClick={(e) => handleAdClick(ad, e)}
+                        >
+                          <AdTracker ad={ad} id={ad._id} />
+                          {ad.mediaType === 'image' && ad.image && (
+                            <img src={ad.image} alt={ad.title} className="w-full rounded-xl" />
+                          )}
+                          {ad.mediaType === 'video' && ad.video && (
+                            <video src={ad.video} className="w-full rounded-xl" autoPlay muted loop playsInline />
+                          )}
+                          <div className="mt-2 text-xs text-gray-500 text-center">
+                            <FaAd className="inline mr-1 text-[10px]" /> Sponsored
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {sidebarAds.length > 1 && (
+                      <div className="flex justify-center gap-1.5 mt-2">
+                        {sidebarAds.map((_, i) => (
+                          <button
+                            key={i}
+                            onClick={() => setSidebarAdIndex(i)}
+                            className={`w-1.5 h-1.5 rounded-full transition-colors ${
+                              i === sidebarAdIndex ? 'bg-[#1B3766]' : 'bg-gray-300'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Banner Ad Cards (stacked) */}
+              {bannerAds.map((ad) => (
+                <div key={ad._id} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-3 cursor-pointer" onClick={(e) => handleAdClick(ad, e)}>
+                  <AdTracker ad={ad} id={ad._id} />
+                  {ad.mediaType === 'image' && ad.image && <img src={ad.image} alt={ad.title} className="w-full rounded-xl" />}
+                  {ad.mediaType === 'video' && ad.video && <video src={ad.video} className="w-full rounded-xl" autoPlay muted loop playsInline />}
+                  <div className="mt-2 text-xs text-gray-500 text-center"><FaAd className="inline mr-1 text-[10px]" /> Sponsored</div>
+                </div>
+              ))}
+
+              {/* Subscription Card */}
+              <div className="bg-[#1B3766] rounded-2xl shadow-sm p-5 text-white">
+                <FaEnvelope className="text-3xl mx-auto mb-3 text-[#79FFFF]" />
+                {userInfo ? (
+                  subStatusLoading ? (
+                    <div className="text-center py-4"><FaSpinner className="animate-spin text-2xl mx-auto text-white/70" /></div>
+                  ) : (
+                    <>
+                      <h4 className="font-semibold text-lg mb-2">Weekly Digest</h4>
+                      <p className="text-xs text-white/70 mb-4 leading-relaxed">
+                        {sidebarSubscribed
+                          ? "You’re receiving our weekly highlights. Toggle to unsubscribe."
+                          : "Get the best articles & magazines every Friday, straight to your inbox."}
+                      </p>
+                      <button
+                        onClick={handleAuthSubscribeToggle}
+                        disabled={isSubscribing || isUnsubscribing}
+                        className={`w-full py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60 ${sidebarSubscribed ? "bg-white/20 text-white hover:bg-white/30" : "bg-white text-[#1B3766] hover:bg-gray-100"}`}
+                      >
+                        {isSubscribing || isUnsubscribing ? "Updating..." : sidebarSubscribed ? "Unsubscribe" : "Subscribe Free"}
+                      </button>
+                      {sidebarSubscribed && <FaCheckCircle className="text-white/50 text-xs mx-auto mt-2" />}
+                    </>
+                  )
+                ) : (
+                  <>
+                    <h4 className="font-semibold text-lg mb-2">Weekly Digest</h4>
+                    <p className="text-xs text-white/70 mb-4 leading-relaxed">Best articles & magazines every Friday. No spam.</p>
+                    <form onSubmit={handleSidebarSubscribe}>
+                      <input type="email" placeholder="Your email" value={subEmail} onChange={(e) => setSubEmail(e.target.value)} className="w-full px-3 py-2 mb-2 rounded-lg text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50" required />
+                      <input type="text" placeholder="First name (optional)" value={subName} onChange={(e) => setSubName(e.target.value)} className="w-full px-3 py-2 mb-3 rounded-lg text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50" />
+                      <button type="submit" disabled={isSubscribing} className="w-full py-2 bg-white text-[#1B3766] rounded-xl text-sm font-semibold hover:bg-gray-100 transition-colors disabled:opacity-60">{isSubscribing ? "Subscribing..." : "Subscribe Free"}</button>
+                    </form>
+                    <p className="text-[10px] text-white/50 mt-3 text-center">No spam, unsubscribe any time.</p>
+                  </>
+                )}
+              </div>
             </div>
           </aside>
 
@@ -358,25 +503,18 @@ const BiizzedFeed = () => {
           <main className="flex-1 max-w-full lg:max-w-[680px] mx-auto lg:mx-0 pb-8 lg:rounded-2xl lg:shadow-sm lg:border lg:border-gray-200 lg:bg-white overflow-hidden bg-white">
             <div className="bg-gradient-to-r from-[#1B3766] to-[#142952] p-5 text-white lg:rounded-t-2xl">
               <h2 className="text-lg font-bold mb-1">Discover & Connect 📰</h2>
-              <p className="text-white/70 text-sm">Articles, magazines, and videos from creators worldwide.</p>
+              <p className="text-white/70 text-sm">Articles, magazines, videos, and sponsored content from creators worldwide.</p>
             </div>
 
             {/* Featured Carousel */}
             {feat.length > 0 && (
               <div className="border-b-2 border-[#1B3766]">
                 <div className="flex items-center justify-between px-4 py-2 bg-[#1B3766]/5">
-                  <div className="flex items-center gap-2">
-                    <FaBolt className="text-yellow-500" />
-                    <span className="text-xs font-bold text-[#1B3766] uppercase">Featured</span>
-                  </div>
+                  <div className="flex items-center gap-2"><FaBolt className="text-yellow-500" /><span className="text-xs font-bold text-[#1B3766] uppercase">Featured</span></div>
                   <div className="hidden lg:flex items-center gap-1">
-                    <button onClick={() => sFeat('prev')} disabled={featIdx === 0} className="p-1.5 rounded-full hover:bg-gray-200 disabled:opacity-30">
-                      <FaChevronLeft className="text-xs" />
-                    </button>
+                    <button onClick={() => sFeat('prev')} disabled={featIdx === 0} className="p-1.5 rounded-full hover:bg-gray-200 disabled:opacity-30"><FaChevronLeft className="text-xs" /></button>
                     <span className="text-xs text-gray-500 mx-1">{featIdx + 1}/{feat.length}</span>
-                    <button onClick={() => sFeat('next')} disabled={featIdx >= feat.length - 1} className="p-1.5 rounded-full hover:bg-gray-200 disabled:opacity-30">
-                      <FaChevronRight className="text-xs" />
-                    </button>
+                    <button onClick={() => sFeat('next')} disabled={featIdx >= feat.length - 1} className="p-1.5 rounded-full hover:bg-gray-200 disabled:opacity-30"><FaChevronRight className="text-xs" /></button>
                   </div>
                 </div>
                 {/* Mobile touch slider */}
@@ -384,57 +522,57 @@ const BiizzedFeed = () => {
                   <div className="flex transition-transform duration-300 ease-out" style={{ transform: `translateX(-${featIdx * 100}%)` }}>
                     {feat.map((item) => (
                       <div key={`f-${item._id}`} className="w-full flex-shrink-0">
-                        {item.type === 'magazine' ? (
-                          <FMC item={item} fmtD={fmtD} getLD={getLD} isB={isB} doLike={doLike} doBook={doBook} />
-                        ) : (
-                          <FAC item={item} fmtD={fmtD} getImg={getImg} getLD={getLD} isB={isB} doLike={doLike} doBook={doBook} />
-                        )}
+                        {item.type === 'magazine' ? <FMC item={item} fmtD={fmtD} getLD={getLD} isB={isB} doLike={doLike} doBook={doBook} /> : <FAC item={item} fmtD={fmtD} getImg={getImg} getLD={getLD} isB={isB} doLike={doLike} doBook={doBook} />}
                       </div>
                     ))}
                   </div>
                   <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
-                    {feat.map((_, i) => (
-                      <button key={i} onClick={() => setFeatIdx(i)} className={`w-2 h-2 rounded-full transition-all ${i === featIdx ? 'bg-white scale-125' : 'bg-white/50'}`} />
-                    ))}
+                    {feat.map((_, i) => <button key={i} onClick={() => setFeatIdx(i)} className={`w-2 h-2 rounded-full transition-all ${i === featIdx ? 'bg-white scale-125' : 'bg-white/50'}`} />)}
                   </div>
                 </div>
-                {/* Desktop featured items */}
                 <div className="hidden lg:block">
                   {feat.map((item, i) => (
                     <div key={`f-${item._id}`} className={i === featIdx ? '' : 'hidden'}>
-                      {item.type === 'magazine' ? (
-                        <FMC item={item} fmtD={fmtD} getLD={getLD} isB={isB} doLike={doLike} doBook={doBook} />
-                      ) : (
-                        <FAC item={item} fmtD={fmtD} getImg={getImg} getLD={getLD} isB={isB} doLike={doLike} doBook={doBook} />
-                      )}
+                      {item.type === 'magazine' ? <FMC item={item} fmtD={fmtD} getLD={getLD} isB={isB} doLike={doLike} doBook={doBook} /> : <FAC item={item} fmtD={fmtD} getImg={getImg} getLD={getLD} isB={isB} doLike={doLike} doBook={doBook} />}
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Feed items */}
+            {/* Feed items (including inline ads) */}
             <div>
               {items.map((item, idx) => {
-                const aid = getAid(item);
-                const aname = getName(item);
-                const aprof = getProf(item);
+                if (item.type === 'ad') {
+                  const ad = item.ad;
+                  return (
+                    <div key={`ad-${ad._id}`} className="border-b border-gray-200 p-4 cursor-pointer hover:bg-gray-50 transition-colors" onClick={(e) => handleAdClick(ad, e)}>
+                      <AdTracker ad={ad} id={ad._id} />
+                      <div className="flex items-center gap-2 mb-2">
+                        <FaAd className="text-gray-400 text-sm" />
+                        <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Sponsored</span>
+                      </div>
+                      {ad.mediaType === 'image' && ad.image && <img src={ad.image} alt={ad.title} className="w-full rounded-xl mb-2" />}
+                      {ad.mediaType === 'video' && ad.video && <video src={ad.video} className="w-full rounded-xl mb-2" controls autoPlay muted playsInline />}
+                      <h3 className="font-semibold text-gray-900 mt-2">{ad.title}</h3>
+                      <p className="text-sm text-gray-600 mt-1">{ad.subtitle || ad.description}</p>
+                      {ad.ctaText && ad.ctaLink && <div className="mt-3 text-sm font-medium text-[#1B3766] hover:underline inline-block">{ad.ctaText} →</div>}
+                    </div>
+                  );
+                }
+                const itemObj = item;
+                const aid = getAid(itemObj);
+                const aname = getName(itemObj);
+                const aprof = getProf(itemObj);
                 const f = isF(aid);
                 const own = myId && aid ? myId === aid : false;
-                const ld = getLD(item);
-                const bm = isB(item);
-                const admin = isAdmin(item);
-                const yt = isYouTube(item);
-
-                if (item.type === 'magazine') return (
-                  <MBC key={`m-${item._id}`} item={item} idx={idx} total={items.length} ld={ld} bm={bm} fmtD={fmtD} doLike={doLike} doBook={doBook} />
-                );
-                if (item.type === 'video') return (
-                  <VC key={`v-${item._id}`} item={item} idx={idx} total={items.length} aid={aid} aname={aname} aprof={aprof} f={f} own={own} admin={admin} yt={yt} ld={ld} fmtD={fmtD} fmtDur={fmtDur} doLike={doLike} doFollow={doFollow} />
-                );
-                return (
-                  <AC key={`a-${item._id}`} item={item} idx={idx} total={items.length} aid={aid} aname={aname} aprof={aprof} f={f} own={own} admin={admin} ld={ld} bm={bm} fmtD={fmtD} getImg={getImg} doLike={doLike} doBook={doBook} doFollow={doFollow} />
-                );
+                const ld = getLD(itemObj);
+                const bm = isB(itemObj);
+                const admin = isAdmin(itemObj);
+                const yt = isYouTube(itemObj);
+                if (itemObj.type === 'magazine') return <MBC key={`m-${itemObj._id}`} item={itemObj} idx={idx} total={items.length} ld={ld} bm={bm} fmtD={fmtD} doLike={doLike} doBook={doBook} />;
+                if (itemObj.type === 'video') return <VC key={`v-${itemObj._id}`} item={itemObj} idx={idx} total={items.length} aid={aid} aname={aname} aprof={aprof} f={f} own={own} admin={admin} yt={yt} ld={ld} fmtD={fmtD} fmtDur={fmtDur} doLike={doLike} doFollow={doFollow} />;
+                return <AC key={`a-${itemObj._id}`} item={itemObj} idx={idx} total={items.length} aid={aid} aname={aname} aprof={aprof} f={f} own={own} admin={admin} ld={ld} bm={bm} fmtD={fmtD} getImg={getImg} doLike={doLike} doBook={doBook} doFollow={doFollow} />;
               })}
             </div>
 
@@ -445,7 +583,7 @@ const BiizzedFeed = () => {
             </div>
           </main>
 
-          {/* Right Sidebar */}
+          {/* Right Sidebar (unchanged) */}
           <aside className="hidden xl:block w-[280px] flex-shrink-0">
             <div className="fixed top-[120px] w-[280px] h-[calc(100vh-140px)] overflow-y-auto space-y-4 pb-8 no-scrollbar">
               {/* People You May Know */}
@@ -463,93 +601,34 @@ const BiizzedFeed = () => {
                             <p className="text-sm font-medium text-gray-900 truncate hover:underline">{user.name}</p>
                             <p className="text-xs text-gray-500">{user.followersCount||0} followers</p>
                           </Link>
-                          <button
-                            onClick={(e) => doFollow(uid, user.name, e)}
-                            className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-full transition-colors flex-shrink-0 ${ff ? 'bg-[#1B3766] text-white hover:bg-red-500' : 'text-[#1B3766] border border-[#1B3766] hover:bg-[#1B3766] hover:text-white'}`}
-                          >
+                          <button onClick={(e) => doFollow(uid, user.name, e)} className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-full transition-colors flex-shrink-0 ${ff ? 'bg-[#1B3766] text-white hover:bg-red-500' : 'text-[#1B3766] border border-[#1B3766] hover:bg-[#1B3766] hover:text-white'}`}>
                             {ff ? <><FaCheck className="text-[8px]" /> Following</> : <><FaPlus className="text-[8px]" /> Follow</>}
                           </button>
                         </div>
                       );
                     })}
                   </div>
-                ) : <p className="text-sm text-gray-400 text-center py-4">No suggestions yet</p>) : (
-                  <div className="text-center py-4">
-                    <Link to="/login" className="text-xs text-[#1B3766] font-medium hover:underline">Login to connect</Link>
-                  </div>
-                )}
+                ) : <p className="text-sm text-gray-400 text-center py-4">No suggestions yet</p>) : (<div className="text-center py-4"><Link to="/login" className="text-xs text-[#1B3766] font-medium hover:underline">Login to connect</Link></div>)}
               </div>
 
               {/* Subscription Card */}
               <div className="bg-[#1B3766] rounded-2xl shadow-sm p-5 text-white">
                 <FaEnvelope className="text-3xl mx-auto mb-3 text-[#79FFFF]" />
-                {userInfo ? (
-                  subStatusLoading ? (
-                    <div className="text-center py-4">
-                      <FaSpinner className="animate-spin text-2xl mx-auto text-white/70" />
-                    </div>
-                  ) : (
-                    <>
-                      <h4 className="font-semibold text-lg mb-2">Weekly Digest</h4>
-                      <p className="text-xs text-white/70 mb-4 leading-relaxed">
-                        {sidebarSubscribed
-                          ? "You’re receiving our weekly highlights. Toggle to unsubscribe."
-                          : "Get the best articles & magazines every Friday, straight to your inbox."}
-                      </p>
-                      <button
-                        onClick={handleAuthSubscribeToggle}
-                        disabled={isSubscribing || isUnsubscribing}
-                        className={`w-full py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60 ${
-                          sidebarSubscribed
-                            ? "bg-white/20 text-white hover:bg-white/30"
-                            : "bg-white text-[#1B3766] hover:bg-gray-100"
-                        }`}
-                      >
-                        {isSubscribing || isUnsubscribing
-                          ? "Updating..."
-                          : sidebarSubscribed
-                          ? "Unsubscribe"
-                          : "Subscribe Free"}
-                      </button>
-                      {sidebarSubscribed && <FaCheckCircle className="text-white/50 text-xs mx-auto mt-2" />}
-                    </>
-                  )
-                ) : (
-                  // Guest form
-                  <>
-                    <h4 className="font-semibold text-lg mb-2">Weekly Digest</h4>
-                    <p className="text-xs text-white/70 mb-4 leading-relaxed">
-                      Best articles & magazines every Friday. No spam.
-                    </p>
-                    <form onSubmit={handleSidebarSubscribe}>
-                      <input
-                        type="email"
-                        placeholder="Your email"
-                        value={subEmail}
-                        onChange={(e) => setSubEmail(e.target.value)}
-                        className="w-full px-3 py-2 mb-2 rounded-lg text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50"
-                        required
-                      />
-                      <input
-                        type="text"
-                        placeholder="First name (optional)"
-                        value={subName}
-                        onChange={(e) => setSubName(e.target.value)}
-                        className="w-full px-3 py-2 mb-3 rounded-lg text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50"
-                      />
-                      <button
-                        type="submit"
-                        disabled={isSubscribing}
-                        className="w-full py-2 bg-white text-[#1B3766] rounded-xl text-sm font-semibold hover:bg-gray-100 transition-colors disabled:opacity-60"
-                      >
-                        {isSubscribing ? "Subscribing..." : "Subscribe Free"}
-                      </button>
-                    </form>
-                    <p className="text-[10px] text-white/50 mt-3 text-center">
-                      No spam, unsubscribe any time.
-                    </p>
-                  </>
-                )}
+                {userInfo ? (subStatusLoading ? (<div className="text-center py-4"><FaSpinner className="animate-spin text-2xl mx-auto text-white/70" /></div>) : (<>
+                  <h4 className="font-semibold text-lg mb-2">Weekly Digest</h4>
+                  <p className="text-xs text-white/70 mb-4 leading-relaxed">{sidebarSubscribed ? "You’re receiving our weekly highlights. Toggle to unsubscribe." : "Get the best articles & magazines every Friday, straight to your inbox."}</p>
+                  <button onClick={handleAuthSubscribeToggle} disabled={isSubscribing || isUnsubscribing} className={`w-full py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60 ${sidebarSubscribed ? "bg-white/20 text-white hover:bg-white/30" : "bg-white text-[#1B3766] hover:bg-gray-100"}`}>{isSubscribing || isUnsubscribing ? "Updating..." : sidebarSubscribed ? "Unsubscribe" : "Subscribe Free"}</button>
+                  {sidebarSubscribed && <FaCheckCircle className="text-white/50 text-xs mx-auto mt-2" />}
+                </>)) : (<>
+                  <h4 className="font-semibold text-lg mb-2">Weekly Digest</h4>
+                  <p className="text-xs text-white/70 mb-4 leading-relaxed">Best articles & magazines every Friday. No spam.</p>
+                  <form onSubmit={handleSidebarSubscribe}>
+                    <input type="email" placeholder="Your email" value={subEmail} onChange={(e) => setSubEmail(e.target.value)} className="w-full px-3 py-2 mb-2 rounded-lg text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50" required />
+                    <input type="text" placeholder="First name (optional)" value={subName} onChange={(e) => setSubName(e.target.value)} className="w-full px-3 py-2 mb-3 rounded-lg text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50" />
+                    <button type="submit" disabled={isSubscribing} className="w-full py-2 bg-white text-[#1B3766] rounded-xl text-sm font-semibold hover:bg-gray-100 transition-colors disabled:opacity-60">{isSubscribing ? "Subscribing..." : "Subscribe Free"}</button>
+                  </form>
+                  <p className="text-[10px] text-white/50 mt-3 text-center">No spam, unsubscribe any time.</p>
+                </>)}
               </div>
             </div>
           </aside>
@@ -561,7 +640,7 @@ const BiizzedFeed = () => {
   );
 };
 
-// ====== FEATURED ARTICLE CARD ======
+// ====== FEATURED ARTICLE CARD (unchanged) ======
 const FAC = ({ item, fmtD, getImg, getLD, isB, doLike, doBook }) => {
   const { liked, count } = getLD(item);
   const n = item.author || 'Editorial';
@@ -589,7 +668,7 @@ const FAC = ({ item, fmtD, getImg, getLD, isB, doLike, doBook }) => {
   );
 };
 
-// ====== FEATURED MAGAZINE CARD ======
+// ====== FEATURED MAGAZINE CARD (unchanged) ======
 const FMC = ({ item, fmtD, getLD, isB, doLike, doBook }) => {
   const { liked, count } = getLD(item);
   return (
@@ -614,7 +693,7 @@ const FMC = ({ item, fmtD, getLD, isB, doLike, doBook }) => {
   );
 };
 
-// ====== ARTICLE CARD ======
+// ====== ARTICLE CARD (unchanged) ======
 const AC = ({ item, idx, total, aid, aname, aprof, f, own, admin, ld, bm, fmtD, getImg, doLike, doBook, doFollow }) => {
   return (
     <article className="border-b border-gray-200 hover:bg-gray-50/50 transition-colors cursor-pointer">
@@ -647,7 +726,7 @@ const AC = ({ item, idx, total, aid, aname, aprof, f, own, admin, ld, bm, fmtD, 
   );
 };
 
-// ====== MAGAZINE CARD ======
+// ====== MAGAZINE CARD (unchanged) ======
 const MBC = ({ item, idx, total, ld, bm, fmtD, doLike, doBook }) => (
   <article className="border-b border-gray-200 hover:bg-gray-50/50 transition-colors cursor-pointer">
     <Link to={`/${item.slug}`} className="block">
@@ -666,7 +745,7 @@ const MBC = ({ item, idx, total, ld, bm, fmtD, doLike, doBook }) => (
   </article>
 );
 
-// ====== VIDEO CARD WITH AUTO-PLAY ======
+// ====== VIDEO CARD WITH AUTO-PLAY (unchanged) ======
 const VC = ({ item, idx, total, aid, aname, aprof, f, own, admin, yt, ld, fmtD, fmtDur, doLike, doFollow }) => {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
@@ -739,32 +818,9 @@ const VC = ({ item, idx, total, aid, aname, aprof, f, own, admin, yt, ld, fmtD, 
             <div ref={containerRef} className="mb-3 relative rounded-2xl overflow-hidden border border-gray-200 bg-black">
               {!yt && item.videoUrl ? (
                 <>
-                  <video
-                    ref={videoRef}
-                    src={item.videoUrl}
-                    className="w-full h-auto block"
-                    style={{ maxHeight: 'none' }}
-                    muted
-                    loop
-                    playsInline
-                    preload="auto"
-                    poster={item.thumbnail}
-                    onClick={(e) => {
-                      e.preventDefault(); e.stopPropagation();
-                      if (videoRef.current) {
-                        if (videoRef.current.paused) { videoRef.current.play(); setIsPlaying(true); }
-                        else { videoRef.current.pause(); setIsPlaying(false); }
-                      }
-                    }}
-                  />
-                  <button onClick={toggleMute} className="absolute bottom-2 left-2 p-2 bg-black/60 rounded-full text-white hover:bg-black/80 transition-colors z-10">
-                    {isMuted ? <FaVolumeMute className="text-sm" /> : <FaVolumeUp className="text-sm" />}
-                  </button>
-                  {!isPlaying && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                      <FaPlay className="text-white text-4xl opacity-80" />
-                    </div>
-                  )}
+                  <video ref={videoRef} src={item.videoUrl} className="w-full h-auto block" style={{ maxHeight: 'none' }} muted loop playsInline preload="auto" poster={item.thumbnail} onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (videoRef.current) { videoRef.current.paused ? videoRef.current.play().catch(()=>{}) : videoRef.current.pause(); setIsPlaying(!videoRef.current.paused); } }} />
+                  <button onClick={toggleMute} className="absolute bottom-2 left-2 p-2 bg-black/60 rounded-full text-white hover:bg-black/80 transition-colors z-10">{isMuted ? <FaVolumeMute className="text-sm" /> : <FaVolumeUp className="text-sm" />}</button>
+                  {!isPlaying && (<div className="absolute inset-0 flex items-center justify-center bg-black/20"><FaPlay className="text-white text-4xl opacity-80" /></div>)}
                 </>
               ) : yt ? (
                 <div className="w-full">
@@ -774,9 +830,7 @@ const VC = ({ item, idx, total, aid, aname, aprof, f, own, admin, yt, ld, fmtD, 
               ) : (
                 <div className="w-full bg-gray-900 flex items-center justify-center" style={{ minHeight: '200px' }}><FaVideo className="text-5xl text-gray-600" /></div>
               )}
-              {!yt && fmtDur(item.duration) && (
-                <div className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black/80 text-white text-xs rounded">{fmtDur(item.duration)}</div>
-              )}
+              {!yt && fmtDur(item.duration) && (<div className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black/80 text-white text-xs rounded">{fmtDur(item.duration)}</div>)}
             </div>
             <AB item={item} ld={ld} doLike={doLike} shareUrl={`/videos/${item._id}`} yt={yt} />
           </div>
@@ -786,18 +840,14 @@ const VC = ({ item, idx, total, aid, aname, aprof, f, own, admin, yt, ld, fmtD, 
   );
 };
 
-// ====== ACTION BAR ======
+// ====== ACTION BAR (unchanged) ======
 const AB = ({ item, ld, bm, doLike, doBook, shareUrl, yt }) => {
   const handleShare = (e) => {
     e.preventDefault(); e.stopPropagation();
     const url = `${window.location.origin}${shareUrl}`;
-    if (navigator.share) {
-      navigator.share({ title: item.title, url });
-    } else {
-      navigator.clipboard.writeText(url).then(() => toast.success('Link copied!'));
-    }
+    if (navigator.share) navigator.share({ title: item.title, url });
+    else navigator.clipboard.writeText(url).then(() => toast.success('Link copied!'));
   };
-
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-1">
@@ -823,13 +873,7 @@ const AB = ({ item, ld, bm, doLike, doBook, shareUrl, yt }) => {
         )}
       </div>
       <div className="flex items-center gap-2">
-        {yt && (
-          <a href={`https://www.youtube.com/watch?v=${item.youtubeId}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="flex items-center gap-1 px-2.5 py-1.5 bg-red-50 text-red-600 rounded-full text-[11px] font-medium hover:bg-red-100 transition-colors">
-            <FaYoutube className="text-xs" />
-            <span className="hidden sm:inline">Watch on YouTube</span>
-            <FaExternalLinkAlt className="text-[8px] hidden sm:inline" />
-          </a>
-        )}
+        {yt && (<a href={`https://www.youtube.com/watch?v=${item.youtubeId}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="flex items-center gap-1 px-2.5 py-1.5 bg-red-50 text-red-600 rounded-full text-[11px] font-medium hover:bg-red-100 transition-colors"><FaYoutube className="text-xs" /><span className="hidden sm:inline">Watch on YouTube</span><FaExternalLinkAlt className="text-[8px] hidden sm:inline" /></a>)}
         <span className="text-[11px] font-semibold text-[#1B3766] bg-[#1B3766]/5 px-2.5 py-1.5 rounded-full">Biizzed</span>
       </div>
     </div>
