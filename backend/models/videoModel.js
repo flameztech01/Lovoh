@@ -100,7 +100,7 @@ const videoSchema = mongoose.Schema(
     authorName: String,
     authorProfile: String,
     
-    // ADD THIS - Author Type field
+    // Author Type field
     authorType: {
       type: String,
       enum: ['admin', 'user'],
@@ -124,7 +124,7 @@ videoSchema.index({ isEducational: 1 });
 videoSchema.index({ tags: 1 });
 videoSchema.index({ videoType: 1 });
 videoSchema.index({ youtubeId: 1 });
-videoSchema.index({ authorType: 1 }); // Add index for authorType
+videoSchema.index({ authorType: 1 });
 
 // Text index for search functionality
 videoSchema.index({ title: 'text', description: 'text', tags: 'text' });

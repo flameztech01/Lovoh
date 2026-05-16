@@ -1,16 +1,12 @@
-// controllers/articlesController.js – with push notification on publish
+// controllers/articlesController.js – With ownership, featured requests, and coming soon
 import asyncHandler from 'express-async-handler';
 import Article from '../models/articleModel.js';
 import User from '../models/userModel.js';
 import { v2 as cloudinary } from 'cloudinary';
 import { notifySubscribersOfNewContent } from './subscribeController.js';
-import { notifyNewContent } from './notificationController.js';   // push
-
-// ==================== CRUD OPERATIONS ====================
+import { notifyNewContent } from './notificationController.js';
 
 // ==================== CREATE ARTICLE ====================
-// Allows creating an article with ONLY title, excerpt, images (cover)
-// and comingSoon = true – full content is optional.
 const createArticle = asyncHandler(async (req, res) => {
   const {
     title,
@@ -26,13 +22,11 @@ const createArticle = asyncHandler(async (req, res) => {
 
   const isComingSoon = comingSoon === 'true' || comingSoon === true;
 
-  // Basic required fields: title, excerpt, category, and at least one image
   if (!title || !excerpt || !category) {
     res.status(400);
     throw new Error('Please provide title, excerpt, and category');
   }
 
-  // Content is required only if NOT coming soon and status is 'published'
   const isPublished = status === 'published';
   if (!isComingSoon && isPublished && (!content || content.trim().length < 20)) {
     res.status(400);
@@ -90,11 +84,8 @@ const createArticle = asyncHandler(async (req, res) => {
     comingSoon: isComingSoon,
   });
 
-  // Send notifications only if the article is actually published (not coming soon)
   if (article.status === 'published' && !article.comingSoon) {
-    // Email subscribers (fire-and-forget)
     notifySubscribersOfNewContent(article, 'article');
-    // Push + in‑app notifications
     const notifyResult = await notifyNewContent({ type: 'article', content: article });
     console.log('Article publish notification result:', notifyResult);
   } else if (article.status === 'coming_soon') {
@@ -104,20 +95,21 @@ const createArticle = asyncHandler(async (req, res) => {
   res.status(201).json(article);
 });
 
-
+// ==================== GET ALL ARTICLES (public) ====================
 const getArticles = asyncHandler(async (req, res) => {
   const {
     category,
     featured,
     editorsPick,
     search,
-    status = 'published',
+    status = 'published,coming_soon',
     page = 1,
     limit = 12,
     sort = '-createdAt',
   } = req.query;
 
-  let query = { status };
+  const statuses = status.split(',').map(s => s.trim());
+  let query = { status: { $in: statuses } };
 
   if (category && category !== 'All') query.category = category;
   if (featured === 'true') query.isFeatured = true;
@@ -178,6 +170,43 @@ const getArticles = asyncHandler(async (req, res) => {
   }
 });
 
+// ==================== GET USER'S OWN ARTICLES ====================
+const getUserArticles = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 12, status } = req.query;
+  
+  const query = { createdBy: req.user._id };
+  
+  if (status) {
+    const statuses = status.split(',').map(s => s.trim());
+    query.status = { $in: statuses };
+  }
+  // If no status specified, return ALL
+
+  const articles = await Article.find(query)
+    .sort({ createdAt: -1 })
+    .limit(limit * 1)
+    .skip((page - 1) * limit)
+    .lean();
+
+  // Ensure status and comingSoon fields are present
+  const articlesWithFlags = articles.map(article => ({
+    ...article,
+    _id: article._id.toString(),
+    status: article.status || 'unknown',
+    comingSoon: article.comingSoon === true || article.status === 'coming_soon',
+  }));
+
+  const count = await Article.countDocuments(query);
+  
+  res.json({
+    articles: articlesWithFlags,
+    page: Number(page),
+    pages: Math.ceil(count / limit),
+    total: count,
+  });
+});
+
+// ==================== GET BY SLUG (public) ====================
 const getArticleBySlug = asyncHandler(async (req, res) => {
   const article = await Article.findOne({ slug: req.params.slug })
     .populate('authorId', 'name username profile')
@@ -201,6 +230,7 @@ const getArticleBySlug = asyncHandler(async (req, res) => {
   res.json(articleWithCounts);
 });
 
+// ==================== GET BY ID (authenticated) ====================
 const getArticleById = asyncHandler(async (req, res) => {
   const article = await Article.findById(req.params.id)
     .populate('authorId', 'name username profile')
@@ -214,7 +244,7 @@ const getArticleById = asyncHandler(async (req, res) => {
   res.json(article);
 });
 
-// ==================== UPDATE ARTICLE ====================
+// ==================== UPDATE ARTICLE (owner or admin) ====================
 const updateArticle = asyncHandler(async (req, res) => {
   const article = await Article.findById(req.params.id);
   if (!article) {
@@ -222,7 +252,9 @@ const updateArticle = asyncHandler(async (req, res) => {
     throw new Error('Article not found');
   }
 
-  if (article.createdBy.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+  const isAdmin = req.user.role === 'admin';
+  const isOwner = article.createdBy.toString() === req.user._id.toString();
+  if (!isOwner && !isAdmin) {
     res.status(403);
     throw new Error('Not authorized to update this article');
   }
@@ -236,7 +268,6 @@ const updateArticle = asyncHandler(async (req, res) => {
   const newStatus = status || article.status;
   const willBePublished = (newStatus === 'published') && !isComingSoon;
 
-  // If transitioning to published (and not coming soon), full content is required
   if (willBePublished && (!content || content.trim().length < 20)) {
     res.status(400);
     throw new Error('Cannot publish an article without full content. Add content or keep it as coming soon.');
@@ -267,7 +298,6 @@ const updateArticle = asyncHandler(async (req, res) => {
       imagesToKeep = Array.isArray(keepImages) ? keepImages : [keepImages];
     }
 
-    // Delete removed old images
     for (const oldImage of article.images) {
       if (!imagesToKeep.includes(oldImage)) {
         try {
@@ -294,7 +324,6 @@ const updateArticle = asyncHandler(async (req, res) => {
     article.slug = newSlug;
   }
 
-  // Apply field updates
   if (title) article.title = title;
   if (excerpt) article.excerpt = excerpt;
   if (content) article.content = content;
@@ -305,26 +334,21 @@ const updateArticle = asyncHandler(async (req, res) => {
   article.comingSoon = isComingSoon;
 
   // Admin-only fields
-  if (req.user.role === 'admin') {
+  if (isAdmin) {
     if (isFeatured !== undefined) article.isFeatured = isFeatured === 'true' || isFeatured === true;
     if (isEditorsPick !== undefined) article.isEditorsPick = isEditorsPick === 'true' || isEditorsPick === true;
   }
 
-  // Handle status transition
   const oldStatus = article.status;
   article.status = newStatus;
 
   const isBecomingPublished = (oldStatus !== 'published' && newStatus === 'published') && !isComingSoon;
   if (isBecomingPublished) {
     article.publishedAt = new Date();
-    await article.save(); // save before notifying
-
-    // Email subscribers
+    await article.save();
     notifySubscribersOfNewContent(article, 'article');
-    // Push + in‑app notifications
     const notifyResult = await notifyNewContent({ type: 'article', content: article });
     console.log('Article publish on update notification result:', notifyResult);
-
     return res.json(article);
   }
 
@@ -332,6 +356,7 @@ const updateArticle = asyncHandler(async (req, res) => {
   res.json(updatedArticle);
 });
 
+// ==================== DELETE ARTICLE (owner or admin) ====================
 const deleteArticle = asyncHandler(async (req, res) => {
   const article = await Article.findById(req.params.id);
   if (!article) {
@@ -339,7 +364,9 @@ const deleteArticle = asyncHandler(async (req, res) => {
     throw new Error('Article not found');
   }
 
-  if (article.createdBy.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+  const isAdmin = req.user.role === 'admin';
+  const isOwner = article.createdBy.toString() === req.user._id.toString();
+  if (!isOwner && !isAdmin) {
     res.status(403);
     throw new Error('Not authorized to delete this article');
   }
@@ -362,8 +389,88 @@ const deleteArticle = asyncHandler(async (req, res) => {
   res.json({ message: 'Article removed' });
 });
 
-// ==================== SOCIAL FEATURES ====================
+// ==================== REQUEST FEATURED (user) ====================
+const requestFeatured = asyncHandler(async (req, res) => {
+  const article = await Article.findById(req.params.id);
+  if (!article) {
+    res.status(404);
+    throw new Error('Article not found');
+  }
 
+  const isOwner = article.createdBy.toString() === req.user._id.toString();
+  if (!isOwner) {
+    res.status(403);
+    throw new Error('Only the creator can request featured status');
+  }
+
+  if (article.isFeatured) {
+    res.status(400);
+    throw new Error('Article is already featured');
+  }
+
+  article.featuredRequest = true;
+  article.featuredRequestAt = new Date();
+  await article.save();
+
+  res.json({ message: 'Featured request submitted. Admin will review it.', article });
+});
+
+// ==================== APPROVE FEATURED (admin only) ====================
+const approveFeatured = asyncHandler(async (req, res) => {
+  const article = await Article.findById(req.params.id);
+  if (!article) {
+    res.status(404);
+    throw new Error('Article not found');
+  }
+
+  if (!article.featuredRequest) {
+    res.status(400);
+    throw new Error('No pending featured request for this article');
+  }
+
+  article.isFeatured = true;
+  article.featuredRequest = false;
+  article.featuredRequestAt = undefined;
+  await article.save();
+
+  res.json({ message: 'Article is now featured', article });
+});
+
+// ==================== TOGGLE FEATURED (admin only - direct) ====================
+const toggleFeatured = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') {
+    res.status(403);
+    throw new Error('Only admins can feature articles');
+  }
+  const article = await Article.findById(req.params.id);
+  if (!article) {
+    res.status(404);
+    throw new Error('Article not found');
+  }
+  article.isFeatured = !article.isFeatured;
+  // Clear any pending request when toggling directly
+  if (article.isFeatured && article.featuredRequest) article.featuredRequest = false;
+  await article.save();
+  res.json({ message: `Article ${article.isFeatured ? 'featured' : 'unfeatured'}`, article });
+});
+
+// ==================== TOGGLE EDITOR'S PICK (admin only) ====================
+const toggleEditorsPick = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') {
+    res.status(403);
+    throw new Error('Only admins can set editor\'s pick');
+  }
+  const article = await Article.findById(req.params.id);
+  if (!article) {
+    res.status(404);
+    throw new Error('Article not found');
+  }
+  article.isEditorsPick = !article.isEditorsPick;
+  await article.save();
+  res.json({ message: `Article ${article.isEditorsPick ? 'is editor\'s pick' : 'removed from editor\'s pick'}`, article });
+});
+
+// ==================== SOCIAL FEATURES ====================
 const likeArticle = asyncHandler(async (req, res) => {
   const article = await Article.findById(req.params.id);
   if (!article) {
@@ -565,43 +672,16 @@ const getArticleCategories = asyncHandler(async (req, res) => {
   res.json(categories);
 });
 
-const toggleFeatured = asyncHandler(async (req, res) => {
-  if (req.user.role !== 'admin') {
-    res.status(403);
-    throw new Error('Only admins can feature articles');
-  }
-  const article = await Article.findById(req.params.id);
-  if (!article) {
-    res.status(404);
-    throw new Error('Article not found');
-  }
-  article.isFeatured = !article.isFeatured;
-  await article.save();
-  res.json({ message: `Article ${article.isFeatured ? 'featured' : 'unfeatured'}`, article });
-});
-
-const toggleEditorsPick = asyncHandler(async (req, res) => {
-  if (req.user.role !== 'admin') {
-    res.status(403);
-    throw new Error('Only admins can set editor\'s pick');
-  }
-  const article = await Article.findById(req.params.id);
-  if (!article) {
-    res.status(404);
-    throw new Error('Article not found');
-  }
-  article.isEditorsPick = !article.isEditorsPick;
-  await article.save();
-  res.json({ message: `Article ${article.isEditorsPick ? 'is editor\'s pick' : 'removed from editor\'s pick'}`, article });
-});
-
 export {
   createArticle,
   getArticles,
+  getUserArticles,
   getArticleBySlug,
   getArticleById,
   updateArticle,
   deleteArticle,
+  requestFeatured,
+  approveFeatured,
   toggleFeatured,
   toggleEditorsPick,
   getArticleCategories,

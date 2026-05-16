@@ -1,4 +1,4 @@
-// slices/videoApiSlice.js
+// slices/videoApiSlice.js – With user's own videos endpoint
 import { apiSlice } from "./apiSlice";
 
 const VIDEOS_URL = "/videos";
@@ -16,8 +16,8 @@ export const videoApiSlice = apiSlice.injectEndpoints({
           search: params?.search,
           isEducational: params?.isEducational,
           videoType: params?.videoType,
-          userId: params?.userId,        // Add this - filter by user ID
-          authorType: params?.authorType, // Add this - filter by author type (admin/user)
+          userId: params?.userId,
+          authorType: params?.authorType,
           page: params?.page,
           limit: params?.limit,
           sort: params?.sort,
@@ -34,7 +34,7 @@ export const videoApiSlice = apiSlice.injectEndpoints({
       providesTags: (result, error, id) => [{ type: "Video", id }],
     }),
 
-    // Get user's videos
+    // Get videos by specific user ID (public)
     getUserVideos: builder.query({
       query: ({ userId, ...params }) => ({
         url: `${VIDEOS_URL}/user/${userId}`,
@@ -47,9 +47,21 @@ export const videoApiSlice = apiSlice.injectEndpoints({
       providesTags: ["UserVideo"],
     }),
 
-    // ==================== PROTECTED ====================
+    // ==================== PROTECTED (Authenticated) ====================
 
-    // Get feed (following + recommended)
+    // Get logged‑in user's own videos
+    getMyVideos: builder.query({
+      query: (params) => ({
+        url: `${VIDEOS_URL}/my-videos`,
+        params: {
+          page: params?.page,
+          limit: params?.limit,
+        },
+      }),
+      providesTags: ["MyVideos"],
+    }),
+
+    // Get feed (following + educational)
     getVideoFeed: builder.query({
       query: (params) => ({
         url: `${VIDEOS_URL}/feed`,
@@ -68,7 +80,7 @@ export const videoApiSlice = apiSlice.injectEndpoints({
         method: "POST",
         body: data,
       }),
-      invalidatesTags: ["Video", "VideoFeed", "UserVideo"],
+      invalidatesTags: ["Video", "VideoFeed", "UserVideo", "MyVideos"],
     }),
 
     // Post YouTube video link
@@ -81,19 +93,19 @@ export const videoApiSlice = apiSlice.injectEndpoints({
           category: data.category,
           tags: data.tags,
           isEducational: data.isEducational,
-          description: data.description, // Add this to support description
+          description: data.description,
         },
       }),
-      invalidatesTags: ["Video", "VideoFeed", "UserVideo"],
+      invalidatesTags: ["Video", "VideoFeed", "UserVideo", "MyVideos"],
     }),
 
-    // Delete video (works for both upload and YouTube)
+    // Delete video (owner or admin)
     deleteVideo: builder.mutation({
       query: (id) => ({
         url: `${VIDEOS_URL}/${id}`,
         method: "DELETE",
       }),
-      invalidatesTags: ["Video", "VideoFeed", "UserVideo"],
+      invalidatesTags: ["Video", "VideoFeed", "UserVideo", "MyVideos"],
     }),
 
     // Like/Unlike video
@@ -133,7 +145,7 @@ export const videoApiSlice = apiSlice.injectEndpoints({
       invalidatesTags: (result, error, { id }) => [{ type: "Video", id }],
     }),
 
-    // Update video
+    // Update video (owner or admin)
     updateVideo: builder.mutation({
       query: ({ id, data }) => ({
         url: `${VIDEOS_URL}/${id}`,
@@ -145,6 +157,7 @@ export const videoApiSlice = apiSlice.injectEndpoints({
         "Video",
         "VideoFeed",
         "UserVideo",
+        "MyVideos",
       ],
     }),
   }),
@@ -157,6 +170,7 @@ export const {
   useGetUserVideosQuery,
 
   // Protected
+  useGetMyVideosQuery,
   useGetVideoFeedQuery,
   useUploadVideoMutation,
   usePostYoutubeVideoMutation,

@@ -1,20 +1,21 @@
-// routes/videoRoutes.js
+// routes/videoRoutes.js – Fixed route order
 import express from 'express';
 import multer from 'multer';
 import { v2 as cloudinary } from 'cloudinary';
-import { protect, protectBoth } from '../middleware/authMiddleware.js';
+import { protectBoth } from '../middleware/authMiddleware.js';
 import {
   uploadVideo,
   getVideos,
   getVideoById,
-  updateVideo, // ADD THIS IMPORT
+  getUserVideos,
+  getMyVideos,
+  getFeedVideos,
+  updateVideo,
   deleteVideo,
   likeVideo,
   addComment,
   likeComment,
   deleteComment,
-  getUserVideos,
-  getFeedVideos,
   postYoutubeVideo,
 } from '../controllers/videoController.js';
 
@@ -26,14 +27,10 @@ cloudinary.config({
   api_secret: process.env.API_SECRET,
 });
 
-// Use MEMORY storage (not disk storage)
 const storage = multer.memoryStorage();
-
 const upload = multer({
   storage: storage,
-  limits: { 
-    fileSize: 500 * 1024 * 1024, // 500MB max
-  },
+  limits: { fileSize: 500 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowedTypes = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo'];
     if (allowedTypes.includes(file.mimetype)) {
@@ -44,20 +41,28 @@ const upload = multer({
   },
 }).single('video');
 
-// Public routes
+// ==================== PUBLIC ROUTES (specific paths first) ====================
 router.get('/', getVideos);
-router.get('/feed', protectBoth, getFeedVideos);
 router.get('/user/:userId', getUserVideos);
-router.get('/:id', getVideoById);
 
-// Protected routes
+// ==================== AUTHENTICATED ROUTES (BEFORE /:id) ====================
+router.get('/feed', protectBoth, getFeedVideos);
+router.get('/my-videos', protectBoth, getMyVideos);          // ← MUST be before /:id
+
+// ==================== CRUD & Social (these use /:id) ====================
 router.post('/', protectBoth, upload, uploadVideo);
-router.put('/:id', protectBoth, updateVideo); // ADD THIS LINE - Update video
+router.put('/:id', protectBoth, updateVideo);
 router.delete('/:id', protectBoth, deleteVideo);
+
 router.post('/:id/like', protectBoth, likeVideo);
 router.post('/:id/comment', protectBoth, addComment);
 router.post('/:id/comment/:commentId/like', protectBoth, likeComment);
 router.delete('/:id/comment/:commentId', protectBoth, deleteComment);
+
+// YouTube
 router.post('/youtube', protectBoth, postYoutubeVideo);
+
+// ==================== PUBLIC single video (MUST BE LAST) ====================
+router.get('/:id', getVideoById);  // ← Move to very end
 
 export default router;

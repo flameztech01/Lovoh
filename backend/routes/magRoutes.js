@@ -1,4 +1,4 @@
-// routes/magRoutes.js - Refactored (subscription routes removed)
+// routes/magRoutes.js – Full with user magazines, featured requests, and ownership
 import express from 'express';
 import multer from 'multer';
 import { v2 as cloudinary } from 'cloudinary';
@@ -9,8 +9,11 @@ import {
   getMagazines,
   getMagazineBySlug,
   getMagazineById,
+  getUserMagazines,
   updateMagazine,
   deleteMagazine,
+  requestFeatured,
+  approveFeatured,
   toggleFeatured,
   getMagazineStats,
   likeMagazine,
@@ -38,28 +41,33 @@ const upload = multer({
   { name: 'coverImage', maxCount: 1 },
 ]);
 
-// ------------------ Static / Specific routes first ------------------
+// ------------------ Public routes (specific paths first) ------------------
 router.get('/', getMagazines);
 router.get('/stats', getMagazineStats);
+
+// ------------------ Authenticated user routes (BEFORE /:slug) ------------------
+router.get('/my-magazines', protectBoth, getUserMagazines);
 router.get('/bookmarks/list', protectBoth, getBookmarkedMagazines);
+router.get('/id/:id', protectBoth, getMagazineById);
 
-// Slug route (must be before /:id to avoid slug being mistaken for id)
-router.get('/:slug', getMagazineBySlug);
-
-// Admin ID route
-router.get('/id/:id', protectAdmin, getMagazineById);
-
-// ------------------ Auth required social actions ------------------
+// ------------------ Social interactions ------------------
 router.post('/:id/like', protectBoth, likeMagazine);
 router.post('/:id/bookmark', protectBoth, bookmarkMagazine);
 router.post('/:id/comment', protectBoth, addMagazineComment);
 router.post('/:id/comment/:commentId/like', protectBoth, likeMagazineComment);
 router.delete('/:id/comment/:commentId', protectBoth, deleteMagazineComment);
 
-// ------------------ Admin only actions ------------------
-router.post('/', protectAdmin, upload, createMagazine);
-router.put('/:id', protectAdmin, upload, updateMagazine);
-router.delete('/:id', protectAdmin, deleteMagazine);
+// ------------------ Magazine CRUD ------------------
+router.post('/', protectBoth, upload, createMagazine);
+router.put('/:id', protectBoth, upload, updateMagazine);
+router.delete('/:id', protectBoth, deleteMagazine);
+
+// ------------------ Featured requests ------------------
+router.post('/:id/request-featured', protectBoth, requestFeatured);
+router.post('/:id/approve-featured', protectAdmin, approveFeatured);
 router.put('/:id/featured', protectAdmin, toggleFeatured);
+
+// ------------------ Public slug route (MUST BE LAST) ------------------
+router.get('/:slug', getMagazineBySlug);
 
 export default router;

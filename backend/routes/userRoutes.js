@@ -18,6 +18,8 @@ import {
   verifyEmail,
   resendOTP,
   loginUser,
+  forgotPassword,
+  resetPassword,
 } from '../controllers/userController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
@@ -55,6 +57,9 @@ router.post('/contact', postMessage);
 router.get('/profile/:id', getProfileById);
 router.get('/followers/:id', getFollowers);
 router.get('/following/:id', getFollowing);
+// Public routes for password reset
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
 
 // ----- New authentication routes (public) -----
 router.post('/register', registerUser);           // sign up with email/password

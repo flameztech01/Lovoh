@@ -1,19 +1,14 @@
-// controllers/magController.js – with push notification on publish
+// controllers/magController.js – Full version with user ownership & featured requests
 import asyncHandler from 'express-async-handler';
 import Magazine from '../models/magazineModel.js';
 import User from '../models/userModel.js';
 import { notifySubscribersOfNewContent } from './subscribeController.js';
-import { notifyNewContent } from './notificationController.js';   // push
-
-// ==================== CRUD ====================
+import { notifyNewContent } from './notificationController.js';
 
 // ==================== CREATE MAGAZINE ====================
-// Allows creating a magazine with ONLY a cover image (comingSoon = true)
-// or with full PDF (comingSoon = false or status = 'published')
 const createMagazine = asyncHandler(async (req, res) => {
   const { title, summary, author, category, tags, isFeatured, status, comingSoon } = req.body;
   
-  // comingSoon: if true, PDF is optional; otherwise PDF is required for published
   const isComingSoon = comingSoon === 'true' || comingSoon === true;
   
   if (!title || !summary || !author) {
@@ -21,14 +16,12 @@ const createMagazine = asyncHandler(async (req, res) => {
     throw new Error('Please provide title, summary, and author');
   }
   
-  // PDF required only if NOT coming soon and status is 'published'
   const isPublished = status === 'published';
   if (!isComingSoon && isPublished && !req.files?.pdf) {
     res.status(400);
     throw new Error('PDF file is required for published magazines. For coming soon, set comingSoon=true.');
   }
   
-  // Cover image is always required for display
   if (!req.files?.coverImage) {
     res.status(400);
     throw new Error('Cover image is required');
@@ -78,18 +71,15 @@ const createMagazine = asyncHandler(async (req, res) => {
     status: isComingSoon ? 'coming_soon' : (status || 'draft'),
     slug,
     publishedAt: (status === 'published' && !isComingSoon) ? new Date() : null,
-    createdBy: req.admin?._id || req.user?._id,
-    authorType: req.admin ? 'admin' : 'user',
+    createdBy: req.user._id,          // always use req.user (protectBoth ensures it exists)
+    authorType: 'user',               // now all magazines are user-created; admin can still modify
     comingSoon: isComingSoon,
   };
   
   const magazine = await Magazine.create(magazineData);
   
-  // Send notifications only if the magazine is actually published (not coming soon, has PDF)
   if (magazine.status === 'published' && magazine.pdfUrl) {
-    // Email subscribers (fire-and-forget)
     notifySubscribersOfNewContent(magazine, 'magazine');
-    // Push + in‑app notifications
     const notifyResult = await notifyNewContent({ type: 'magazine', content: magazine });
     console.log('Magazine publish notification result:', notifyResult);
   } else if (magazine.status === 'coming_soon') {
@@ -99,10 +89,20 @@ const createMagazine = asyncHandler(async (req, res) => {
   res.status(201).json(magazine);
 });
 
+// ==================== GET ALL MAGAZINES (public) ====================
 const getMagazines = asyncHandler(async (req, res) => {
-  const { category, featured, search, status = 'published', page = 1, limit = 12 } = req.query;
+  const {
+    category,
+    featured,
+    search,
+    status = 'published,coming_soon',
+    page = 1,
+    limit = 12,
+  } = req.query;
 
-  let query = { status };
+  const statuses = status.split(',').map(s => s.trim());
+  let query = { status: { $in: statuses } };
+
   if (category) query.category = category;
   if (featured === 'true') query.isFeatured = true;
   if (search) {
@@ -157,6 +157,7 @@ const getMagazines = asyncHandler(async (req, res) => {
   });
 });
 
+// ==================== GET MAGAZINE BY SLUG (public) ====================
 const getMagazineBySlug = asyncHandler(async (req, res) => {
   const magazine = await Magazine.findOne({ slug: req.params.slug })
     .populate('createdBy', 'name username profile')
@@ -173,6 +174,7 @@ const getMagazineBySlug = asyncHandler(async (req, res) => {
   res.json(magazine);
 });
 
+// ==================== GET MAGAZINE BY ID (protected – any auth) ====================
 const getMagazineById = asyncHandler(async (req, res) => {
   const magazine = await Magazine.findById(req.params.id)
     .populate('createdBy', 'name username profile');
@@ -183,29 +185,76 @@ const getMagazineById = asyncHandler(async (req, res) => {
   res.json(magazine);
 });
 
-// ==================== UPDATE MAGAZINE ====================
+// ==================== GET USER'S OWN MAGAZINES ====================
+// ==================== GET USER'S OWN MAGAZINES ====================
+const getUserMagazines = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 12, status } = req.query;
+  
+  // Build query - default to ALL statuses if none specified
+  const query = { createdBy: req.user._id };
+  
+  if (status) {
+    const statuses = status.split(',').map(s => s.trim());
+    query.status = { $in: statuses };
+  }
+  // If no status specified, we return ALL (draft, coming_soon, published)
+
+  const magazines = await Magazine.find(query)
+    .sort({ createdAt: -1 })
+    .limit(limit * 1)
+    .skip((page - 1) * limit)
+    .lean();
+
+  // Ensure all fields are explicitly present and properly formatted
+  const magazinesWithFlags = magazines.map(mag => ({
+    ...mag,
+    _id: mag._id.toString(),
+    status: mag.status || 'unknown',
+    comingSoon: mag.comingSoon === true || mag.status === 'coming_soon',
+    createdBy: mag.createdBy?.toString?.() || mag.createdBy,
+    likes: (mag.likes || []).map(id => id?.toString?.() || id),
+    bookmarks: (mag.bookmarks || []).map(id => id?.toString?.() || id),
+  }));
+
+  const count = await Magazine.countDocuments(query);
+  
+  res.json({
+    magazines: magazinesWithFlags,
+    page: Number(page),
+    pages: Math.ceil(count / limit),
+    total: count,
+  });
+});
+
+// ==================== UPDATE MAGAZINE (owner or admin) ====================
 const updateMagazine = asyncHandler(async (req, res) => {
   const magazine = await Magazine.findById(req.params.id);
   if (!magazine) {
     res.status(404);
     throw new Error('Magazine not found');
   }
-  
+
+  // Check ownership or admin
+  const isAdmin = req.user.role === 'admin';
+  const isOwner = magazine.createdBy.toString() === req.user._id.toString();
+  if (!isOwner && !isAdmin) {
+    res.status(403);
+    throw new Error('Not authorized to update this magazine');
+  }
+
   const { title, summary, author, category, tags, isFeatured, status, comingSoon } = req.body;
   const { v2: cloudinary } = await import('cloudinary');
   
-  // Determine if the magazine should be considered "coming soon" after update
   const isComingSoon = comingSoon === 'true' || comingSoon === true;
   const newStatus = status || magazine.status;
   const willBePublished = (newStatus === 'published') && !isComingSoon;
   
-  // If updating to published (and not coming soon), we must have a PDF
   if (willBePublished && !magazine.pdfUrl && !req.files?.pdf) {
     res.status(400);
-    throw new Error('Cannot publish a magazine without a PDF file. Upload a PDF or keep it as coming soon.');
+    throw new Error('Cannot publish without a PDF file. Upload a PDF or keep as coming soon.');
   }
   
-  // Handle PDF upload if provided
+  // Handle PDF upload
   if (req.files?.pdf) {
     try {
       if (magazine.pdfUrl) {
@@ -224,7 +273,7 @@ const updateMagazine = asyncHandler(async (req, res) => {
     magazine.pdfUrl = pdfResult.secure_url;
   }
   
-  // Handle cover image upload if provided
+  // Handle cover image upload
   if (req.files?.coverImage) {
     try {
       if (magazine.coverImage) {
@@ -254,31 +303,28 @@ const updateMagazine = asyncHandler(async (req, res) => {
     magazine.slug = newSlug;
   }
   
-  // Apply field updates
   if (title) magazine.title = title;
   if (summary) magazine.summary = summary;
   if (author) magazine.author = author;
   if (category) magazine.category = category;
   if (tags) magazine.tags = Array.isArray(tags) ? tags : tags.split(',');
-  if (isFeatured !== undefined) magazine.isFeatured = isFeatured === 'true' || isFeatured === true;
-  magazine.comingSoon = isComingSoon;
   
-  // Handle status transition
+  // Only admin can change isFeatured
+  if (isAdmin && isFeatured !== undefined) {
+    magazine.isFeatured = isFeatured === 'true' || isFeatured === true;
+  }
+  
+  magazine.comingSoon = isComingSoon;
   const oldStatus = magazine.status;
   magazine.status = newStatus;
   
-  // If transitioning from non‑published to published (and has PDF), set publishedAt and notify
   const isBecomingPublished = (oldStatus !== 'published' && newStatus === 'published') && magazine.pdfUrl;
   if (isBecomingPublished) {
     magazine.publishedAt = new Date();
-    await magazine.save(); // save before notifying
-    
-    // Email subscribers
+    await magazine.save();
     notifySubscribersOfNewContent(magazine, 'magazine');
-    // Push + in‑app notifications
     const notifyResult = await notifyNewContent({ type: 'magazine', content: magazine });
     console.log('Magazine publish on update notification result:', notifyResult);
-    
     return res.json(magazine);
   }
   
@@ -286,11 +332,19 @@ const updateMagazine = asyncHandler(async (req, res) => {
   res.json(magazine);
 });
 
+// ==================== DELETE MAGAZINE (owner or admin) ====================
 const deleteMagazine = asyncHandler(async (req, res) => {
   const magazine = await Magazine.findById(req.params.id);
   if (!magazine) {
     res.status(404);
     throw new Error('Magazine not found');
+  }
+
+  const isAdmin = req.user.role === 'admin';
+  const isOwner = magazine.createdBy.toString() === req.user._id.toString();
+  if (!isOwner && !isAdmin) {
+    res.status(403);
+    throw new Error('Not authorized to delete this magazine');
   }
 
   const { v2: cloudinary } = await import('cloudinary');
@@ -316,8 +370,70 @@ const deleteMagazine = asyncHandler(async (req, res) => {
   res.json({ message: 'Magazine removed' });
 });
 
-// ==================== SOCIAL FEATURES ====================
+// ==================== REQUEST FEATURED (user) ====================
+const requestFeatured = asyncHandler(async (req, res) => {
+  const magazine = await Magazine.findById(req.params.id);
+  if (!magazine) {
+    res.status(404);
+    throw new Error('Magazine not found');
+  }
 
+  const isOwner = magazine.createdBy.toString() === req.user._id.toString();
+  if (!isOwner) {
+    res.status(403);
+    throw new Error('Only the creator can request featured status');
+  }
+
+  if (magazine.isFeatured) {
+    res.status(400);
+    throw new Error('Magazine is already featured');
+  }
+
+  magazine.featuredRequest = true;
+  magazine.featuredRequestAt = new Date();
+  await magazine.save();
+
+  res.json({ message: 'Featured request submitted. Admin will review it.', magazine });
+});
+
+// ==================== APPROVE FEATURED (admin only) ====================
+const approveFeatured = asyncHandler(async (req, res) => {
+  const magazine = await Magazine.findById(req.params.id);
+  if (!magazine) {
+    res.status(404);
+    throw new Error('Magazine not found');
+  }
+
+  if (!magazine.featuredRequest) {
+    res.status(400);
+    throw new Error('No pending featured request for this magazine');
+  }
+
+  magazine.isFeatured = true;
+  magazine.featuredRequest = false;
+  magazine.featuredAt = new Date();
+  magazine.featuredRequestAt = undefined;
+  await magazine.save();
+
+  res.json({ message: 'Magazine is now featured', magazine });
+});
+
+// ==================== TOGGLE FEATURED (admin only - direct) ====================
+const toggleFeatured = asyncHandler(async (req, res) => {
+  const magazine = await Magazine.findById(req.params.id);
+  if (!magazine) {
+    res.status(404);
+    throw new Error('Magazine not found');
+  }
+  magazine.isFeatured = !magazine.isFeatured;
+  if (magazine.isFeatured) magazine.featuredAt = new Date();
+  // Clear any pending request if being featured directly
+  if (magazine.isFeatured && magazine.featuredRequest) magazine.featuredRequest = false;
+  await magazine.save();
+  res.json({ message: `Magazine ${magazine.isFeatured ? 'featured' : 'unfeatured'}`, magazine });
+});
+
+// ==================== SOCIAL FEATURES ====================
 const likeMagazine = asyncHandler(async (req, res) => {
   const magazine = await Magazine.findById(req.params.id);
   if (!magazine) {
@@ -504,18 +620,6 @@ const getBookmarkedMagazines = asyncHandler(async (req, res) => {
   res.json(user.bookmarkedMagazines || []);
 });
 
-const toggleFeatured = asyncHandler(async (req, res) => {
-  const magazine = await Magazine.findById(req.params.id);
-  if (!magazine) {
-    res.status(404);
-    throw new Error('Magazine not found');
-  }
-  magazine.isFeatured = !magazine.isFeatured;
-  if (magazine.isFeatured) magazine.featuredAt = new Date();
-  await magazine.save();
-  res.json({ message: `Magazine ${magazine.isFeatured ? 'featured' : 'unfeatured'}`, magazine });
-});
-
 // ==================== STATS ====================
 const getMagazineStats = asyncHandler(async (req, res) => {
   const categories = await Magazine.distinct('category');
@@ -537,8 +641,11 @@ export {
   getMagazines,
   getMagazineBySlug,
   getMagazineById,
+  getUserMagazines,
   updateMagazine,
   deleteMagazine,
+  requestFeatured,
+  approveFeatured,
   toggleFeatured,
   likeMagazine,
   bookmarkMagazine,

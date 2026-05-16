@@ -8,7 +8,7 @@ import generateUserToken from "../utils/generateUserToken.js";
 import { OAuth2Client } from "google-auth-library";
 import { notifyFollowerEvent } from './notificationController.js';   // <-- new
 import bcrypt from 'bcryptjs';
-import { sendOTPEmail } from '../utils/sendOTPEmail.js'; // your email utility
+import { sendOTPEmail, sendPasswordResetEmail } from '../utils/sendOTPEmail.js'; // your email utility
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -694,6 +694,85 @@ const postMessage = asyncHandler(async (req, res, next) => {
   res.status(201).json(messages);
 });
 
+
+// @desc    Send OTP for password reset
+// @route   POST /api/users/forgot-password
+// @access  Public
+const forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    res.status(400);
+    throw new Error('Email is required');
+  }
+
+  const user = await User.findOne({ email });
+
+  // For security, always return same message even if email not found
+  if (!user) {
+    return res.status(200).json({ message: 'If that email exists, we have sent a reset code.' });
+  }
+
+  // Do not allow password reset for accounts that never set a password (e.g., pure Google)
+  if (!user.password || user.password.startsWith('google-auth-')) {
+    return res.status(400).json({ message: 'This account uses Google Sign-In. Please log in with Google.' });
+  }
+
+  // Generate 6-digit OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  user.resetPasswordOtp = otp;
+  user.resetPasswordExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+  await user.save();
+
+  // Send email (don't await – fire and forget to avoid delaying response)
+  sendPasswordResetEmail(user.email, otp).catch(err => console.error('Password reset email error:', err));
+
+  res.status(200).json({ message: 'Password reset code sent to your email.' });
+});
+
+// @desc    Reset password using OTP
+// @route   POST /api/users/reset-password
+// @access  Public
+const resetPassword = asyncHandler(async (req, res) => {
+  const { email, otp, newPassword } = req.body;
+
+  if (!email || !otp || !newPassword) {
+    res.status(400);
+    throw new Error('Email, OTP, and new password are required');
+  }
+
+  if (newPassword.length < 6) {
+    res.status(400);
+    throw new Error('Password must be at least 6 characters');
+  }
+
+  const user = await User.findOne({ email });
+  if (!user) {
+    res.status(404);
+    throw new Error('User not found');
+  }
+
+  // Check OTP existence and match
+  if (!user.resetPasswordOtp || user.resetPasswordOtp !== otp) {
+    res.status(400);
+    throw new Error('Invalid OTP');
+  }
+
+  // Check expiry
+  if (user.resetPasswordExpiry < new Date()) {
+    res.status(400);
+    throw new Error('OTP has expired. Please request a new one.');
+  }
+
+  // Update password (pre‑save hook will hash it)
+  user.password = newPassword;
+  user.resetPasswordOtp = undefined;
+  user.resetPasswordExpiry = undefined;
+  await user.save();
+
+  res.status(200).json({ message: 'Password reset successful. Please log in with your new password.' });
+});
+
 export {
   postMessage,
   googleAuth,
@@ -711,4 +790,6 @@ export {
   getFollowers,
   getFollowing,
   getUserSuggestions,
+  forgotPassword,
+  resetPassword,
 };

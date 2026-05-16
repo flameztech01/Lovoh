@@ -1,14 +1,12 @@
-// controllers/videoController.js - with push notification on publish
+// controllers/videoController.js – With ownership & user videos
 import asyncHandler from 'express-async-handler';
 import { v2 as cloudinary } from 'cloudinary';
 import Video from '../models/videoModel.js';
 import User from '../models/userModel.js';
 import streamifier from 'streamifier';
-import { notifyNewContent } from './notificationController.js';   // <-- push
+import { notifyNewContent } from './notificationController.js';
 
-// @desc    Upload video to Cloudinary
-// @route   POST /api/videos
-// @access  Private
+// ==================== CREATE VIDEO (upload) ====================
 const uploadVideo = asyncHandler(async (req, res) => {
   const { title, description, category, tags, isEducational } = req.body;
 
@@ -73,19 +71,16 @@ const uploadVideo = asyncHandler(async (req, res) => {
     authorProfile: req.user.profile || '',
     authorType: authorType,
     videoType: 'upload',
-    status: 'published',   // default
+    status: 'published',
   });
 
-  // Push + in-app notification for new video (must await to ensure delivery)
   const notifyResult = await notifyNewContent({ type: 'video', content: video });
   console.log('Video upload notification result:', notifyResult);
 
   res.status(201).json(video);
 });
 
-// @desc    Get all videos (with filters)
-// @route   GET /api/videos
-// @access  Public
+// ==================== GET ALL VIDEOS (public) ====================
 const getVideos = asyncHandler(async (req, res) => {
   const {
     category,
@@ -150,9 +145,41 @@ const getVideos = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Get video feed (following + recommended)
-// @route   GET /api/videos/feed
-// @access  Private
+// ==================== GET VIDEOS BY USER (public) ====================
+const getUserVideos = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 12 } = req.query;
+  const videos = await Video.find({ user: req.params.userId })
+    .populate('user', 'name username profile')
+    .sort('-createdAt')
+    .limit(limit * 1)
+    .skip((page - 1) * limit);
+  const count = await Video.countDocuments({ user: req.params.userId });
+  res.json({
+    videos,
+    page: Number(page),
+    pages: Math.ceil(count / limit),
+    total: count,
+  });
+});
+
+// ==================== GET LOGGED-IN USER'S OWN VIDEOS ====================
+const getMyVideos = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 12 } = req.query;
+  const videos = await Video.find({ user: req.user._id })
+    .populate('user', 'name username profile')
+    .sort('-createdAt')
+    .limit(limit * 1)
+    .skip((page - 1) * limit);
+  const count = await Video.countDocuments({ user: req.user._id });
+  res.json({
+    videos,
+    page: Number(page),
+    pages: Math.ceil(count / limit),
+    total: count,
+  });
+});
+
+// ==================== GET VIDEO FEED (following + educational) ====================
 const getFeedVideos = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10 } = req.query;
   const user = await User.findById(req.user._id);
@@ -184,9 +211,7 @@ const getFeedVideos = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Get single video
-// @route   GET /api/videos/:id
-// @access  Public
+// ==================== GET SINGLE VIDEO ====================
 const getVideoById = asyncHandler(async (req, res) => {
   const video = await Video.findById(req.params.id)
     .populate('user', 'name username profile followers following');
@@ -202,9 +227,65 @@ const getVideoById = asyncHandler(async (req, res) => {
   res.json(video);
 });
 
-// @desc    Delete video
-// @route   DELETE /api/videos/:id
-// @access  Private
+// ==================== UPDATE VIDEO (owner or admin) ====================
+const updateVideo = asyncHandler(async (req, res) => {
+  const video = await Video.findById(req.params.id);
+  if (!video) {
+    res.status(404);
+    throw new Error('Video not found');
+  }
+
+  const isAdmin = req.user.role === 'admin';
+  const isOwner = video.user.toString() === req.user._id.toString();
+  if (!isOwner && !isAdmin) {
+    res.status(403);
+    throw new Error('Not authorized to update this video');
+  }
+
+  const { title, description, category, tags, isEducational, youtubeUrl, youtubeId } = req.body;
+
+  if (title) video.title = title.trim();
+  if (description !== undefined) video.description = description;
+  if (category) video.category = category;
+  if (tags) video.tags = Array.isArray(tags) ? tags : tags.split(',').map(t => t.trim());
+  if (isEducational !== undefined) video.isEducational = isEducational;
+
+  if (video.videoType === 'youtube' && youtubeUrl) {
+    video.youtubeUrl = youtubeUrl;
+    if (youtubeId) video.youtubeId = youtubeId;
+
+    const thumbnailUrl = `https://img.youtube.com/vi/${youtubeId}/maxresdefault.jpg`;
+    const thumbnailCheck = await fetch(thumbnailUrl);
+    video.youtubeThumbnail = thumbnailCheck.ok ? thumbnailUrl : `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
+    video.thumbnail = video.youtubeThumbnail;
+
+    if (!title) {
+      try {
+        const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${youtubeId}&format=json`;
+        const response = await fetch(oembedUrl);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.title) video.title = data.title;
+        }
+      } catch (error) {
+        console.error('Error fetching YouTube title:', error);
+      }
+    }
+  }
+
+  await video.save();
+
+  res.json({
+    message: 'Video updated successfully',
+    video: {
+      ...video.toObject(),
+      _id: video._id.toString(),
+      user: video.user.toString(),
+    }
+  });
+});
+
+// ==================== DELETE VIDEO (owner or admin) ====================
 const deleteVideo = asyncHandler(async (req, res) => {
   const video = await Video.findById(req.params.id);
   if (!video) {
@@ -212,9 +293,11 @@ const deleteVideo = asyncHandler(async (req, res) => {
     throw new Error('Video not found');
   }
 
-  if (video.user.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+  const isAdmin = req.user.role === 'admin';
+  const isOwner = video.user.toString() === req.user._id.toString();
+  if (!isOwner && !isAdmin) {
     res.status(403);
-    throw new Error('Not authorized');
+    throw new Error('Not authorized to delete this video');
   }
 
   if (video.videoType === 'upload' && video.videoUrl) {
@@ -230,9 +313,7 @@ const deleteVideo = asyncHandler(async (req, res) => {
   res.json({ message: 'Video removed' });
 });
 
-// @desc    Like/unlike video
-// @route   POST /api/videos/:id/like
-// @access  Private
+// ==================== LIKE / UNLIKE VIDEO ====================
 const likeVideo = asyncHandler(async (req, res) => {
   const video = await Video.findById(req.params.id);
   if (!video) {
@@ -257,9 +338,7 @@ const likeVideo = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Add comment to video
-// @route   POST /api/videos/:id/comment
-// @access  Private
+// ==================== ADD COMMENT ====================
 const addComment = asyncHandler(async (req, res) => {
   const { text } = req.body;
   if (!text) {
@@ -290,9 +369,7 @@ const addComment = asyncHandler(async (req, res) => {
   res.status(201).json(newComment);
 });
 
-// @desc    Like a comment
-// @route   POST /api/videos/:id/comment/:commentId/like
-// @access  Private
+// ==================== LIKE COMMENT ====================
 const likeComment = asyncHandler(async (req, res) => {
   const video = await Video.findById(req.params.id);
   if (!video) {
@@ -323,9 +400,7 @@ const likeComment = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Delete comment
-// @route   DELETE /api/videos/:id/comment/:commentId
-// @access  Private
+// ==================== DELETE COMMENT (owner or admin) ====================
 const deleteComment = asyncHandler(async (req, res) => {
   const video = await Video.findById(req.params.id);
   if (!video) {
@@ -339,7 +414,9 @@ const deleteComment = asyncHandler(async (req, res) => {
     throw new Error('Comment not found');
   }
 
-  if (comment.user.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+  const isAdmin = req.user.role === 'admin';
+  const isOwner = comment.user.toString() === req.user._id.toString();
+  if (!isOwner && !isAdmin) {
     res.status(403);
     throw new Error('Not authorized');
   }
@@ -349,31 +426,7 @@ const deleteComment = asyncHandler(async (req, res) => {
   res.json({ message: 'Comment removed' });
 });
 
-// @desc    Get user's videos
-// @route   GET /api/videos/user/:userId
-// @access  Public
-const getUserVideos = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 12 } = req.query;
-
-  const videos = await Video.find({ user: req.params.userId })
-    .populate('user', 'name username profile')
-    .sort('-createdAt')
-    .limit(limit * 1)
-    .skip((page - 1) * limit);
-
-  const count = await Video.countDocuments({ user: req.params.userId });
-
-  res.json({
-    videos,
-    page: Number(page),
-    pages: Math.ceil(count / limit),
-    total: count,
-  });
-});
-
-// @desc    Post a YouTube video link
-// @route   POST /api/videos/youtube
-// @access  Private
+// ==================== POST YOUTUBE VIDEO ====================
 const postYoutubeVideo = asyncHandler(async (req, res) => {
   const { youtubeUrl, category, tags, isEducational } = req.body;
   if (!youtubeUrl) {
@@ -439,82 +492,25 @@ const postYoutubeVideo = asyncHandler(async (req, res) => {
     status: 'published',
   });
 
-  // Push + in-app notification for new YouTube video (must await to ensure delivery)
   const notifyResult = await notifyNewContent({ type: 'video', content: video });
   console.log('YouTube video notification result:', notifyResult);
 
   res.status(201).json(video);
 });
 
-// @desc    Update video details
-// @route   PUT /api/videos/:id
-// @access  Private (Admin or Video Owner)
-const updateVideo = asyncHandler(async (req, res) => {
-  const video = await Video.findById(req.params.id);
-  if (!video) {
-    res.status(404);
-    throw new Error('Video not found');
-  }
-
-  if (video.user.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
-    res.status(403);
-    throw new Error('Not authorized to update this video');
-  }
-
-  const { title, description, category, tags, isEducational, youtubeUrl, youtubeId } = req.body;
-
-  if (title) video.title = title.trim();
-  if (description !== undefined) video.description = description;
-  if (category) video.category = category;
-  if (tags) video.tags = Array.isArray(tags) ? tags : tags.split(',').map(t => t.trim());
-  if (isEducational !== undefined) video.isEducational = isEducational;
-
-  if (video.videoType === 'youtube' && youtubeUrl) {
-    video.youtubeUrl = youtubeUrl;
-    if (youtubeId) video.youtubeId = youtubeId;
-
-    const thumbnailUrl = `https://img.youtube.com/vi/${youtubeId}/maxresdefault.jpg`;
-    const thumbnailCheck = await fetch(thumbnailUrl);
-    video.youtubeThumbnail = thumbnailCheck.ok ? thumbnailUrl : `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
-    video.thumbnail = video.youtubeThumbnail;
-
-    if (!title) {
-      try {
-        const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${youtubeId}&format=json`;
-        const response = await fetch(oembedUrl);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.title) video.title = data.title;
-        }
-      } catch (error) {
-        console.error('Error fetching YouTube title:', error);
-      }
-    }
-  }
-
-  await video.save();
-
-  res.json({
-    message: 'Video updated successfully',
-    video: {
-      ...video.toObject(),
-      _id: video._id.toString(),
-      user: video.user.toString(),
-    }
-  });
-});
-
+// ==================== EXPORTS ====================
 export {
   uploadVideo,
   getVideos,
   getVideoById,
+  getUserVideos,
+  getMyVideos,
+  getFeedVideos,
+  updateVideo,
   deleteVideo,
   likeVideo,
   addComment,
   likeComment,
   deleteComment,
-  getUserVideos,
-  getFeedVideos,
   postYoutubeVideo,
-  updateVideo,
 };

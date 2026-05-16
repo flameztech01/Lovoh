@@ -1,21 +1,19 @@
-// slices/magApiSlice.js – aligned with refactored magRoutes (no subscription endpoints)
-import { apiSlice } from './apiSlice';
+// slices/magApiSlice.js – aligned with refactored magRoutes (including user magazines and featured requests)
+import { apiSlice } from "./apiSlice";
 
-const MAGAZINE_URL = '/magazine';
+const MAGAZINE_URL = "/magazine";
 
 export const magApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
     // ==================== PUBLIC ====================
 
-    // Get magazine stats
     getMagazineStats: builder.query({
       query: () => ({
         url: `${MAGAZINE_URL}/stats`,
       }),
-      providesTags: ['MagazineStats'],
+      providesTags: ["MagazineStats"],
     }),
 
-    // Get all magazines
     getMagazines: builder.query({
       query: (params) => ({
         url: MAGAZINE_URL,
@@ -23,148 +21,204 @@ export const magApiSlice = apiSlice.injectEndpoints({
           category: params?.category,
           featured: params?.featured,
           search: params?.search,
-          status: params?.status || 'published',
+          status: params?.status || "published",
           page: params?.page,
           limit: params?.limit,
         },
       }),
-      providesTags: ['Magazine'],
+      providesTags: ["Magazine"],
     }),
 
-    // Get single magazine by slug
     getMagazineBySlug: builder.query({
       query: (slug) => ({
         url: `${MAGAZINE_URL}/${slug}`,
       }),
-      providesTags: (result, error, slug) => [{ type: 'Magazine', id: slug }],
+      providesTags: (result, error, slug) => [{ type: "Magazine", id: slug }],
+    }),
+
+    // ==================== AUTHENTICATED (User specific) ====================
+
+    // Get magazines created by the currently logged‑in user
+    getMyMagazines: builder.query({
+      query: (params) => ({
+        url: `${MAGAZINE_URL}/my-magazines`,
+        params: {
+          page: params?.page,
+          limit: params?.limit,
+          status: params?.status, // ← ADD THIS LINE
+        },
+      }),
+      providesTags: ["MyMagazines"],
+    }),
+
+    // Get magazines by a specific user ID (public)
+    getUserMagazines: builder.query({
+      query: ({ userId, page, limit }) => ({
+        url: `${MAGAZINE_URL}/user/${userId}`,
+        params: { page, limit },
+      }),
+      providesTags: (result, error, { userId }) => [
+        { type: "UserMagazines", id: userId },
+      ],
     }),
 
     // ==================== SOCIAL (Protected) ====================
 
-    // Like/Unlike magazine
     likeMagazine: builder.mutation({
       query: (id) => ({
         url: `${MAGAZINE_URL}/${id}/like`,
-        method: 'POST',
+        method: "POST",
       }),
-      invalidatesTags: (result, error, id) => [{ type: 'Magazine', id }],
+      invalidatesTags: (result, error, id) => [{ type: "Magazine", id }],
     }),
 
-    // Bookmark/Unbookmark magazine
     bookmarkMagazine: builder.mutation({
       query: (id) => ({
-        url: `${MAGAZINE_URL}/${id}/bookmark`,
-        method: 'POST',
+        url: `${MAGAZURE_URL}/${id}/bookmark`,
+        method: "POST",
       }),
-      invalidatesTags: (result, error, id) => [{ type: 'Magazine', id }],
+      invalidatesTags: (result, error, id) => [{ type: "Magazine", id }],
     }),
 
-    // Add comment or reply
     addMagazineComment: builder.mutation({
       query: ({ id, text, parentCommentId }) => ({
         url: `${MAGAZINE_URL}/${id}/comment`,
-        method: 'POST',
+        method: "POST",
         body: { text, parentCommentId },
       }),
-      invalidatesTags: (result, error, { id }) => [{ type: 'Magazine', id }],
+      invalidatesTags: (result, error, { id }) => [{ type: "Magazine", id }],
     }),
 
-    // Like/Unlike comment or reply
     likeMagazineComment: builder.mutation({
       query: ({ id, commentId, replyId }) => ({
         url: `${MAGAZINE_URL}/${id}/comment/${commentId}/like`,
-        method: 'POST',
+        method: "POST",
         body: { replyId },
       }),
-      invalidatesTags: (result, error, { id }) => [{ type: 'Magazine', id }],
+      invalidatesTags: (result, error, { id }) => [{ type: "Magazine", id }],
     }),
 
-    // Delete comment or reply
     deleteMagazineComment: builder.mutation({
       query: ({ id, commentId, replyId }) => ({
         url: `${MAGAZINE_URL}/${id}/comment/${commentId}`,
-        method: 'DELETE',
+        method: "DELETE",
         body: { replyId },
       }),
-      invalidatesTags: (result, error, { id }) => [{ type: 'Magazine', id }],
+      invalidatesTags: (result, error, { id }) => [{ type: "Magazine", id }],
     }),
 
-    // Get user's bookmarked magazines
     getBookmarkedMagazines: builder.query({
       query: () => ({
         url: `${MAGAZINE_URL}/bookmarks/list`,
       }),
-      providesTags: ['BookmarkedMagazine'],
+      providesTags: ["BookmarkedMagazine"],
     }),
 
-    // ==================== ADMIN ====================
+    // ==================== FEATURED REQUESTS ====================
 
-    // Get magazine by ID
+    // User requests their magazine to be featured
+    requestFeaturedMagazine: builder.mutation({
+      query: (id) => ({
+        url: `${MAGAZINE_URL}/${id}/request-featured`,
+        method: "POST",
+      }),
+      invalidatesTags: (result, error, id) => [{ type: "Magazine", id }],
+    }),
+
+    // Admin approves a featured request
+    approveFeaturedMagazine: builder.mutation({
+      query: (id) => ({
+        url: `${MAGAZINE_URL}/${id}/approve-featured`,
+        method: "POST",
+      }),
+      invalidatesTags: (result, error, id) => [
+        { type: "Magazine", id },
+        "MagazineStats",
+      ],
+    }),
+
+    // ==================== ADMIN / OWNER CRUD ====================
+
     getMagazineById: builder.query({
       query: (id) => ({
         url: `${MAGAZINE_URL}/id/${id}`,
       }),
-      providesTags: (result, error, id) => [{ type: 'Magazine', id }],
+      providesTags: (result, error, id) => [{ type: "Magazine", id }],
     }),
 
-    // Create magazine
     createMagazine: builder.mutation({
       query: (data) => ({
         url: MAGAZINE_URL,
-        method: 'POST',
+        method: "POST",
         body: data,
       }),
-      invalidatesTags: ['Magazine', 'MagazineStats'],
+      invalidatesTags: ["Magazine", "MagazineStats", "MyMagazines"],
     }),
 
-    // Update magazine
     updateMagazine: builder.mutation({
       query: ({ id, data }) => ({
         url: `${MAGAZINE_URL}/${id}`,
-        method: 'PUT',
+        method: "PUT",
         body: data,
       }),
       invalidatesTags: (result, error, { id }) => [
-        { type: 'Magazine', id },
-        'Magazine',
-        'MagazineStats',
+        { type: "Magazine", id },
+        "Magazine",
+        "MagazineStats",
+        "MyMagazines",
       ],
     }),
 
-    // Delete magazine
     deleteMagazine: builder.mutation({
       query: (id) => ({
         url: `${MAGAZINE_URL}/${id}`,
-        method: 'DELETE',
+        method: "DELETE",
       }),
-      invalidatesTags: ['Magazine', 'MagazineStats', 'BookmarkedMagazine'],
+      invalidatesTags: [
+        "Magazine",
+        "MagazineStats",
+        "BookmarkedMagazine",
+        "MyMagazines",
+      ],
     }),
 
-    // Toggle featured
     toggleFeaturedMagazine: builder.mutation({
       query: (id) => ({
         url: `${MAGAZINE_URL}/${id}/featured`,
-        method: 'PUT',
+        method: "PUT",
       }),
       invalidatesTags: (result, error, id) => [
-        { type: 'Magazine', id },
-        'Magazine',
-        'MagazineStats',
+        { type: "Magazine", id },
+        "Magazine",
+        "MagazineStats",
       ],
     }),
   }),
 });
 
 export const {
+  // Public
   useGetMagazineStatsQuery,
   useGetMagazinesQuery,
   useGetMagazineBySlugQuery,
+
+  // User specific
+  useGetMyMagazinesQuery,
+  useGetUserMagazinesQuery,
+
+  // Social
   useLikeMagazineMutation,
   useBookmarkMagazineMutation,
   useAddMagazineCommentMutation,
   useLikeMagazineCommentMutation,
   useDeleteMagazineCommentMutation,
   useGetBookmarkedMagazinesQuery,
+
+  // Featured requests
+  useRequestFeaturedMagazineMutation,
+  useApproveFeaturedMagazineMutation,
+
+  // CRUD
   useGetMagazineByIdQuery,
   useCreateMagazineMutation,
   useUpdateMagazineMutation,

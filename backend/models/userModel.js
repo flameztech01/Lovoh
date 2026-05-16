@@ -92,6 +92,15 @@ const userSchema = mongoose.Schema(
       type: Date,
       default: null,
     },
+    // OTP fields for password reset
+    resetPasswordOtp: {
+      type: String,
+      default: null,
+    },
+    resetPasswordExpiry: {
+      type: Date,
+      default: null,
+    },
     paystackSubaccountCode: { type: String, default: "" },
     paystackRecipientCode: { type: String, default: "" },
     paystackAccountDetails: {

@@ -1,4 +1,4 @@
-// models/articleModel.js - Added comingSoon support
+// models/articleModel.js - Added comingSoon, featuredRequest, and featuredRequestAt
 import mongoose from 'mongoose';
 
 const replySchema = mongoose.Schema({
@@ -133,6 +133,12 @@ const articleSchema = mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // NEW: Featured request (user-initiated)
+    featuredRequest: {
+      type: Boolean,
+      default: false,
+    },
+    featuredRequestAt: Date,
   },
   { timestamps: true }
 );

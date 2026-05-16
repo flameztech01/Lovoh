@@ -1,4 +1,4 @@
-// models/magazineModel.js - Updated with comingSoon field and 'coming_soon' status
+// models/magazineModel.js - Updated with comingSoon, featuredRequest, and User reference
 import mongoose from 'mongoose';
 
 const replySchema = mongoose.Schema({
@@ -27,16 +27,18 @@ const magazineSchema = mongoose.Schema(
     author: { type: String, required: true },
     category: { type: String, required: true },
     tags: [String],
-    pdfUrl: { type: String, default: '' }, // now optional – can be empty for coming soon
+    pdfUrl: { type: String, default: '' },
     coverImage: { type: String, required: true },
     slug: { type: String, required: true, unique: true },
     views: { type: Number, default: 0 },
+    
     // Social features
     likes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     bookmarks: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     comments: [commentSchema],
     shares: { type: Number, default: 0 },
-    // Existing fields
+    
+    // Featured & status
     isFeatured: { type: Boolean, default: false },
     featuredAt: Date,
     status: { 
@@ -45,10 +47,17 @@ const magazineSchema = mongoose.Schema(
       default: 'draft' 
     },
     publishedAt: Date,
-    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin', required: true },
-    authorType: { type: String, enum: ['admin', 'user'], default: 'admin' },
-    // NEW: comingSoon flag – useful for frontend display
+    
+    // Creator information – now referencing User (both regular users and admins)
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    authorType: { type: String, enum: ['admin', 'user'], default: 'user' },
+    
+    // Coming soon flag
     comingSoon: { type: Boolean, default: false },
+    
+    // Featured request (user-initiated)
+    featuredRequest: { type: Boolean, default: false },
+    featuredRequestAt: Date,
   },
   { timestamps: true }
 );
