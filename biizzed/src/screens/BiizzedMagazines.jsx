@@ -1,9 +1,10 @@
-// screens/BiizzedMagazines.jsx - Social Media Style
+// screens/BiizzedMagazines.jsx – With Coming Soon section
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { 
   FaSpinner, FaEye, FaHeart, FaRegHeart, FaBookmark, FaRegBookmark,
   FaShare, FaFire, FaClock, FaDownload, FaUser, FaComment, FaNewspaper,
+  FaHourglassHalf,
 } from 'react-icons/fa';
 import { useGetMagazinesQuery, useLikeMagazineMutation, useBookmarkMagazineMutation } from '../slices/magApiSlice';
 import BiizzedArticlesNavbar from '../components/BiizzedArticlesNavbar';
@@ -24,8 +25,9 @@ const BiizzedMagazines = () => {
   const urlFeatured = searchParams.get('featured') === 'true';
   const urlSort = searchParams.get('sort') || '';
 
+  // Fetch both published and coming soon magazines
   const queryParams = {
-    status: 'published',
+    status: 'published,coming_soon',   // get both statuses
     page: currentPage,
     limit: 12,
   };
@@ -38,9 +40,13 @@ const BiizzedMagazines = () => {
 
   const { data: magazinesData, isLoading, isFetching } = useGetMagazinesQuery(queryParams);
 
-  const magazines = magazinesData?.magazines || [];
+  const allMagazines = magazinesData?.magazines || [];
   const totalPages = magazinesData?.pages || 1;
   const total = magazinesData?.total || 0;
+
+  // Split into published and coming soon
+  const publishedMagazines = allMagazines.filter(m => m.status !== 'coming_soon');
+  const comingSoonMagazines = allMagazines.filter(m => m.status === 'coming_soon');
 
   useEffect(() => {
     setCurrentPage(1);
@@ -79,7 +85,7 @@ const BiizzedMagazines = () => {
     try { await bookmarkMagazine(magazineId).unwrap(); } catch { toast.error('Failed to bookmark'); }
   };
 
-  if (isLoading && magazines.length === 0) {
+  if (isLoading && allMagazines.length === 0) {
     return (
       <div className="min-h-screen bg-gray-100">
         <BiizzedArticlesNavbar />
@@ -148,18 +154,60 @@ const BiizzedMagazines = () => {
           </div>
         )}
 
-        {/* Magazines Grid */}
-        {magazines.length === 0 ? (
+        {/* COMING SOON SECTION */}
+        {comingSoonMagazines.length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <FaHourglassHalf className="text-amber-500 text-lg" />
+              <h2 className="text-lg font-bold text-gray-900">Coming Soon</h2>
+              <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs rounded-full">
+                {comingSoonMagazines.length} issues
+              </span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {comingSoonMagazines.map((magazine) => (
+                <Link
+                  key={magazine._id}
+                  to={`/${magazine.slug}`}
+                  className="group bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-md transition-all"
+                >
+                  <div className="relative aspect-[3/4] overflow-hidden bg-gray-100">
+                    <img
+                      src={magazine.coverImage}
+                      alt={magazine.title}
+                      className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                    />
+                    {/* Coming Soon Badge */}
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[2px]">
+                      <span className="px-3 py-1.5 bg-amber-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1">
+                        <FaHourglassHalf className="text-[10px]" /> Coming Soon
+                      </span>
+                    </div>
+                  </div>
+                  <div className="p-2">
+                    <h3 className="text-xs font-semibold text-gray-800 line-clamp-2">{magazine.title}</h3>
+                    <p className="text-[10px] text-gray-500 mt-0.5">{magazine.author || 'Biizzed'}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Main Published Magazines Grid */}
+        {publishedMagazines.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-2xl">
             <FaNewspaper className="text-4xl text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500">No magazines found</p>
-            <button onClick={clearFilters} className="mt-4 text-[#1B3766] hover:underline text-sm">Clear filters</button>
+            <p className="text-gray-500">No published magazines found</p>
+            {comingSoonMagazines.length === 0 && (
+              <button onClick={clearFilters} className="mt-4 text-[#1B3766] hover:underline text-sm">Clear filters</button>
+            )}
           </div>
         ) : (
           <>
             {/* Desktop Grid */}
             <div className="hidden sm:grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-              {magazines.map((magazine) => (
+              {publishedMagazines.map((magazine) => (
                 <Link 
                   key={magazine._id}
                   to={`/${magazine.slug}`}
@@ -247,7 +295,7 @@ const BiizzedMagazines = () => {
 
             {/* Mobile List */}
             <div className="sm:hidden space-y-3">
-              {magazines.map((magazine) => (
+              {publishedMagazines.map((magazine) => (
                 <Link
                   key={magazine._id}
                   to={`/${magazine.slug}`}
@@ -281,8 +329,8 @@ const BiizzedMagazines = () => {
           </>
         )}
 
-        {/* Load More */}
-        {totalPages > currentPage && (
+        {/* Load More (only for published) */}
+        {totalPages > currentPage && publishedMagazines.length > 0 && (
           <div className="text-center mt-8">
             <button
               onClick={() => setCurrentPage(prev => prev + 1)}
@@ -293,11 +341,11 @@ const BiizzedMagazines = () => {
           </div>
         )}
 
-        {magazines.length > 0 && currentPage >= totalPages && (
+        {publishedMagazines.length > 0 && currentPage >= totalPages && (
           <div className="text-center py-8">
             <div className="inline-flex items-center gap-2 text-gray-400 text-sm">
               <div className="w-8 h-px bg-gray-300"></div>
-              You've seen all magazines
+              You've seen all published magazines
               <div className="w-8 h-px bg-gray-300"></div>
             </div>
           </div>

@@ -1,4 +1,4 @@
-// components/BiizzedHero.jsx - Always‑playing headlines ticker
+// components/BiizzedHero.jsx – Always‑playing headlines ticker + fallback to coming soon magazines
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -15,31 +15,55 @@ import {
   FaBookOpen,
   FaFileAlt,
   FaCompass,
-  // Removed FaPlay and FaPause
+  FaHourglassHalf,
 } from 'react-icons/fa';
 import { useGetMagazinesQuery, useGetMagazineStatsQuery } from '../slices/magApiSlice';
 
 const BiizzedHero = () => {
   const [currentHeadline, setCurrentHeadline] = useState(0);
   
+  // Fetch both published and coming soon magazines
   const { data: magazinesData, isLoading } = useGetMagazinesQuery({
-    status: 'published',
-    limit: 10
+    status: 'published,coming_soon',   // include coming soon for the right column fallback
+    limit: 20
   });
   
   const { data: statsData } = useGetMagazineStatsQuery();
 
-  const magazines = magazinesData?.magazines || [];
+  const allMagazines = magazinesData?.magazines || [];
 
-  const headlines = magazines.slice(0, 4).map(m => m.title) || [
+  // Separate featured and coming soon
+  const featuredMagazines = allMagazines.filter(m => m.isFeatured === true);
+  const comingSoonMagazines = allMagazines.filter(m => m.status === 'coming_soon');
+
+  // Build the display for the right column: up to 2 magazines, prioritize featured, then coming soon
+  let displayMagazines = [];
+  if (featuredMagazines.length >= 2) {
+    displayMagazines = featuredMagazines.slice(0, 2);
+  } else {
+    // Take all featured (1 or 0) and fill with coming soon
+    displayMagazines = [...featuredMagazines];
+    const needed = 2 - displayMagazines.length;
+    if (needed > 0 && comingSoonMagazines.length > 0) {
+      displayMagazines.push(...comingSoonMagazines.slice(0, needed));
+    }
+    // If still not enough, fallback to any published (non‑featured) magazine
+    if (displayMagazines.length < 2) {
+      const otherPublished = allMagazines.filter(m => m.status === 'published' && !m.isFeatured);
+      const moreNeeded = 2 - displayMagazines.length;
+      if (moreNeeded > 0 && otherPublished.length > 0) {
+        displayMagazines.push(...otherPublished.slice(0, moreNeeded));
+      }
+    }
+  }
+
+  // Headlines: use first 4 titles from any magazines (published or coming soon)
+  const headlines = allMagazines.slice(0, 4).map(m => m.title) || [
     "The Future of Business Innovation",
     "Leadership Strategies for Modern Enterprises",
     "Digital Transformation Trends",
     "Sustainable Business Practices"
   ];
-
-  const featuredMagazines = magazines.filter(m => m.isFeatured).slice(0, 2);
-  const displayMagazines = featuredMagazines.length >= 2 ? featuredMagazines : magazines.slice(0, 2);
 
   // Auto‑rotate headlines every 3 seconds – always playing
   useEffect(() => {
@@ -121,7 +145,7 @@ const BiizzedHero = () => {
               </p>
             </div>
 
-            {/* Breaking News Ticker - Always playing (no play/pause) */}
+            {/* Breaking News Ticker */}
             <div className="bg-gray-900 rounded-lg p-3">
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1.5">
@@ -142,13 +166,12 @@ const BiizzedHero = () => {
                     </div>
                   ))}
                 </div>
-                {/* No play/pause button */}
               </div>
               <div className="flex gap-1 mt-2 justify-end">
                 {headlines.map((_, index) => (
                   <button
                     key={index}
-                    onClick={() => setCurrentHeadline(index)}   // manual control – auto‑rotation continues
+                    onClick={() => setCurrentHeadline(index)}
                     className={`h-0.5 rounded-full transition-all ${
                       index === currentHeadline ? 'w-4 bg-[#1B3766]' : 'w-2 bg-white/30'
                     }`}
@@ -195,75 +218,93 @@ const BiizzedHero = () => {
             </div>
           </div>
 
-          {/* Right Column - Featured Magazines */}
+          {/* Right Column - Featured / Coming Soon Magazines */}
           <div className="grid grid-cols-2 gap-4">
-            {displayMagazines.map((magazine, index) => (
-              <Link
-                key={magazine._id || index}
-                to={`/${magazine.slug}`}
-                className="group block"
-              >
-                <div className="relative bg-white rounded-lg shadow-lg overflow-hidden border border-gray-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer">
-                  <div className="aspect-[3/4] overflow-hidden bg-gray-100 relative">
-                    {magazine.coverImage ? (
-                      <img 
-                        src={magazine.coverImage} 
-                        alt={magazine.title}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        onError={(e) => {
-                          e.target.src = 'https://placehold.co/300x400/1B3766/white?text=Biizzed';
-                          e.target.onerror = null;
-                        }}
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-[#1B3766] flex items-center justify-center">
-                        <span className="text-white text-lg font-bold">Biizzed</span>
-                      </div>
-                    )}
-                    
-                    {magazine.isFeatured && (
-                      <div className="absolute top-2 left-2 z-10">
-                        <span className="bg-[#1B3766] text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full shadow-lg flex items-center gap-0.5">
-                          <FaStar className="text-[6px]" />
-                          FEATURED
-                        </span>
-                      </div>
-                    )}
+            {displayMagazines.map((magazine, index) => {
+              const isComingSoon = magazine.status === 'coming_soon';
+              return (
+                <Link
+                  key={magazine._id || index}
+                  to={`/${magazine.slug}`}
+                  className="group block"
+                >
+                  <div className="relative bg-white rounded-lg shadow-lg overflow-hidden border border-gray-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer">
+                    <div className="aspect-[3/4] overflow-hidden bg-gray-100 relative">
+                      {magazine.coverImage ? (
+                        <img 
+                          src={magazine.coverImage} 
+                          alt={magazine.title}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          onError={(e) => {
+                            e.target.src = 'https://placehold.co/300x400/1B3766/white?text=Biizzed';
+                            e.target.onerror = null;
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-[#1B3766] flex items-center justify-center">
+                          <span className="text-white text-lg font-bold">Biizzed</span>
+                        </div>
+                      )}
+                      
+                      {/* Featured badge */}
+                      {magazine.isFeatured && (
+                        <div className="absolute top-2 left-2 z-10">
+                          <span className="bg-[#1B3766] text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full shadow-lg flex items-center gap-0.5">
+                            <FaStar className="text-[6px]" />
+                            FEATURED
+                          </span>
+                        </div>
+                      )}
 
-                    <div className="absolute inset-0 bg-[#1B3766]/0 group-hover:bg-[#1B3766]/30 transition-all duration-300 flex items-center justify-center">
-                      <span className="text-white font-semibold text-xs sm:text-sm opacity-0 group-hover:opacity-100 transition-all duration-300 bg-[#1B3766]/80 px-4 py-2 rounded-full transform scale-90 group-hover:scale-100">
-                        Read Now
-                      </span>
+                      {/* Coming Soon badge overlay */}
+                      {isComingSoon && (
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[2px]">
+                          <span className="px-3 py-1.5 bg-amber-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1">
+                            <FaHourglassHalf className="text-[10px]" /> Coming Soon
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Read Now overlay (only for published, not coming soon) */}
+                      {!isComingSoon && (
+                        <div className="absolute inset-0 bg-[#1B3766]/0 group-hover:bg-[#1B3766]/30 transition-all duration-300 flex items-center justify-center">
+                          <span className="text-white font-semibold text-xs sm:text-sm opacity-0 group-hover:opacity-100 transition-all duration-300 bg-[#1B3766]/80 px-4 py-2 rounded-full transform scale-90 group-hover:scale-100">
+                            Read Now
+                          </span>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                  
-                  <div className="p-3 bg-white">
-                    <h3 className="text-sm font-bold text-gray-900 mb-1 line-clamp-2 group-hover:text-[#1B3766] transition-colors">
-                      {magazine.title}
-                    </h3>
-                    <p className="text-xs text-gray-600 line-clamp-2 mb-2">
-                      {magazine.summary?.substring(0, 80) || 'Discover premium insights in this edition.'}
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-[10px] text-gray-400">
-                        <span className="flex items-center gap-0.5">
-                          <FaUser className="text-[8px]" />
-                          {magazine.author?.split(' ')[0] || 'Editor'}
-                        </span>
-                        <span className="flex items-center gap-0.5">
-                          <FaEye className="text-[8px]" />
-                          {magazine.views || 0}
+                    
+                    <div className="p-3 bg-white">
+                      <h3 className="text-sm font-bold text-gray-900 mb-1 line-clamp-2 group-hover:text-[#1B3766] transition-colors">
+                        {magazine.title}
+                      </h3>
+                      <p className="text-xs text-gray-600 line-clamp-2 mb-2">
+                        {magazine.summary?.substring(0, 80) || (isComingSoon ? 'Coming soon – stay tuned for this edition.' : 'Discover premium insights in this edition.')}
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                          <span className="flex items-center gap-0.5">
+                            <FaUser className="text-[8px]" />
+                            {magazine.author?.split(' ')[0] || 'Editor'}
+                          </span>
+                          {!isComingSoon && (
+                            <span className="flex items-center gap-0.5">
+                              <FaEye className="text-[8px]" />
+                              {magazine.views || 0}
+                            </span>
+                          )}
+                        </div>
+                        <span className="inline-flex items-center gap-1 text-[#1B3766] font-semibold text-[10px] group-hover:gap-1.5 transition-all">
+                          {isComingSoon ? 'Get Notified' : 'Read More'}
+                          <FaArrowRight className="text-[8px]" />
                         </span>
                       </div>
-                      <span className="inline-flex items-center gap-1 text-[#1B3766] font-semibold text-[10px] group-hover:gap-1.5 transition-all">
-                        Read More
-                        <FaArrowRight className="text-[8px]" />
-                      </span>
                     </div>
                   </div>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              );
+            })}
           </div>
         </div>
       </div>
