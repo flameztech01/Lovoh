@@ -1,4 +1,4 @@
-// adminScreen/AdminDashboard.jsx
+// adminScreen/AdminDashboard.jsx (without messages)
 import React, { useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -12,7 +12,6 @@ import {
   FaMousePointer,
   FaSpinner,
 } from 'react-icons/fa';
-import { useGetAllMessagesQuery } from '../slices/adminApiSlice';
 import { useGetMagazineStatsQuery } from '../slices/magApiSlice';
 import { useGetAdStatsQuery } from '../slices/adsApiSlice';
 import { useGetAllSubscribersQuery } from '../slices/subscribeApiSlice';
@@ -22,7 +21,6 @@ const AdminDashboard = () => {
   const { adminInfo } = useSelector((state) => state.auth);
 
   // Fetch data
-  const { data: messagesData, isLoading: messagesLoading } = useGetAllMessagesQuery();
   const { data: magazineStats, isLoading: magazineStatsLoading } = useGetMagazineStatsQuery();
   const { data: adStats, isLoading: adStatsLoading } = useGetAdStatsQuery();
   const { data: subscribersData, isLoading: subscribersLoading } = useGetAllSubscribersQuery({ page: 1, limit: 1 });
@@ -36,7 +34,7 @@ const AdminDashboard = () => {
 
   if (!adminInfo) return null;
 
-  const isLoading = messagesLoading || magazineStatsLoading || adStatsLoading || subscribersLoading;
+  const isLoading = magazineStatsLoading || adStatsLoading || subscribersLoading;
 
   // Stats cards data
   const stats = [
@@ -91,8 +89,6 @@ const AdminDashboard = () => {
     },
   ];
 
-  const recentMessages = messagesData?.slice(0, 5) || [];
-
   return (
     <div className="px-8 py-6">
       {/* Header */}
@@ -128,7 +124,7 @@ const AdminDashboard = () => {
             ))}
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             {stats.slice(4, 7).map((stat) => (
               <div
                 key={stat.title}
@@ -146,45 +142,6 @@ const AdminDashboard = () => {
                 </div>
               </div>
             ))}
-          </div>
-
-          {/* Recent Messages */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Recent Contact Messages</h2>
-              <button
-                onClick={() => navigate('/admin/messages')}
-                className="text-sm text-[#1B3766] hover:underline"
-              >
-                View all
-              </button>
-            </div>
-            {recentMessages.length === 0 ? (
-              <p className="text-gray-500 text-sm">No messages yet.</p>
-            ) : (
-              <div className="space-y-3">
-                {recentMessages.map((msg) => (
-                  <div
-                    key={msg._id}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer"
-                    onClick={() => navigate(`/admin/messages/${msg._id}`)}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {msg.name} - {msg.subject}
-                      </p>
-                      <p className="text-xs text-gray-500 truncate">{msg.email}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {new Date(msg.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                    {!msg.read && (
-                      <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         </>
       )}
