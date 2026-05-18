@@ -1,35 +1,30 @@
-// api/og.js — Vercel Edge Function
 export const config = { runtime: 'edge' };
 
-// Known non-content routes to skip
-const SKIP_PATHS = [
-  'feed', 'login', 'signup', 'profile', 'followers', 'videos', 'magazines', 
-  'articles', 'search', 'settings', 'notifications', 'create-video', 
-  'create-article', 'create-magazine', 'feed/resubscribe', 'admin',
-  'edit-article', 'edit-magazine', 'edit-video', 'user'
-];
+const API_URL = process.env.VITE_API_URL?.replace(/\/$/, '');
 
 export default async function handler(request) {
   const url = new URL(request.url);
   
-  // Skip static files and API
-  if (url.pathname.startsWith('/api') || 
-      url.pathname.startsWith('/assets') ||
-      /\.(js|css|svg|png|jpg|jpeg|gif|ico|woff|woff2|ttf|eot|json)$/.test(url.pathname)) {
+  // Pass through static assets
+  if (
+    url.pathname.startsWith('/assets') ||
+    url.pathname.startsWith('/static') ||
+    /\.(js|css|svg|png|jpg|jpeg|gif|ico|woff|woff2|ttf|eot|json|xml|txt|map)$/i.test(url.pathname)
+  ) {
     return fetch(request);
   }
 
-  const userAgent = request.headers.get('user-agent') || '';
-  const isBot = /facebookexternalhit|twitterbot|linkedinbot|whatsapp|googlebot|discordbot|slackbot|telegrambot/i.test(userAgent);
+  const ua = request.headers.get('user-agent') || '';
+  const isBot = /facebookexternalhit|twitterbot|linkedinbot|whatsapp|googlebot|discordbot|slackbot|telegrambot|bingbot/i.test(ua);
 
-  // Real users: serve the normal React app
+  // Humans: serve the React app
   if (!isBot) {
-    return fetch(request);
+    const res = await fetch(new URL('/index.html', url.origin));
+    const html = await res.text();
+    return new Response(html, { headers: { 'content-type': 'text/html' } });
   }
 
-  // Bots: fetch metadata and return HTML
-  const apiUrl = process.env.VITE_API_URL?.replace(/\/$/, '');
-  
+  // Bots: build meta tags
   let meta = {
     title: 'Biizzed - Discover & Connect',
     description: 'Articles, magazines, and videos from creators worldwide.',
@@ -38,102 +33,87 @@ export default async function handler(request) {
   };
 
   try {
-    // ARTICLES: /articles/:slug
     if (url.pathname.startsWith('/articles/')) {
       const slug = url.pathname.replace('/articles/', '');
-      // Skip if it's an edit route
       if (!slug.startsWith('edit-')) {
-        const res = await fetch(`${apiUrl}/api/articles/slug/${slug}`);
+        const res = await fetch(`${API_URL}/api/articles/slug/${slug}`);
         if (res.ok) {
-          const article = await res.json();
-          meta.title = article.title;
-          meta.description = (article.excerpt || article.summary || '').slice(0, 160);
-          meta.image = article.featuredImage || article.images?.[0] || meta.image;
+          const a = await res.json();
+          meta.title = a.title;
+          meta.description = (a.excerpt || a.summary || '').slice(0, 160);
+          meta.image = abs(a.featuredImage || a.images?.[0], url.origin);
         }
       }
-    } 
-    // VIDEOS: /videos/:id
+    }
     else if (url.pathname.startsWith('/videos/')) {
       const id = url.pathname.replace('/videos/', '');
       if (!id.startsWith('edit-')) {
-        const res = await fetch(`${apiUrl}/api/videos/${id}`);
+        const res = await fetch(`${API_URL}/api/videos/${id}`);
         if (res.ok) {
-          const video = await res.json();
-          meta.title = video.title;
-          meta.description = (video.description || '').slice(0, 160);
-          meta.image = video.thumbnail || meta.image;
+          const v = await res.json();
+          meta.title = v.title;
+          meta.description = (v.description || '').slice(0, 160);
+          meta.image = abs(v.thumbnail, url.origin);
         }
       }
     }
-    // USER PROFILE: /user/:userId
     else if (url.pathname.startsWith('/user/')) {
-      const userId = url.pathname.replace('/user/', '');
-      const res = await fetch(`${apiUrl}/api/users/${userId}`);
+      const id = url.pathname.replace('/user/', '');
+      const res = await fetch(`${API_URL}/api/users/${id}`);
       if (res.ok) {
-        const user = await res.json();
-        meta.title = `${user.name || user.username} on Biizzed`;
-        meta.description = `${user.name || user.username} - ${user.bio || 'Check out their profile on Biizzed'}`;
-        meta.image = user.profile || meta.image;
+        const u = await res.json();
+        meta.title = `${u.name || u.username} on Biizzed`;
+        meta.description = `${u.name || u.username} — ${u.bio || 'Check out their profile on Biizzed'}`;
+        meta.image = abs(u.profile, url.origin);
       }
     }
-    // MAGAZINES: /:slug (root level, but NOT known pages)
-    else {
-      const slug = url.pathname.slice(1); // remove leading /
-      const firstSegment = slug.split('/')[0];
-      
-      // Only try magazine fetch if it's not a known route
-      if (slug && !SKIP_PATHS.includes(firstSegment)) {
-        const res = await fetch(`${apiUrl}/api/magazine/${slug}`);
-        if (res.ok) {
-          const magazine = await res.json();
-          meta.title = magazine.title;
-          meta.description = (magazine.summary || '').slice(0, 160);
-          meta.image = magazine.coverImage || meta.image;
-        }
-      }
-    }
-  } catch (err) {
-    console.error('OG error:', err);
-  }
+  } catch (_) {}
 
   const html = `<!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8">
-  <title>${esc(meta.title)}</title>
-  <meta name="description" content="${esc(meta.description)}">
-  <meta property="og:title" content="${esc(meta.title)}">
-  <meta property="og:description" content="${esc(meta.description)}">
-  <meta property="og:image" content="${esc(meta.image)}">
-  <meta property="og:url" content="${esc(meta.url)}">
-  <meta property="og:type" content="article">
-  <meta property="og:site_name" content="Biizzed">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="${esc(meta.title)}">
-  <meta name="twitter:description" content="${esc(meta.description)}">
-  <meta name="twitter:image" content="${esc(meta.image)}">
-  <script>window.location.replace("${esc(meta.url)}");</script>
+<meta charset="utf-8">
+<title>${esc(meta.title)}</title>
+<meta name="description" content="${esc(meta.description)}">
+<meta property="og:title" content="${esc(meta.title)}">
+<meta property="og:description" content="${esc(meta.description)}">
+<meta property="og:image" content="${esc(meta.image)}">
+<meta property="og:image:secure_url" content="${esc(meta.image)}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:url" content="${esc(meta.url)}">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Biizzed">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${esc(meta.title)}">
+<meta name="twitter:description" content="${esc(meta.description)}">
+<meta name="twitter:image" content="${esc(meta.image)}">
 </head>
 <body>
-  <p>Loading ${esc(meta.title)}...</p>
+<h1>${esc(meta.title)}</h1>
+<p>${esc(meta.description)}</p>
 </body>
 </html>`;
 
   return new Response(html, {
     status: 200,
     headers: {
-      'Content-Type': 'text/html; charset=utf-8',
-      'Cache-Control': 'public, max-age=3600',
+      'content-type': 'text/html; charset=utf-8',
+      'cache-control': 'public, max-age=300, stale-while-revalidate=86400',
     },
   });
 }
 
-function esc(text) {
-  if (!text) return '';
-  return String(text)
+function abs(src, origin) {
+  if (!src) return `${origin}/default-og.jpg`;
+  if (src.startsWith('http')) return src;
+  return `${origin}${src.startsWith('/') ? '' : '/'}${src}`;
+}
+
+function esc(s) {
+  return String(s || '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
+    .replace(/"/g, '&quot;');
 }
