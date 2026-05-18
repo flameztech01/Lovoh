@@ -75,8 +75,10 @@ const BiizzedNotifications = () => {
     }
 
     // Navigate based on type
-    if (notif.type === 'article' || notif.type === 'magazine') {
-      navigate(`/${notif.data?.slug || ''}`);
+    if (notif.type === 'article') {
+      navigate(`/articles/${notif.data?.slug || ''}`);
+    } else if (notif.type === 'magazine'){
+      navigate(`/magazines/${notif.data?.slug || ''}`);
     } else if (notif.type === 'video') {
       navigate(`/videos/${notif.data?.contentId || ''}`);
     } else if (notif.type === 'follow' || notif.type === 'unfollow') {

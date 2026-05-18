@@ -1,4 +1,4 @@
-// screens/BiizzedArticleDetails.jsx - With Auth Modal & Modern Share
+// screens/BiizzedArticleDetails.jsx - With Auth Modal & Modern Share (Web + Mobile)
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -25,6 +25,9 @@ import BiizzedArticlesNavbar from '../components/BiizzedArticlesNavbar';
 import BiizzedBottomBar from '../components/BiizzedBottomBar';
 import { useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
+
+// ====== CONFIG ======
+const WEBSITE_URL = 'https://biizzed.lovohcreate.com';
 
 // ====== UTILS ======
 const toStr = (v) => {
@@ -84,11 +87,52 @@ const AuthModal = ({ isOpen, onClose }) => {
 // ====== MODERN SHARE MODAL ======
 const ShareModal = ({ isOpen, onClose, url, title }) => {
   if (!isOpen) return null;
+
+  const handleNativeShare = async () => {
+    try {
+      const { Share } = await import('@capacitor/share');
+      await Share.share({
+        title: title,
+        text: title,
+        url: url,
+      });
+    } catch (err) {
+      // Fallback to clipboard
+      try {
+        await navigator.clipboard.writeText(url);
+        toast.success('Link copied!');
+      } catch {
+        const textArea = document.createElement('textarea');
+        textArea.value = url;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        toast.success('Link copied!');
+      }
+    }
+    onClose();
+  };
+
   const shareLinks = [
     { name: 'X (Twitter)', icon: FaTwitter, color: 'bg-black', shareUrl: `https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}` },
     { name: 'Facebook', icon: FaFacebookF, color: 'bg-[#1877F2]', shareUrl: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}` },
     { name: 'WhatsApp', icon: FaWhatsapp, color: 'bg-[#25D366]', shareUrl: `https://wa.me/?text=${encodeURIComponent(title + ' ' + url)}` },
-    { name: 'Copy Link', icon: FaLink, color: 'bg-gray-600', shareUrl: null, onClick: () => { navigator.clipboard.writeText(url); toast.success('Link copied!'); onClose(); } },
+    { name: 'Copy Link', icon: FaLink, color: 'bg-gray-600', onClick: async () => {
+      try {
+        await navigator.clipboard.writeText(url);
+        toast.success('Link copied!');
+      } catch {
+        const textArea = document.createElement('textarea');
+        textArea.value = url;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        toast.success('Link copied!');
+      }
+      onClose();
+    }},
   ];
 
   return (
@@ -98,7 +142,16 @@ const ShareModal = ({ isOpen, onClose, url, title }) => {
           <FaTimes />
         </button>
         <h3 className="text-lg font-bold text-gray-900 mb-4">Share this article</h3>
-        <div className="flex justify-center gap-4">
+        
+        {/* Native share button for mobile */}
+        <button
+          onClick={handleNativeShare}
+          className="w-full mb-4 py-2.5 bg-[#1B3766] text-white rounded-xl text-sm font-medium hover:bg-[#142952] transition-colors flex items-center justify-center gap-2"
+        >
+          <FaShare /> Share via App
+        </button>
+
+        <div className="flex justify-around">
           {shareLinks.map((item) => (
             <button
               key={item.name}
@@ -265,14 +318,25 @@ const BiizzedArticleDetails = () => {
     setShowReplies(prev => ({ ...prev, [commentId]: !prev[commentId] }));
   };
 
+  // Updated share — uses WEBSITE_URL, works on web + mobile
   const handleShare = (platform) => {
-    const url = window.location.href;
+    const url = `${WEBSITE_URL}/articles/${slug}`;
     const title = article?.title || '';
     switch (platform) {
       case 'twitter': window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}`, '_blank'); break;
       case 'facebook': window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank'); break;
       case 'whatsapp': window.open(`https://wa.me/?text=${encodeURIComponent(title + ' ' + url)}`, '_blank'); break;
-      case 'copy': navigator.clipboard.writeText(url); toast.success('Link copied!'); break;
+      case 'copy': 
+        navigator.clipboard.writeText(url).then(() => toast.success('Link copied!')).catch(() => {
+          const textArea = document.createElement('textarea');
+          textArea.value = url;
+          document.body.appendChild(textArea);
+          textArea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textArea);
+          toast.success('Link copied!');
+        });
+        break;
     }
   };
 
@@ -289,11 +353,11 @@ const BiizzedArticleDetails = () => {
     let paragraphs = [];
 
     if (hasHtmlTags) {
-      const pMatches = content.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
+      const pMatches = content.match(/<<p[^>]*>([\s\S]*?)<<\/p>/gi);
       if (pMatches && pMatches.length > 1) {
-        paragraphs = pMatches.map(match => match.replace(/<p[^>]*>/i, '').replace(/<\/p>/i, ''));
+        paragraphs = pMatches.map(match => match.replace(/<<p[^>]*>/i, '').replace(/<<\/p>/i, ''));
       } else {
-        content = content.replace(/<br\s*\/?>/gi, '\n').replace(/<\/div>\s*<div[^>]*>/gi, '\n\n');
+        content = content.replace(/<<br\s*\/?>/gi, '\n').replace(/<<\/div>\s*<<div[^>]*>/gi, '\n\n');
         paragraphs = content.split(/\n\s*\n/);
       }
     } else {
@@ -364,7 +428,7 @@ const BiizzedArticleDetails = () => {
     );
   }
 
-  const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
+  const shareUrl = `${WEBSITE_URL}/articles/${slug}`;
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -490,7 +554,6 @@ const BiizzedArticleDetails = () => {
                     <FaRegComment className="text-[#1B3766]" /> Comments ({article.comments?.length || 0})
                   </h3>
 
-                  {/* Comment input - always visible, but submit triggers auth modal if not logged in */}
                   <form onSubmit={handleAddComment} className="mb-6">
                     {replyTo && (
                       <div className="flex items-center gap-2 mb-2 text-xs text-gray-500">
@@ -583,7 +646,7 @@ const BiizzedArticleDetails = () => {
             </article>
           </main>
 
-          {/* Right Sidebar - Modern Share Icons */}
+          {/* Right Sidebar */}
           <aside className="hidden lg:block w-[320px] flex-shrink-0">
             <div className="fixed top-[120px] w-[320px] h-[calc(100vh-140px)] overflow-y-auto space-y-4 pb-8 no-scrollbar">
               {/* Share Section - Modern circular icons */}
@@ -605,7 +668,7 @@ const BiizzedArticleDetails = () => {
                 </div>
               </div>
 
-              {/* Related Articles (unchanged) */}
+              {/* Related Articles */}
               {relatedArticles.length > 0 && (
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
                   <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Related Articles</h3>
@@ -632,7 +695,7 @@ const BiizzedArticleDetails = () => {
                 </div>
               )}
 
-              {/* Author Info (unchanged) */}
+              {/* Author Info */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 text-center">
                 {authorProfile ? (
                   <img src={authorProfile} alt="" className="w-14 h-14 rounded-full object-cover mx-auto mb-2" />

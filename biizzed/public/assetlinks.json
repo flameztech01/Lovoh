@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.biizzed.app",
+      "sha256_cert_fingerprints": [
+        "78:E0:41:54:2A:F2:D3:71:08:AC:93:0E:8B:7F:EC:D3:44:40:6F:40:CA:A0:9F:05:AD:3E:C1:44:6A:73:43:74"
+      ]
+    }
+  }
+]

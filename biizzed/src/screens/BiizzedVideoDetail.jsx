@@ -1,4 +1,4 @@
-// screens/BiizzedVideoDetail.jsx – Full rewrite with pre‑roll ads
+// screens/BiizzedVideoDetail.jsx – Full rewrite with pre‑roll ads & Capacitor share
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -27,6 +27,9 @@ import BiizzedArticlesNavbar from '../components/BiizzedArticlesNavbar';
 import BiizzedBottomBar from '../components/BiizzedBottomBar';
 import { useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
+
+// ====== CONFIG ======
+const WEBSITE_URL = 'https://biizzed.lovohcreate.com';
 
 const BiizzedVideoDetail = () => {
   const { id } = useParams();
@@ -245,10 +248,31 @@ const BiizzedVideoDetail = () => {
     try { await deleteComment({ id, commentId }).unwrap(); refetchVideo(); } catch { toast.error('Failed'); }
   };
 
-  const handleShare = () => {
-    const url = window.location.href;
-    navigator.clipboard.writeText(url);
-    toast.success('Link copied!');
+  // ========== CAPACITOR SHARE (same as Articles & Feed) ==========
+  const handleShare = async () => {
+    const url = `${WEBSITE_URL}/videos/${id}`;
+    try {
+      const { Share } = await import('@capacitor/share');
+      await Share.share({
+        title: video.title,
+        text: video.title,
+        url: url,
+      });
+    } catch (err) {
+      // Fallback: browser clipboard or manual copy
+      try {
+        await navigator.clipboard.writeText(url);
+        toast.success('Link copied!');
+      } catch {
+        const textArea = document.createElement('textarea');
+        textArea.value = url;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        toast.success('Link copied!');
+      }
+    }
   };
 
   const getRelatedThumbnail = (v) => {

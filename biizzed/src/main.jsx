@@ -1,10 +1,12 @@
 // main.jsx (Biizzed only) – Fixed routing order, catch‑all * at the end
-import { StrictMode } from "react";
+import { StrictMode, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { Provider } from "react-redux";
-import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, Navigate, useNavigate } from "react-router-dom";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { Analytics } from "@vercel/analytics/react";
+import { Capacitor } from "@capacitor/core";
+import { App } from "@capacitor/app";
 import store from "./store.js";
 import "./index.css";
 
@@ -52,13 +54,29 @@ import PrivateAdminRoute from "./adminComponents/PrivateAdminRoute.jsx";
 import usePushNotifications from "./hooks/usePushNotifications";
 
 // Detect if running in Capacitor native app
-const isNativeApp = () => {
-  return window.Capacitor !== undefined || 
-         /Capacitor/.test(navigator.userAgent) ||
-         (typeof window !== 'undefined' && window.AndroidBridge !== undefined);
-};
+const native = Capacitor.isNativePlatform();
 
-const native = isNativeApp();
+// ==================== DEEP LINK HANDLER ====================
+function DeepLinkHandler() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!native) return;
+
+    const handleAppUrlOpen = (event) => {
+      const url = new URL(event.url);
+      navigate(url.pathname + url.search);
+    };
+
+    App.addListener('appUrlOpen', handleAppUrlOpen);
+
+    return () => {
+      App.removeAllListeners();
+    };
+  }, [navigate]);
+
+  return null;
+}
 
 // ==================== ROUTES ====================
 const router = createBrowserRouter([
@@ -149,11 +167,19 @@ const AppWithNotifications = () => {
   return <RouterProvider router={router} />;
 };
 
+// Wrap with DeepLinkHandler
+const AppWithDeepLinks = () => (
+  <>
+    <DeepLinkHandler />
+    <AppWithNotifications />
+  </>
+);
+
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <Provider store={store}>
       <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-        <AppWithNotifications />
+        <AppWithDeepLinks />
         <Analytics />
       </GoogleOAuthProvider>
     </Provider>

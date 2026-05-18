@@ -1,4 +1,4 @@
-// screens/MagazineStoryDetail.jsx – With Auth Modal for login prompts (comment input always visible)
+// screens/MagazineStoryDetail.jsx – With Auth Modal and Capacitor share
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
@@ -16,6 +16,9 @@ import BiizzedBottomBar from '../components/BiizzedBottomBar';
 import * as pdfjsLib from 'pdfjs-dist';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
+
+// ====== CONFIG ======
+const WEBSITE_URL = 'https://biizzed.lovohcreate.com';
 
 // ====== AUTH MODAL ======
 const AuthModal = ({ isOpen, onClose }) => {
@@ -82,6 +85,33 @@ const MagazineStoryDetail = () => {
       return false;
     }
     return true;
+  };
+
+  // ====== Capacitor Share (same pattern as Articles/Feed/Video) ======
+  const handleShare = async () => {
+    const url = `${WEBSITE_URL}/${slug}`;
+    try {
+      const { Share } = await import('@capacitor/share');
+      await Share.share({
+        title: magazine?.title || 'Magazine',
+        text: magazine?.title || 'Check out this magazine on Biizzed',
+        url: url,
+      });
+    } catch (err) {
+      // Fallback: browser clipboard or manual copy
+      try {
+        await navigator.clipboard.writeText(url);
+        toast.success('Link copied!');
+      } catch {
+        const textArea = document.createElement('textarea');
+        textArea.value = url;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        toast.success('Link copied!');
+      }
+    }
   };
 
   // ====== ALL useEffect HOOKS MUST BE HERE, BEFORE ANY CONDITIONAL RETURNS ======
@@ -201,17 +231,6 @@ const MagazineStoryDetail = () => {
     try { await deleteComment({ id: magazine._id, commentId }).unwrap(); refetch(); } catch {}
   };
 
-  const handleShare = async (platform) => {
-    const url = window.location.href;
-    const title = magazine?.title || '';
-    switch (platform) {
-      case 'twitter': window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}`); break;
-      case 'facebook': window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`); break;
-      case 'linkedin': window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`); break;
-      case 'copy': navigator.clipboard.writeText(url); setCopied(true); toast.success('Link copied!'); setTimeout(() => setCopied(false), 2000); break;
-    }
-  };
-
   const handleDownload = async () => {
     if (!magazine?.pdfUrl || isComingSoon) return;
     setDownloading(true);
@@ -287,7 +306,7 @@ const MagazineStoryDetail = () => {
                 <button onClick={handleBookmark} className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 rounded-full text-xs font-medium hover:bg-gray-200 transition-colors">
                   {isBookmarked ? <FaBookmark className="text-[#1B3766]" /> : <FaRegBookmark />} Save
                 </button>
-                <button onClick={() => handleShare('copy')} className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 rounded-full text-xs font-medium hover:bg-gray-200 transition-colors">
+                <button onClick={handleShare} className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 rounded-full text-xs font-medium hover:bg-gray-200 transition-colors">
                   <FaShare /> Share
                 </button>
               </div>
@@ -312,7 +331,7 @@ const MagazineStoryDetail = () => {
               <button onClick={handleBookmark} className="px-6 py-2.5 bg-white/10 backdrop-blur-sm text-white rounded-full text-sm font-medium hover:bg-white/20 transition-colors">
                 <FaBookmark className="inline mr-2" /> Notify Me
               </button>
-              <button onClick={() => handleShare('copy')} className="px-6 py-2.5 bg-white/10 backdrop-blur-sm text-white rounded-full text-sm font-medium hover:bg-white/20 transition-colors">
+              <button onClick={handleShare} className="px-6 py-2.5 bg-white/10 backdrop-blur-sm text-white rounded-full text-sm font-medium hover:bg-white/20 transition-colors">
                 <FaShare className="inline mr-2" /> Share
               </button>
             </div>

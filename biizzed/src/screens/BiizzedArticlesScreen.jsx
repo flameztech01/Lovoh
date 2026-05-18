@@ -47,6 +47,9 @@ import BiizzedBottomBar from "../components/BiizzedBottomBar";
 import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
 
+// ====== CONFIG ======
+const WEBSITE_URL = 'https://biizzed.lovohcreate.com';
+
 // ====== UTILS ======
 const toStr = (v) => {
   if (v === null || v === undefined) return "";
@@ -342,16 +345,35 @@ const BiizzedArticlesScreen = () => {
     }
   };
 
-  const handleShare = (article, e) => {
+  // Updated share — works on web + mobile, uses WEBSITE_URL
+  const handleShare = async (article, e) => {
     e.preventDefault();
     e.stopPropagation();
-    const url = `${window.location.origin}/articles/${article.slug}`;
-    if (navigator.share) {
-      navigator.share({ title: article.title, url });
-    } else {
-      navigator.clipboard
-        .writeText(url)
-        .then(() => toast.success("Link copied!"));
+    
+    const url = `${WEBSITE_URL}/articles/${article.slug}`;
+    
+    try {
+      // Try native share first (mobile app)
+      const { Share } = await import('@capacitor/share');
+      await Share.share({
+        title: article.title,
+        text: article.title,
+        url: url,
+      });
+    } catch (err) {
+      // Fallback: browser clipboard or manual copy
+      try {
+        await navigator.clipboard.writeText(url);
+        toast.success("Link copied!");
+      } catch {
+        const textArea = document.createElement('textarea');
+        textArea.value = url;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        toast.success("Link copied!");
+      }
     }
   };
 
@@ -536,7 +558,7 @@ const BiizzedArticlesScreen = () => {
                 </div>
               ))}
 
-              {/* People You May Know – keep as is */}
+              {/* People You May Know */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
                   People You May Know
@@ -827,7 +849,6 @@ const BiizzedArticlesScreen = () => {
                                 </div>
                               )}
                             </Link>
-                            {/* vertical line (only between articles, not after ads) */}
                             {idx < itemsWithAds.length - 1 && (
                               <div className="w-[2px] flex-1 bg-gray-200 mt-2" />
                             )}
@@ -978,10 +999,10 @@ const BiizzedArticlesScreen = () => {
             )}
           </main>
 
-          {/* Right Sidebar – unchanged */}
+          {/* Right Sidebar */}
           <aside className="hidden xl:block w-[280px] flex-shrink-0">
             <div className="fixed top-[120px] w-[280px] h-[calc(100vh-140px)] overflow-y-auto space-y-4 pb-8 no-scrollbar">
-              {/* People You May Know – keep as is */}
+              {/* People You May Know */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
                   People You May Know

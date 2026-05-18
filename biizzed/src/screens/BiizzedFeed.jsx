@@ -1,4 +1,4 @@
-// screens/BiizzedFeed.jsx – Full code with Auth Modal (popup) for login prompts
+// screens/BiizzedFeed.jsx – Full code with Auth Modal and Capacitor share
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -29,6 +29,9 @@ import BiizzedArticlesNavbar from '../components/BiizzedArticlesNavbar';
 import BiizzedBottomBar from '../components/BiizzedBottomBar';
 import { useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
+
+// ========== CONFIG ==========
+const WEBSITE_URL = 'https://biizzed.lovohcreate.com';
 
 // ========== UTILS ==========
 const toStr = (v) => {
@@ -337,6 +340,35 @@ const BiizzedFeed = () => {
     if (dir === 'prev' && featIdx > 0) setFeatIdx(i => i - 1);
   };
 
+  // Capacitor share handler (same as BiizzedArticlesScreen)
+  const handleShare = async (item, e, path) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const url = `${WEBSITE_URL}${path}`;
+    try {
+      const { Share } = await import('@capacitor/share');
+      await Share.share({
+        title: item.title,
+        text: item.title,
+        url: url,
+      });
+    } catch (err) {
+      // Fallback: browser clipboard or manual copy
+      try {
+        await navigator.clipboard.writeText(url);
+        toast.success('Link copied!');
+      } catch {
+        const textArea = document.createElement('textarea');
+        textArea.value = url;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        toast.success('Link copied!');
+      }
+    }
+  };
+
   // Ad handlers
   const handleAdClick = (ad, e) => {
     e.preventDefault(); e.stopPropagation();
@@ -620,9 +652,9 @@ const BiizzedFeed = () => {
                 const bm = isB(itemObj);
                 const admin = isAdmin(itemObj);
                 const yt = isYouTube(itemObj);
-                if (itemObj.type === 'magazine') return <MBC key={`m-${itemObj._id}`} item={itemObj} idx={idx} total={items.length} ld={ld} bm={bm} fmtD={fmtD} doLike={doLike} doBook={doBook} />;
-                if (itemObj.type === 'video') return <VC key={`v-${itemObj._id}`} item={itemObj} idx={idx} total={items.length} aid={aid} aname={aname} aprof={aprof} f={f} own={own} admin={admin} yt={yt} ld={ld} fmtD={fmtD} fmtDur={fmtDur} doLike={doLike} doFollow={doFollow} />;
-                return <AC key={`a-${itemObj._id}`} item={itemObj} idx={idx} total={items.length} aid={aid} aname={aname} aprof={aprof} f={f} own={own} admin={admin} ld={ld} bm={bm} fmtD={fmtD} getImg={getImg} doLike={doLike} doBook={doBook} doFollow={doFollow} />;
+                if (itemObj.type === 'magazine') return <MBC key={`m-${itemObj._id}`} item={itemObj} idx={idx} total={items.length} ld={ld} bm={bm} fmtD={fmtD} doLike={doLike} doBook={doBook} handleShare={handleShare} />;
+                if (itemObj.type === 'video') return <VC key={`v-${itemObj._id}`} item={itemObj} idx={idx} total={items.length} aid={aid} aname={aname} aprof={aprof} f={f} own={own} admin={admin} yt={yt} ld={ld} fmtD={fmtD} fmtDur={fmtDur} doLike={doLike} doFollow={doFollow} handleShare={handleShare} />;
+                return <AC key={`a-${itemObj._id}`} item={itemObj} idx={idx} total={items.length} aid={aid} aname={aname} aprof={aprof} f={f} own={own} admin={admin} ld={ld} bm={bm} fmtD={fmtD} getImg={getImg} doLike={doLike} doBook={doBook} doFollow={doFollow} handleShare={handleShare} />;
               })}
             </div>
 
@@ -633,7 +665,7 @@ const BiizzedFeed = () => {
             </div>
           </main>
 
-          {/* Right Sidebar (unchanged) */}
+          {/* Right Sidebar */}
           <aside className="hidden xl:block w-[280px] flex-shrink-0">
             <div className="fixed top-[120px] w-[280px] h-[calc(100vh-140px)] overflow-y-auto space-y-4 pb-8 no-scrollbar">
               {/* People You May Know */}
@@ -691,7 +723,7 @@ const BiizzedFeed = () => {
   );
 };
 
-// ====== FEATURED ARTICLE CARD (unchanged) ======
+// ====== FEATURED ARTICLE CARD ======
 const FAC = ({ item, fmtD, getImg, getLD, isB, doLike, doBook }) => {
   const { liked, count } = getLD(item);
   const n = item.author || 'Editorial';
@@ -719,7 +751,7 @@ const FAC = ({ item, fmtD, getImg, getLD, isB, doLike, doBook }) => {
   );
 };
 
-// ====== FEATURED MAGAZINE CARD (unchanged) ======
+// ====== FEATURED MAGAZINE CARD ======
 const FMC = ({ item, fmtD, getLD, isB, doLike, doBook }) => {
   const { liked, count } = getLD(item);
   return (
@@ -744,8 +776,9 @@ const FMC = ({ item, fmtD, getLD, isB, doLike, doBook }) => {
   );
 };
 
-// ====== ARTICLE CARD (unchanged) ======
-const AC = ({ item, idx, total, aid, aname, aprof, f, own, admin, ld, bm, fmtD, getImg, doLike, doBook, doFollow }) => {
+// ====== ARTICLE CARD ======
+const AC = ({ item, idx, total, aid, aname, aprof, f, own, admin, ld, bm, fmtD, getImg, doLike, doBook, doFollow, handleShare }) => {
+  const sharePath = `/articles/${item.slug}`;
   return (
     <article className="border-b border-gray-200 hover:bg-gray-50/50 transition-colors cursor-pointer">
       <Link to={`/articles/${item.slug}`} className="block">
@@ -769,7 +802,7 @@ const AC = ({ item, idx, total, aid, aname, aprof, f, own, admin, ld, bm, fmtD, 
             <h2 className="text-[17px] font-semibold text-gray-900 mb-1">{item.title}</h2>
             {item.excerpt && <p className="text-[15px] text-gray-500 line-clamp-2 mb-2">{item.excerpt}</p>}
             <div className="mb-3 rounded-2xl overflow-hidden border border-gray-200"><img src={getImg(item)} alt="" className="w-full h-auto max-h-[500px] object-cover" onError={e=>e.target.src='/placeholder-article.jpg'}/></div>
-            <AB item={item} ld={ld} bm={bm} doLike={doLike} doBook={doBook} shareUrl={`/articles/${item.slug}`} />
+            <AB item={item} ld={ld} bm={bm} doLike={doLike} doBook={doBook} handleShare={handleShare} sharePath={sharePath} />
           </div>
         </div>
       </Link>
@@ -777,31 +810,35 @@ const AC = ({ item, idx, total, aid, aname, aprof, f, own, admin, ld, bm, fmtD, 
   );
 };
 
-// ====== MAGAZINE CARD (unchanged) ======
-const MBC = ({ item, idx, total, ld, bm, fmtD, doLike, doBook }) => (
-  <article className="border-b border-gray-200 hover:bg-gray-50/50 transition-colors cursor-pointer">
-    <Link to={`/${item.slug}`} className="block">
-      <div className="flex">
-        <div className="flex flex-col items-center w-[48px] pt-3 px-2"><div className="w-10 h-10 rounded-full bg-purple-600 text-white flex items-center justify-center"><FaBookOpen/></div>{idx < total - 1 && <div className="w-[2px] flex-1 bg-gray-200 mt-2"/>}</div>
-        <div className="flex-1 pt-3 pr-3 pb-3">
-          <div className="flex items-center gap-1.5 mb-2"><span className="font-bold text-gray-900 text-[15px]">{item.author||'Editorial'}</span><span className="text-gray-500">·</span><span className="text-gray-500 text-[15px]">{fmtD(item.createdAt)}</span><span className="ml-auto px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-bold rounded-full">MAGAZINE</span></div>
-          <h2 className="text-[17px] font-semibold text-gray-900 mb-3">{item.title}</h2>
-          <div className="mb-3 flex justify-center gap-0">
-            <div className="w-3 h-[200px] sm:h-[260px] bg-gradient-to-r from-gray-300 to-gray-400 rounded-l-sm"/><div className="w-[45%] h-[200px] sm:h-[260px] bg-white rounded-r-md shadow-xl overflow-hidden flex flex-col border border-gray-200">{item.coverImage ? <img src={item.coverImage} alt="" className="w-full h-[65%] object-cover"/> : <div className="w-full h-[65%] bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center"><FaBookOpen className="text-4xl text-white/50"/></div>}<div className="flex-1 p-2 flex flex-col justify-between"><h3 className="text-xs font-bold text-gray-900 line-clamp-2">{item.title}</h3></div></div><div className="w-[6%] h-[190px] sm:h-[250px] bg-gray-100 rounded-r-sm shadow-md -ml-1 border border-gray-200"/>
+// ====== MAGAZINE CARD ======
+const MBC = ({ item, idx, total, ld, bm, fmtD, doLike, doBook, handleShare }) => {
+  const sharePath = `/${item.slug}`;
+  return (
+    <article className="border-b border-gray-200 hover:bg-gray-50/50 transition-colors cursor-pointer">
+      <Link to={`/${item.slug}`} className="block">
+        <div className="flex">
+          <div className="flex flex-col items-center w-[48px] pt-3 px-2"><div className="w-10 h-10 rounded-full bg-purple-600 text-white flex items-center justify-center"><FaBookOpen/></div>{idx < total - 1 && <div className="w-[2px] flex-1 bg-gray-200 mt-2"/>}</div>
+          <div className="flex-1 pt-3 pr-3 pb-3">
+            <div className="flex items-center gap-1.5 mb-2"><span className="font-bold text-gray-900 text-[15px]">{item.author||'Editorial'}</span><span className="text-gray-500">·</span><span className="text-gray-500 text-[15px]">{fmtD(item.createdAt)}</span><span className="ml-auto px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-bold rounded-full">MAGAZINE</span></div>
+            <h2 className="text-[17px] font-semibold text-gray-900 mb-3">{item.title}</h2>
+            <div className="mb-3 flex justify-center gap-0">
+              <div className="w-3 h-[200px] sm:h-[260px] bg-gradient-to-r from-gray-300 to-gray-400 rounded-l-sm"/><div className="w-[45%] h-[200px] sm:h-[260px] bg-white rounded-r-md shadow-xl overflow-hidden flex flex-col border border-gray-200">{item.coverImage ? <img src={item.coverImage} alt="" className="w-full h-[65%] object-cover"/> : <div className="w-full h-[65%] bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center"><FaBookOpen className="text-4xl text-white/50"/></div>}<div className="flex-1 p-2 flex flex-col justify-between"><h3 className="text-xs font-bold text-gray-900 line-clamp-2">{item.title}</h3></div></div><div className="w-[6%] h-[190px] sm:h-[250px] bg-gray-100 rounded-r-sm shadow-md -ml-1 border border-gray-200"/>
+            </div>
+            <AB item={item} ld={ld} bm={bm} doLike={doLike} doBook={doBook} handleShare={handleShare} sharePath={sharePath} />
           </div>
-          <AB item={item} ld={ld} bm={bm} doLike={doLike} doBook={doBook} shareUrl={`/${item.slug}`} />
         </div>
-      </div>
-    </Link>
-  </article>
-);
+      </Link>
+    </article>
+  );
+};
 
-// ====== VIDEO CARD WITH AUTO-PLAY (unchanged) ======
-const VC = ({ item, idx, total, aid, aname, aprof, f, own, admin, yt, ld, fmtD, fmtDur, doLike, doFollow }) => {
+// ====== VIDEO CARD WITH AUTO-PLAY ======
+const VC = ({ item, idx, total, aid, aname, aprof, f, own, admin, yt, ld, fmtD, fmtDur, doLike, doFollow, handleShare }) => {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
   const [isMuted, setIsMuted] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
+  const sharePath = `/videos/${item._id}`;
 
   useEffect(() => {
     if (yt) return;
@@ -883,7 +920,7 @@ const VC = ({ item, idx, total, aid, aname, aprof, f, own, admin, yt, ld, fmtD, 
               )}
               {!yt && fmtDur(item.duration) && (<div className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black/80 text-white text-xs rounded">{fmtDur(item.duration)}</div>)}
             </div>
-            <AB item={item} ld={ld} doLike={doLike} shareUrl={`/videos/${item._id}`} yt={yt} />
+            <AB item={item} ld={ld} doLike={doLike} sharePath={sharePath} handleShare={handleShare} yt={yt} />
           </div>
         </div>
       </Link>
@@ -891,14 +928,9 @@ const VC = ({ item, idx, total, aid, aname, aprof, f, own, admin, yt, ld, fmtD, 
   );
 };
 
-// ====== ACTION BAR (unchanged) ======
-const AB = ({ item, ld, bm, doLike, doBook, shareUrl, yt }) => {
-  const handleShare = (e) => {
-    e.preventDefault(); e.stopPropagation();
-    const url = `${window.location.origin}${shareUrl}`;
-    if (navigator.share) navigator.share({ title: item.title, url });
-    else navigator.clipboard.writeText(url).then(() => toast.success('Link copied!'));
-  };
+// ====== ACTION BAR ======
+// Uses the same Capacitor share function as BiizzedArticlesScreen
+const AB = ({ item, ld, bm, doLike, doBook, handleShare, sharePath, yt }) => {
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-1">
@@ -914,7 +946,11 @@ const AB = ({ item, ld, bm, doLike, doBook, shareUrl, yt }) => {
           <FaEye className="text-sm" />
           <span className="text-[13px] font-medium">{item.views || 0}</span>
         </div>
-        <button onClick={handleShare} className="group flex items-center gap-1.5 px-3 py-2 rounded-full text-gray-500 hover:text-[#1B3766] hover:bg-[#1B3766]/5 transition-colors">
+        {/* Share button using Capacitor + fallback */}
+        <button
+          onClick={(e) => handleShare(item, e, sharePath)}
+          className="group flex items-center gap-1.5 px-3 py-2 rounded-full text-gray-500 hover:text-[#1B3766] hover:bg-[#1B3766]/5 transition-colors"
+        >
           <FaPaperPlane className="text-sm" />
         </button>
         {doBook && (
