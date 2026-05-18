@@ -5,6 +5,16 @@ import tailwindcss from '@tailwindcss/vite';
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  
+  // Build output for Capacitor
+  build: {
+    outDir: 'dist',
+    sourcemap: true,
+  },
+  
+  // Critical for Capacitor: relative paths so assets load on mobile
+  base: './',
+  
   server: {
     host: true,
     port: 1000,
@@ -16,7 +26,4 @@ export default defineConfig({
       }
     }
   },
-  
 })
-
-

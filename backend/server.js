@@ -42,6 +42,8 @@ app.use(cors({
         'https://biizzed.lovohcreate.com',
         'https://uduua.lovohcreate.com',
         'https://eventroom.lovohcreate.com',
+        'https://localhost',
+        'capacitor://localhost',
     ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],

@@ -1,0 +1,8 @@
+{
+  "appId": "com.biizzed.app",
+  "appName": "Biizzed",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}

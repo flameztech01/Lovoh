@@ -2,7 +2,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { Provider } from "react-redux";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { Analytics } from "@vercel/analytics/react";
 import store from "./store.js";
@@ -51,6 +51,15 @@ import PrivateAdminRoute from "./adminComponents/PrivateAdminRoute.jsx";
 // Push notifications hook
 import usePushNotifications from "./hooks/usePushNotifications";
 
+// Detect if running in Capacitor native app
+const isNativeApp = () => {
+  return window.Capacitor !== undefined || 
+         /Capacitor/.test(navigator.userAgent) ||
+         (typeof window !== 'undefined' && window.AndroidBridge !== undefined);
+};
+
+const native = isNativeApp();
+
 // ==================== ROUTES ====================
 const router = createBrowserRouter([
   // Redirect /biizzed to homepage (optional, kept for compatibility)
@@ -61,7 +70,8 @@ const router = createBrowserRouter([
     path: "/",
     element: <BiizzedLayout />,
     children: [
-      { index: true, element: <BiizzedScreen /> },
+      // Web: homepage at / | Native app: redirect to /feed
+      { index: true, element: native ? <Navigate to="/feed" replace /> : <BiizzedScreen /> },
       { path: "login", element: <BiizzedLogin /> },
       { path: "signup", element: <BiizzedSignup /> },
       { path: "feed", element: <BiizzedFeed /> },
