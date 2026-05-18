@@ -34,7 +34,7 @@ import BiizzedSettings from "./screens/BiizzedSettings.jsx";
 import BiizzedNotifications from "./screens/BiizzedNotifications.jsx";
 import NotFound from "./screens/NotFound.jsx";
 
-// Admin screens (will be created step by step)
+// Admin screens
 import AdminLogin from "./adminScreen/AdminLogin.jsx";
 import AdminDashboard from "./adminScreen/AdminDashboard.jsx";
 import AdminAds from "./adminScreen/AdminAds.jsx";
@@ -53,11 +53,10 @@ import usePushNotifications from "./hooks/usePushNotifications";
 
 // ==================== ROUTES ====================
 const router = createBrowserRouter([
-  // Public /biizzed entry (maybe redundant, kept for compatibility)
+  // Public /biizzed entry (kept for compatibility)
   { path: "/biizzed", element: <BiizzedScreen /> },
-  { path: "*", element: <NotFound /> },
 
-  // Main Biizzed routes (no admin prefix)
+  // Main Biizzed routes
   {
     path: "/",
     element: <BiizzedLayout />,
@@ -66,6 +65,7 @@ const router = createBrowserRouter([
       { path: "login", element: <BiizzedLogin /> },
       { path: "signup", element: <BiizzedSignup /> },
       { path: "feed", element: <BiizzedFeed /> },
+      { path: "feed/resubscribe", element: <BiizzedResubscribeScreen /> },
       { path: "create-video", element: <BiizzedCreateVideo /> },
       { path: "edit-video/:id", element: <BiizzedEditVideo /> },
       { path: "create-article", element: <BiizzedCreateArticle /> },
@@ -79,15 +79,27 @@ const router = createBrowserRouter([
       { path: "magazines", element: <BiizzedMagazines /> },
       { path: "articles", element: <BiizzedArticlesScreen /> },
       { path: "articles/:slug", element: <BiizzedArticleDetails /> },
-      { path: ":slug", element: <MagazineStoryDetail /> },
       { path: "search", element: <BiizzedSearch /> },
-      { path: "feed/resubscribe", element: <BiizzedResubscribeScreen /> },
       { path: "settings", element: <BiizzedSettings /> },
       { path: "notifications", element: <BiizzedNotifications /> },
+      
+      // Magazine slug — MUST be after all other specific routes
+      // Only matches valid slug patterns (alphanumeric, hyphens, no slashes)
+      { path: ":slug", element: <MagazineStoryDetail />, 
+        loader: ({ params }) => {
+          // Optional: validate slug format here
+          const isValidSlug = /^[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(params.slug);
+          if (!isValidSlug) throw new Response("Not Found", { status: 404 });
+          return null;
+        }
+      },
+      
+      // True 404 catch-all — MUST be last
+      { path: "*", element: <NotFound /> },
     ],
   },
 
-  // Admin routes (protected by PrivateAdminRoute)
+  // Admin routes
   {
     path: "/admin",
     element: <PrivateAdminRoute />,
@@ -109,8 +121,11 @@ const router = createBrowserRouter([
     ],
   },
 
-  // Admin login (no layout, standalone)
+  // Admin login
   { path: "/admin/login", element: <AdminLogin /> },
+
+  // Global 404 — catches everything outside /
+  { path: "*", element: <NotFound /> },
 ]);
 
 const GOOGLE_CLIENT_ID =

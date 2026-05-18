@@ -1,4 +1,4 @@
-// screens/BiizzedFeed.jsx – Full code with sidebar slider & inline ads
+// screens/BiizzedFeed.jsx – Full code with Auth Modal (popup) for login prompts
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -8,7 +8,7 @@ import {
   FaNewspaper, FaBookOpen, FaVideo, FaPlus, FaPlay, FaVolumeMute, FaVolumeUp,
   FaCheck, FaCheckCircle, FaStar, FaArrowRight, FaBolt, FaArrowUp,
   FaChevronLeft, FaChevronRight, FaYoutube, FaPaperPlane, FaExternalLinkAlt,
-  FaEnvelope, FaAd,
+  FaEnvelope, FaAd, FaTimes,
 } from 'react-icons/fa';
 import { useGetArticlesQuery, useLikeArticleMutation, useBookmarkArticleMutation } from '../slices/articlesApiSlice';
 import { useGetMagazinesQuery, useLikeMagazineMutation, useBookmarkMagazineMutation } from '../slices/magApiSlice';
@@ -47,6 +47,44 @@ const extractId = (v) => {
   return toStr(v);
 };
 
+// ====== AUTH MODAL ======
+const AuthModal = ({ isOpen, onClose }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl relative animate-fadeInUp">
+        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+          <FaTimes />
+        </button>
+        <div className="text-center mb-6">
+          <div className="w-16 h-16 bg-[#1B3766]/10 rounded-full flex items-center justify-center mx-auto mb-3">
+            <FaUser className="text-[#1B3766] text-2xl" />
+          </div>
+          <h3 className="text-xl font-bold text-gray-900">Join the Conversation</h3>
+          <p className="text-sm text-gray-500 mt-1">Sign in to like, bookmark, and follow creators</p>
+        </div>
+        <div className="space-y-3">
+          <Link
+            to="/login"
+            className="block w-full py-2.5 bg-[#1B3766] text-white rounded-xl text-center font-medium hover:bg-[#142952] transition-colors"
+          >
+            Login
+          </Link>
+          <Link
+            to="/signup"
+            className="block w-full py-2.5 border border-gray-200 text-gray-700 rounded-xl text-center font-medium hover:bg-gray-50 transition-colors"
+          >
+            Create Account
+          </Link>
+        </div>
+        <p className="text-center text-xs text-gray-400 mt-4">
+          By continuing, you agree to Biizzed's Terms of Service.
+        </p>
+      </div>
+    </div>
+  );
+};
+
 const BiizzedFeed = () => {
   const { userInfo } = useSelector((state) => state.auth);
   const { data: profileData } = useGetProfileInfoQuery(undefined, { skip: !userInfo?._id });
@@ -62,6 +100,8 @@ const BiizzedFeed = () => {
   const [featIdx, setFeatIdx] = useState(0);
   const touchS = useRef(0);
   const touchE = useRef(0);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
 
   // Ads
   const { data: inlineAdsData } = useGetAdsQuery({ page: 'biizzed', placement: 'inline', limit: 10 });
@@ -208,10 +248,20 @@ const BiizzedFeed = () => {
 
   const isYouTube = (item) => item?.videoType === 'youtube';
 
-  // Interaction handlers
+  // Auth‑guarded actions
+  const requireAuth = (actionName) => {
+    if (!myId) {
+      setPendingAction(actionName);
+      setShowAuthModal(true);
+      return false;
+    }
+    return true;
+  };
+
+  // Interaction handlers with modal
   const doLike = async (item, e) => {
     e.preventDefault(); e.stopPropagation();
-    if (!myId) { toast.info('Login'); return; }
+    if (!requireAuth('like')) return;
     const k = `${item.type}-${extractId(item._id)}`;
     const cl = (item.likes || []).some(l => extractId(l) === myId);
     const cc = item.likesCount || (item.likes || []).length;
@@ -225,7 +275,7 @@ const BiizzedFeed = () => {
 
   const doBook = async (item, e) => {
     e.preventDefault(); e.stopPropagation();
-    if (!myId) { toast.info('Login'); return; }
+    if (!requireAuth('bookmark')) return;
     const k = `${item.type}-${extractId(item._id)}`;
     const cb = (item.bookmarks || []).some(b => extractId(b) === myId);
     setOptBookmarks(p => ({ ...p, [k]: !(p[k] ?? cb) }));
@@ -237,7 +287,7 @@ const BiizzedFeed = () => {
 
   const doFollow = async (uid, name, e) => {
     e.preventDefault(); e.stopPropagation();
-    if (!myId) { toast.info('Login'); return; }
+    if (!requireAuth('follow')) return;
     const tid = extractId(uid);
     if (!tid || tid === '' || tid === 'undefined' || tid === 'null') return;
     if (tid === myId) return;
@@ -634,8 +684,9 @@ const BiizzedFeed = () => {
           </aside>
         </div>
       </div>
+      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
       <BiizzedBottomBar />
-      <style>{`.no-scrollbar::-webkit-scrollbar{display:none}.no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}.line-clamp-2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}`}</style>
+      <style>{`.no-scrollbar::-webkit-scrollbar{display:none}.no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}.line-clamp-2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}@keyframes fadeInUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}.animate-fadeInUp{animation:fadeInUp 0.28s ease-out}`}</style>
     </div>
   );
 };

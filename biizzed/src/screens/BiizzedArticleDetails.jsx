@@ -1,14 +1,15 @@
-// screens/BiizzedArticleDetails.jsx - Optimized with Modern Icons, Action Bar & Enhanced Social Meta Tags
+// screens/BiizzedArticleDetails.jsx - With Auth Modal & Modern Share
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import {
   FaArrowLeft, FaEye,
-  FaTwitter, FaFacebookF, FaLinkedinIn, FaLink,
+  FaTwitter, FaFacebookF, FaWhatsapp, FaLink,
   FaBookmark, FaRegBookmark, FaHeart, FaRegHeart,
   FaSpinner, FaRegComment, FaShare, FaUser, FaReply,
   FaTrashAlt, FaChevronUp, FaChevronDown,
   FaPaperPlane, FaCheck, FaPlus, FaCheckCircle,
+  FaTimes,
 } from 'react-icons/fa';
 import {
   useGetArticleBySlugQuery,
@@ -42,6 +43,84 @@ const extractId = (v) => {
   return toStr(v);
 };
 
+// ====== AUTH MODAL ======
+const AuthModal = ({ isOpen, onClose }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl relative animate-fadeInUp">
+        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+          <FaTimes />
+        </button>
+        <div className="text-center mb-6">
+          <div className="w-16 h-16 bg-[#1B3766]/10 rounded-full flex items-center justify-center mx-auto mb-3">
+            <FaUser className="text-[#1B3766] text-2xl" />
+          </div>
+          <h3 className="text-xl font-bold text-gray-900">Join the Conversation</h3>
+          <p className="text-sm text-gray-500 mt-1">Sign in to like, comment, and follow creators</p>
+        </div>
+        <div className="space-y-3">
+          <Link
+            to="/login"
+            className="block w-full py-2.5 bg-[#1B3766] text-white rounded-xl text-center font-medium hover:bg-[#142952] transition-colors"
+          >
+            Login
+          </Link>
+          <Link
+            to="/signup"
+            className="block w-full py-2.5 border border-gray-200 text-gray-700 rounded-xl text-center font-medium hover:bg-gray-50 transition-colors"
+          >
+            Create Account
+          </Link>
+        </div>
+        <p className="text-center text-xs text-gray-400 mt-4">
+          By continuing, you agree to Biizzed's Terms of Service.
+        </p>
+      </div>
+    </div>
+  );
+};
+
+// ====== MODERN SHARE MODAL ======
+const ShareModal = ({ isOpen, onClose, url, title }) => {
+  if (!isOpen) return null;
+  const shareLinks = [
+    { name: 'X (Twitter)', icon: FaTwitter, color: 'bg-black', shareUrl: `https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}` },
+    { name: 'Facebook', icon: FaFacebookF, color: 'bg-[#1877F2]', shareUrl: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}` },
+    { name: 'WhatsApp', icon: FaWhatsapp, color: 'bg-[#25D366]', shareUrl: `https://wa.me/?text=${encodeURIComponent(title + ' ' + url)}` },
+    { name: 'Copy Link', icon: FaLink, color: 'bg-gray-600', shareUrl: null, onClick: () => { navigator.clipboard.writeText(url); toast.success('Link copied!'); onClose(); } },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl relative animate-fadeInUp">
+        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+          <FaTimes />
+        </button>
+        <h3 className="text-lg font-bold text-gray-900 mb-4">Share this article</h3>
+        <div className="flex justify-center gap-4">
+          {shareLinks.map((item) => (
+            <button
+              key={item.name}
+              onClick={() => {
+                if (item.shareUrl) {
+                  window.open(item.shareUrl, '_blank');
+                } else if (item.onClick) {
+                  item.onClick();
+                }
+                onClose();
+              }}
+              className={`w-12 h-12 ${item.color} rounded-full flex items-center justify-center text-white hover:opacity-80 transition-all transform hover:scale-110`}
+            >
+              <item.icon className="text-xl" />
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const BiizzedArticleDetails = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
@@ -54,6 +133,9 @@ const BiizzedArticleDetails = () => {
   const [commentText, setCommentText] = useState('');
   const [replyTo, setReplyTo] = useState(null);
   const [showReplies, setShowReplies] = useState({});
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
   
   // Optimistic state
   const [optLikes, setOptLikes] = useState(null);
@@ -85,7 +167,6 @@ const BiizzedArticleDetails = () => {
   const authorProfile = article?.authorId?.profile || null;
   const isOwn = myId && authorId ? myId === authorId : false;
   
-  // Admin check
   const isAdmin = () => {
     const at = article?.authorType;
     if (!at) return false;
@@ -105,19 +186,27 @@ const BiizzedArticleDetails = () => {
     if (!date) return '';
     const now = new Date();
     const d = new Date(date);
-    const diffMs = now - d;
-    const diffMins = Math.floor(diffMs / 60000);
+    const diffMins = Math.floor((now - d) / 60000);
     if (diffMins < 60) return `${diffMins}m ago`;
-    const diffHours = Math.floor(diffMs / 3600000);
+    const diffHours = Math.floor(diffMins / 60);
     if (diffHours < 24) return `${diffHours}h ago`;
-    const diffDays = Math.floor(diffMs / 86400000);
+    const diffDays = Math.floor(diffHours / 24);
     if (diffDays < 7) return `${diffDays}d ago`;
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
-  // Optimistic handlers
+  // Auth-guarded actions
+  const requireAuth = (action) => {
+    if (!userInfo) {
+      setPendingAction(action);
+      setShowAuthModal(true);
+      return false;
+    }
+    return true;
+  };
+
   const handleLike = async () => {
-    if (!myId) { toast.info('Login to like articles'); return; }
+    if (!requireAuth('like')) return;
     const cl = (article.likes || []).some(l => extractId(l) === myId);
     const cc = article.likesCount || (article.likes || []).length;
     setOptLikes({ liked: !cl, count: cc + (cl ? -1 : 1) });
@@ -126,7 +215,7 @@ const BiizzedArticleDetails = () => {
   };
 
   const handleBookmark = async () => {
-    if (!myId) { toast.info('Login to bookmark'); return; }
+    if (!requireAuth('bookmark')) return;
     const cb = (article.bookmarks || []).some(b => extractId(b) === myId);
     setOptBookmark(!cb);
     try { await bookmarkArticle(article._id).unwrap(); refetch(); } 
@@ -135,7 +224,7 @@ const BiizzedArticleDetails = () => {
 
   const handleFollowToggle = async (e) => {
     e.preventDefault();
-    if (!myId) { toast.info('Login to follow'); return; }
+    if (!requireAuth('follow')) return;
     const cf = followingList.some(f => extractId(f) === authorId);
     setOptFollow(!cf);
     try {
@@ -151,7 +240,7 @@ const BiizzedArticleDetails = () => {
 
   const handleAddComment = async (e) => {
     e.preventDefault();
-    if (!myId) { toast.info('Login to comment'); return; }
+    if (!requireAuth('comment')) return;
     if (!commentText.trim()) return;
     try {
       await addComment({ id: article._id, text: commentText, parentCommentId: replyTo }).unwrap();
@@ -163,7 +252,7 @@ const BiizzedArticleDetails = () => {
   };
 
   const handleLikeComment = async (commentId, replyId) => {
-    if (!myId) { toast.info('Login to like'); return; }
+    if (!requireAuth('likeComment')) return;
     try { await likeComment({ id: article._id, commentId, replyId }).unwrap(); refetch(); } catch { toast.error('Failed'); }
   };
 
@@ -182,7 +271,7 @@ const BiizzedArticleDetails = () => {
     switch (platform) {
       case 'twitter': window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}`, '_blank'); break;
       case 'facebook': window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank'); break;
-      case 'linkedin': window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`, '_blank'); break;
+      case 'whatsapp': window.open(`https://wa.me/?text=${encodeURIComponent(title + ' ' + url)}`, '_blank'); break;
       case 'copy': navigator.clipboard.writeText(url); toast.success('Link copied!'); break;
     }
   };
@@ -282,8 +371,6 @@ const BiizzedArticleDetails = () => {
       <Helmet>
         <title>{article.title} | Biizzed</title>
         <meta name="description" content={article.excerpt} />
-
-        {/* Open Graph / Facebook */}
         <meta property="og:type" content="article" />
         <meta property="og:title" content={article.title} />
         <meta property="og:description" content={article.excerpt} />
@@ -293,8 +380,6 @@ const BiizzedArticleDetails = () => {
         <meta property="og:image:height" content="630" />
         <meta property="og:url" content={shareUrl} />
         <meta property="og:site_name" content="Biizzed" />
-
-        {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={article.title} />
         <meta name="twitter:description" content={article.excerpt} />
@@ -358,7 +443,6 @@ const BiizzedArticleDetails = () => {
 
                 {/* Modern Action Bar */}
                 <div className="flex items-center justify-between py-3 border-t border-b border-gray-100 mb-6">
-                  {/* Left side - Actions */}
                   <div className="flex items-center gap-1">
                     <button onClick={handleLike} className={`group flex items-center gap-1.5 px-3 py-2 rounded-full transition-colors ${isLiked ? 'text-red-500 bg-red-50' : 'text-gray-500 hover:text-red-500 hover:bg-red-50'}`}>
                       {isLiked ? <FaHeart className="text-sm" /> : <FaRegHeart className="text-sm" />}
@@ -375,8 +459,9 @@ const BiizzedArticleDetails = () => {
                       <span className="text-[13px] font-medium">{article.views || 0}</span>
                     </div>
 
-                    <button onClick={() => handleShare('copy')} className="group flex items-center gap-1.5 px-3 py-2 rounded-full text-gray-500 hover:text-[#1B3766] hover:bg-[#1B3766]/5 transition-colors">
-                      <FaPaperPlane className="text-sm" />
+                    {/* Share button - opens modern share modal */}
+                    <button onClick={() => setShowShareModal(true)} className="group flex items-center gap-1.5 px-3 py-2 rounded-full text-gray-500 hover:text-[#1B3766] hover:bg-[#1B3766]/5 transition-colors">
+                      <FaShare className="text-sm" />
                     </button>
 
                     <button onClick={handleBookmark} className={`group flex items-center gap-1.5 px-3 py-2 rounded-full transition-colors ${isBookmarked ? 'text-[#1B3766] bg-[#1B3766]/5' : 'text-gray-500 hover:text-[#1B3766] hover:bg-[#1B3766]/5'}`}>
@@ -384,7 +469,6 @@ const BiizzedArticleDetails = () => {
                     </button>
                   </div>
 
-                  {/* Right side - Brand */}
                   <span className="text-[11px] font-semibold text-[#1B3766] bg-[#1B3766]/5 px-2.5 py-1.5 rounded-full">Biizzed</span>
                 </div>
 
@@ -406,34 +490,28 @@ const BiizzedArticleDetails = () => {
                     <FaRegComment className="text-[#1B3766]" /> Comments ({article.comments?.length || 0})
                   </h3>
 
-                  {userInfo ? (
-                    <form onSubmit={handleAddComment} className="mb-6">
-                      {replyTo && (
-                        <div className="flex items-center gap-2 mb-2 text-xs text-gray-500">
-                          <FaReply className="text-[10px]" /> Replying
-                          <button type="button" onClick={() => setReplyTo(null)} className="text-red-500 hover:underline">Cancel</button>
+                  {/* Comment input - always visible, but submit triggers auth modal if not logged in */}
+                  <form onSubmit={handleAddComment} className="mb-6">
+                    {replyTo && (
+                      <div className="flex items-center gap-2 mb-2 text-xs text-gray-500">
+                        <FaReply className="text-[10px]" /> Replying
+                        <button type="button" onClick={() => setReplyTo(null)} className="text-red-500 hover:underline">Cancel</button>
+                      </div>
+                    )}
+                    <div className="flex gap-3">
+                      {userInfo?.profile ? (
+                        <img src={userInfo.profile} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-[#1B3766] text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+                          {(userInfo?.name || 'U')[0].toUpperCase()}
                         </div>
                       )}
-                      <div className="flex gap-3">
-                        {userInfo?.profile ? (
-                          <img src={userInfo.profile} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
-                        ) : (
-                          <div className="w-9 h-9 rounded-full bg-[#1B3766] text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
-                            {(userInfo?.name || 'U')[0].toUpperCase()}
-                          </div>
-                        )}
-                        <div className="flex-1">
-                          <input type="text" value={commentText} onChange={(e) => setCommentText(e.target.value)} placeholder="Add a comment..." className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]" />
-                          <button type="submit" disabled={!commentText.trim()} className="mt-2 px-4 py-1.5 bg-[#1B3766] text-white rounded-full text-xs font-medium hover:bg-[#142952] disabled:opacity-50">Post</button>
-                        </div>
+                      <div className="flex-1">
+                        <input type="text" value={commentText} onChange={(e) => setCommentText(e.target.value)} placeholder="Add a comment..." className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]" />
+                        <button type="submit" disabled={!commentText.trim()} className="mt-2 px-4 py-1.5 bg-[#1B3766] text-white rounded-full text-xs font-medium hover:bg-[#142952] disabled:opacity-50">Post</button>
                       </div>
-                    </form>
-                  ) : (
-                    <div className="mb-6 p-4 bg-gray-50 rounded-xl text-center">
-                      <p className="text-sm text-gray-500">Login to join the conversation</p>
-                      <Link to="/login" className="text-xs text-[#1B3766] font-medium hover:underline mt-1 inline-block">Login now</Link>
                     </div>
-                  )}
+                  </form>
 
                   <div className="space-y-4">
                     {article.comments?.map((comment) => {
@@ -505,20 +583,29 @@ const BiizzedArticleDetails = () => {
             </article>
           </main>
 
-          {/* Right Sidebar */}
+          {/* Right Sidebar - Modern Share Icons */}
           <aside className="hidden lg:block w-[320px] flex-shrink-0">
             <div className="fixed top-[120px] w-[320px] h-[calc(100vh-140px)] overflow-y-auto space-y-4 pb-8 no-scrollbar">
-              {/* Share Section */}
+              {/* Share Section - Modern circular icons */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Share</h3>
-                <div className="flex gap-2">
-                  <button onClick={() => handleShare('twitter')} className="flex-1 py-2 bg-[#1DA1F2] text-white rounded-lg text-sm font-medium hover:opacity-90 flex items-center justify-center gap-1"><FaTwitter /> Tweet</button>
-                  <button onClick={() => handleShare('facebook')} className="flex-1 py-2 bg-[#1877F2] text-white rounded-lg text-sm font-medium hover:opacity-90 flex items-center justify-center gap-1"><FaFacebookF /> Share</button>
+                <div className="flex justify-around">
+                  <button onClick={() => handleShare('twitter')} className="w-10 h-10 bg-black rounded-full flex items-center justify-center text-white hover:scale-110 transition-transform">
+                    <FaTwitter className="text-lg" />
+                  </button>
+                  <button onClick={() => handleShare('facebook')} className="w-10 h-10 bg-[#1877F2] rounded-full flex items-center justify-center text-white hover:scale-110 transition-transform">
+                    <FaFacebookF className="text-lg" />
+                  </button>
+                  <button onClick={() => handleShare('whatsapp')} className="w-10 h-10 bg-[#25D366] rounded-full flex items-center justify-center text-white hover:scale-110 transition-transform">
+                    <FaWhatsapp className="text-lg" />
+                  </button>
+                  <button onClick={() => handleShare('copy')} className="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center text-white hover:scale-110 transition-transform">
+                    <FaLink className="text-lg" />
+                  </button>
                 </div>
-                <button onClick={() => handleShare('copy')} className="w-full mt-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-1"><FaLink /> Copy Link</button>
               </div>
 
-              {/* Related Articles */}
+              {/* Related Articles (unchanged) */}
               {relatedArticles.length > 0 && (
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
                   <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Related Articles</h3>
@@ -545,7 +632,7 @@ const BiizzedArticleDetails = () => {
                 </div>
               )}
 
-              {/* Author Info */}
+              {/* Author Info (unchanged) */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 text-center">
                 {authorProfile ? (
                   <img src={authorProfile} alt="" className="w-14 h-14 rounded-full object-cover mx-auto mb-2" />
@@ -562,8 +649,20 @@ const BiizzedArticleDetails = () => {
         </div>
       </div>
 
+      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
+      <ShareModal isOpen={showShareModal} onClose={() => setShowShareModal(false)} url={shareUrl} title={article.title} />
+
       <BiizzedBottomBar />
-      <style>{`.no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; } .line-clamp-2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}`}</style>
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .line-clamp-2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeInUp { animation: fadeInUp 0.28s ease-out; }
+      `}</style>
     </div>
   );
 };

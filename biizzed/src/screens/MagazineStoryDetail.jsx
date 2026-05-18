@@ -1,4 +1,4 @@
-// screens/MagazineStoryDetail.jsx – Handles both published and coming‑soon magazines
+// screens/MagazineStoryDetail.jsx – With Auth Modal for login prompts (comment input always visible)
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
@@ -6,7 +6,7 @@ import {
   FaSpinner, FaBookOpen, FaEye, FaUser, FaCalendarAlt,
   FaTwitter, FaFacebookF, FaLinkedinIn, FaLink, FaCheck,
   FaHeart, FaRegHeart, FaBookmark, FaRegBookmark, FaShare,
-  FaComment, FaReply, FaTrashAlt, FaHourglassHalf,
+  FaComment, FaReply, FaTrashAlt, FaHourglassHalf, FaTimes,
 } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { useSelector } from 'react-redux';
@@ -17,10 +17,37 @@ import * as pdfjsLib from 'pdfjs-dist';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
 
+// ====== AUTH MODAL ======
+const AuthModal = ({ isOpen, onClose }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl relative animate-fadeInUp">
+        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+          <FaTimes />
+        </button>
+        <div className="text-center mb-6">
+          <div className="w-16 h-16 bg-[#1B3766]/10 rounded-full flex items-center justify-center mx-auto mb-3">
+            <FaUser className="text-[#1B3766] text-2xl" />
+          </div>
+          <h3 className="text-xl font-bold text-gray-900">Join the Conversation</h3>
+          <p className="text-sm text-gray-500 mt-1">Sign in to like, bookmark, and comment</p>
+        </div>
+        <div className="space-y-3">
+          <Link to="/login" className="block w-full py-2.5 bg-[#1B3766] text-white rounded-xl text-center font-medium hover:bg-[#142952] transition-colors">Login</Link>
+          <Link to="/signup" className="block w-full py-2.5 border border-gray-200 text-gray-700 rounded-xl text-center font-medium hover:bg-gray-50 transition-colors">Create Account</Link>
+        </div>
+        <p className="text-center text-xs text-gray-400 mt-4">By continuing, you agree to Biizzed's Terms of Service.</p>
+      </div>
+    </div>
+  );
+};
+
 const MagazineStoryDetail = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
   const { userInfo } = useSelector((state) => state.auth);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   
   const [currentPage, setCurrentPage] = useState(0);
   const [currentMobilePage, setCurrentMobilePage] = useState(0);
@@ -49,6 +76,15 @@ const MagazineStoryDetail = () => {
 
   // Check if magazine is coming soon
   const isComingSoon = magazine?.status === 'coming_soon' || magazine?.comingSoon === true;
+
+  // Auth-guarded action
+  const requireAuth = () => {
+    if (!userInfo) {
+      setShowAuthModal(true);
+      return false;
+    }
+    return true;
+  };
 
   useEffect(() => {
     if (magazine?.pdfUrl && !pdfDoc && !isComingSoon) {
@@ -129,18 +165,18 @@ const MagazineStoryDetail = () => {
   const isBookmarked = magazine?.bookmarks?.includes(userInfo?._id);
 
   const handleLike = async () => {
-    if (!userInfo) { toast.info('Login to like'); return; }
+    if (!requireAuth()) return;
     try { await likeMagazine(magazine._id).unwrap(); refetch(); } catch { toast.error('Failed'); }
   };
 
   const handleBookmark = async () => {
-    if (!userInfo) { toast.info('Login to bookmark'); return; }
+    if (!requireAuth()) return;
     try { await bookmarkMagazine(magazine._id).unwrap(); refetch(); } catch { toast.error('Failed'); }
   };
 
   const handleAddComment = async (e) => {
     e.preventDefault();
-    if (!userInfo) { toast.info('Login to comment'); return; }
+    if (!requireAuth()) return;
     if (!commentText.trim()) return;
     try {
       await addComment({ id: magazine._id, text: commentText, parentCommentId: replyTo }).unwrap();
@@ -149,7 +185,7 @@ const MagazineStoryDetail = () => {
   };
 
   const handleLikeComment = async (commentId) => {
-    if (!userInfo) return;
+    if (!requireAuth()) return;
     try { await likeComment({ id: magazine._id, commentId }).unwrap(); refetch(); } catch {}
   };
 
@@ -261,7 +297,6 @@ const MagazineStoryDetail = () => {
         {/* Coming Soon Hero Section – replaces PDF reader */}
         {isComingSoon ? (
           <div className="relative bg-gradient-to-r from-[#1B3766] via-[#142952] to-[#1B3766] rounded-2xl shadow-xl overflow-hidden mb-4 min-h-[400px] flex flex-col items-center justify-center text-center p-8">
-            {/* Animated scrolling text from right to left */}
             <div className="overflow-hidden whitespace-nowrap w-full mb-8">
               <div className="animate-scrollRightToLeft text-3xl sm:text-5xl md:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 inline-block">
                 Coming Soon! Anticipate!!
@@ -282,7 +317,6 @@ const MagazineStoryDetail = () => {
             </div>
           </div>
         ) : (
-          /* Normal PDF Reader (unchanged) */
           loadingPdf ? (
             <div className="bg-white rounded-2xl p-8 text-center mb-4">
               <FaSpinner className="w-10 h-10 text-[#1B3766] animate-spin mx-auto mb-2" />
@@ -358,39 +392,35 @@ const MagazineStoryDetail = () => {
           </div>
         )}
 
-        {/* Comments Section (unchanged) */}
+        {/* Comments Section – input always visible, submit triggers modal */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 mb-4">
           <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
             <FaComment className="text-[#1B3766]" /> Comments ({magazine.comments?.length || 0})
           </h3>
-          {userInfo ? (
-            <form onSubmit={handleAddComment} className="mb-6">
-              {replyTo && (
-                <div className="flex items-center gap-2 mb-2 text-xs text-gray-500">
-                  <FaReply /> Replying <button type="button" onClick={() => setReplyTo(null)} className="text-red-500">Cancel</button>
+
+          {/* Comment input always shown */}
+          <form onSubmit={handleAddComment} className="mb-6">
+            {replyTo && (
+              <div className="flex items-center gap-2 mb-2 text-xs text-gray-500">
+                <FaReply /> Replying <button type="button" onClick={() => setReplyTo(null)} className="text-red-500">Cancel</button>
+              </div>
+            )}
+            <div className="flex gap-3">
+              {userInfo?.profile ? (
+                <img src={userInfo.profile} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+              ) : (
+                <div className="w-9 h-9 rounded-full bg-[#1B3766] text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+                  {(userInfo?.name || 'U')[0].toUpperCase()}
                 </div>
               )}
-              <div className="flex gap-3">
-                {userInfo?.profile ? (
-                  <img src={userInfo.profile} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
-                ) : (
-                  <div className="w-9 h-9 rounded-full bg-[#1B3766] text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
-                    {(userInfo?.name || 'U')[0].toUpperCase()}
-                  </div>
-                )}
-                <div className="flex-1">
-                  <input type="text" value={commentText} onChange={(e) => setCommentText(e.target.value)}
-                    placeholder="Add a comment..." className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]" />
-                  <button type="submit" disabled={!commentText.trim()} className="mt-2 px-4 py-1.5 bg-[#1B3766] text-white rounded-full text-xs font-medium hover:bg-[#142952] disabled:opacity-50">Post</button>
-                </div>
+              <div className="flex-1">
+                <input type="text" value={commentText} onChange={(e) => setCommentText(e.target.value)}
+                  placeholder="Add a comment..." className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]" />
+                <button type="submit" disabled={!commentText.trim()} className="mt-2 px-4 py-1.5 bg-[#1B3766] text-white rounded-full text-xs font-medium hover:bg-[#142952] disabled:opacity-50">Post</button>
               </div>
-            </form>
-          ) : (
-            <div className="mb-6 p-4 bg-gray-50 rounded-xl text-center">
-              <p className="text-sm text-gray-500">Login to comment</p>
-              <Link to="/login" className="text-xs text-[#1B3766] font-medium hover:underline">Login now</Link>
             </div>
-          )}
+          </form>
+
           <div className="space-y-4">
             {magazine.comments?.map((comment) => {
               const isCommentLiked = comment.likes?.includes(userInfo?._id);
@@ -454,9 +484,9 @@ const MagazineStoryDetail = () => {
       </div>
 
       <BiizzedBottomBar />
+      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
 
-      {/* Custom CSS animation for scrolling text */}
-      <style jsx>{`
+      <style>{`
         @keyframes scrollRightToLeft {
           0% { transform: translateX(100%); }
           100% { transform: translateX(-100%); }
@@ -464,6 +494,11 @@ const MagazineStoryDetail = () => {
         .animate-scrollRightToLeft {
           animation: scrollRightToLeft 12s linear infinite;
         }
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeInUp { animation: fadeInUp 0.28s ease-out; }
       `}</style>
     </div>
   );

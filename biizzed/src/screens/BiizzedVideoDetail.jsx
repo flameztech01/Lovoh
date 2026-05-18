@@ -1,4 +1,4 @@
-// screens/BiizzedVideoDetail.jsx – Full rewrite with pre‑roll ads
+// screens/BiizzedVideoDetail.jsx – With Auth Modal for login prompts
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -7,7 +7,7 @@ import {
   FaShare, FaSpinner, FaComment, FaUser, FaReply, FaTrashAlt,
   FaLink, FaPlus, FaCheck, FaClock,
   FaYoutube, FaPlay, FaExternalLinkAlt, FaVolumeMute, FaVolumeUp,
-  FaCheckCircle, FaUserCircle, FaAd,
+  FaCheckCircle, FaUserCircle, FaAd, FaTimes,
 } from 'react-icons/fa';
 import {
   useGetVideoByIdQuery,
@@ -28,10 +28,49 @@ import BiizzedBottomBar from '../components/BiizzedBottomBar';
 import { useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
 
+// ====== AUTH MODAL ======
+const AuthModal = ({ isOpen, onClose }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl relative animate-fadeInUp">
+        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+          <FaTimes />
+        </button>
+        <div className="text-center mb-6">
+          <div className="w-16 h-16 bg-[#1B3766]/10 rounded-full flex items-center justify-center mx-auto mb-3">
+            <FaUser className="text-[#1B3766] text-2xl" />
+          </div>
+          <h3 className="text-xl font-bold text-gray-900">Join the Conversation</h3>
+          <p className="text-sm text-gray-500 mt-1">Sign in to like, comment, and follow creators</p>
+        </div>
+        <div className="space-y-3">
+          <Link
+            to="/login"
+            className="block w-full py-2.5 bg-[#1B3766] text-white rounded-xl text-center font-medium hover:bg-[#142952] transition-colors"
+          >
+            Login
+          </Link>
+          <Link
+            to="/signup"
+            className="block w-full py-2.5 border border-gray-200 text-gray-700 rounded-xl text-center font-medium hover:bg-gray-50 transition-colors"
+          >
+            Create Account
+          </Link>
+        </div>
+        <p className="text-center text-xs text-gray-400 mt-4">
+          By continuing, you agree to Biizzed's Terms of Service.
+        </p>
+      </div>
+    </div>
+  );
+};
+
 const BiizzedVideoDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { userInfo } = useSelector((state) => state.auth);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   // Pre‑roll ad
   const { data: adsData } = useGetAdsQuery({
@@ -139,6 +178,15 @@ const BiizzedVideoDetail = () => {
     return currentUserId === authorId;
   };
 
+  // Auth‑guarded actions
+  const requireAuth = () => {
+    if (!userInfo) {
+      setShowAuthModal(true);
+      return false;
+    }
+    return true;
+  };
+
   useEffect(() => {
     window.scrollTo(0, 0);
     setIsYouTubePlaying(false);
@@ -198,13 +246,13 @@ const BiizzedVideoDetail = () => {
   const following = localFollowing;
 
   const handleLike = async () => {
-    if (!userInfo) { toast.info('Login to like'); return; }
+    if (!requireAuth()) return;
     try { await likeVideo(id).unwrap(); refetchVideo(); } catch { toast.error('Failed'); }
   };
 
   const handleFollowToggle = async (e) => {
     e.preventDefault(); e.stopPropagation();
-    if (!userInfo) { toast.info('Login to follow'); return; }
+    if (!requireAuth()) return;
     const authorId = video?.user?._id?.toString() || video?.user?.toString();
     if (!authorId) return;
     try {
@@ -225,7 +273,7 @@ const BiizzedVideoDetail = () => {
 
   const handleAddComment = async (e) => {
     e.preventDefault();
-    if (!userInfo) { toast.info('Login to comment'); return; }
+    if (!requireAuth()) return;
     if (!commentText.trim()) return;
     try {
       await addComment({ id, text: commentText }).unwrap();
@@ -236,7 +284,7 @@ const BiizzedVideoDetail = () => {
   };
 
   const handleLikeComment = async (commentId) => {
-    if (!userInfo) { toast.info('Login to like'); return; }
+    if (!requireAuth()) return;
     try { await likeComment({ id, commentId }).unwrap(); refetchVideo(); } catch { toast.error('Failed'); }
   };
 
@@ -319,14 +367,10 @@ const BiizzedVideoDetail = () => {
             {/* Video Player with Pre‑roll Ad */}
             <div className={`bg-black rounded-2xl overflow-hidden mb-4 ${getVideoContainerClass()}`}>
               <div className={getVideoHeightClass()}>
-                {/* AD PLAYER */}
                 {showAd && preRollAd && !adCompleted && (
                   <div className="relative w-full h-full z-20">
                     {preRollAd.mediaType === 'image' && preRollAd.image ? (
-                      <div
-                        onClick={handleAdClick}
-                        className="cursor-pointer relative w-full h-full bg-black flex items-center justify-center"
-                      >
+                      <div onClick={handleAdClick} className="cursor-pointer relative w-full h-full bg-black flex items-center justify-center">
                         <img src={preRollAd.image} alt="Ad" className="max-h-full max-w-full object-contain" />
                         <div className="absolute top-2 right-2 flex gap-2">
                           {adCanSkip ? (
@@ -362,11 +406,7 @@ const BiizzedVideoDetail = () => {
                             <span className="bg-black/70 text-white text-xs px-3 py-1 rounded-full">Ad • {adCountdown}s</span>
                           )}
                         </div>
-                        <div
-                          onClick={handleAdClick}
-                          className="absolute inset-0 cursor-pointer z-10"
-                          style={{ pointerEvents: adCanSkip ? 'auto' : 'none' }}
-                        />
+                        <div onClick={handleAdClick} className="absolute inset-0 cursor-pointer z-10" style={{ pointerEvents: adCanSkip ? 'auto' : 'none' }} />
                       </div>
                     ) : (
                       <div className="w-full h-full bg-gray-800 flex items-center justify-center">
@@ -377,14 +417,10 @@ const BiizzedVideoDetail = () => {
                   </div>
                 )}
 
-                {/* MAIN VIDEO (hidden when ad is active) */}
                 <div style={{ display: showAd && !adCompleted ? 'none' : 'block' }} className="w-full h-full">
                   {isYouTube ? (
                     !isYouTubePlaying ? (
-                      <div
-                        className="relative w-full h-full cursor-pointer group"
-                        onClick={() => setIsYouTubePlaying(true)}
-                      >
+                      <div className="relative w-full h-full cursor-pointer group" onClick={() => setIsYouTubePlaying(true)}>
                         <img
                           src={video.youtubeThumbnail || video.thumbnail}
                           alt={video.title}
@@ -430,7 +466,6 @@ const BiizzedVideoDetail = () => {
 
             {/* Video Info */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 mb-4">
-              {/* Badges */}
               <div className="flex flex-wrap gap-2 mb-3">
                 {isYouTube && (
                   <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-red-50 text-red-700 rounded-full text-xs font-medium">
@@ -451,7 +486,6 @@ const BiizzedVideoDetail = () => {
 
               <h1 className="text-xl font-bold text-gray-900 mb-3">{video.title}</h1>
 
-              {/* Stats & Actions */}
               <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-gray-100">
                 <div className="flex items-center gap-4 text-sm text-gray-500">
                   <span>{formatViews(video.views)}</span>
@@ -460,12 +494,7 @@ const BiizzedVideoDetail = () => {
                   {isYouTube && video.youtubeUrl && (
                     <>
                       <span>•</span>
-                      <a
-                        href={video.youtubeUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-red-600 hover:text-red-700 flex items-center gap-1"
-                      >
+                      <a href={video.youtubeUrl} target="_blank" rel="noopener noreferrer" className="text-red-600 hover:text-red-700 flex items-center gap-1">
                         <FaExternalLinkAlt className="text-[10px]" /> Watch on YouTube
                       </a>
                     </>
@@ -482,7 +511,6 @@ const BiizzedVideoDetail = () => {
                 </div>
               </div>
 
-              {/* Creator Info */}
               <div className="flex items-center justify-between mt-4">
                 <Link to={`/user/${authorId}`} className="flex items-center gap-3">
                   {authorProfile ? (
@@ -508,7 +536,6 @@ const BiizzedVideoDetail = () => {
                   </div>
                 </Link>
 
-                {/* Follow Button */}
                 {userInfo && !isOwn && !isAdmin && (
                   <button
                     onClick={handleFollowToggle}
@@ -529,7 +556,6 @@ const BiizzedVideoDetail = () => {
                 )}
               </div>
 
-              {/* Description */}
               {(video.description || isYouTube) && (
                 <div className="mt-4 p-4 bg-gray-50 rounded-xl">
                   {video.description ? (
@@ -537,30 +563,17 @@ const BiizzedVideoDetail = () => {
                   ) : isYouTube && (
                     <p className="text-sm text-gray-500 italic">
                       This is a YouTube video shared on Biizzed.
-                      <a
-                        href={video.youtubeUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-red-600 hover:underline ml-1"
-                      >
-                        Watch on YouTube
-                      </a>
+                      <a href={video.youtubeUrl} target="_blank" rel="noopener noreferrer" className="text-red-600 hover:underline ml-1">Watch on YouTube</a>
                     </p>
                   )}
                   {isYouTube && video.youtubeUrl && (
-                    <a
-                      href={video.youtubeUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 mt-2 text-xs text-red-600 hover:text-red-700 font-medium"
-                    >
+                    <a href={video.youtubeUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 mt-2 text-xs text-red-600 hover:text-red-700 font-medium">
                       <FaExternalLinkAlt className="text-[10px]" /> Open in YouTube
                     </a>
                   )}
                 </div>
               )}
 
-              {/* Tags */}
               {video.tags?.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-3">
                   {video.tags.map((tag, idx) => (
@@ -576,46 +589,40 @@ const BiizzedVideoDetail = () => {
                 <FaComment className="text-[#1B3766]" /> Comments ({video.comments?.length || 0})
               </h3>
 
-              {userInfo ? (
-                <form onSubmit={handleAddComment} className="mb-6">
-                  {replyTo && (
-                    <div className="flex items-center gap-2 mb-2 text-xs text-gray-500">
-                      <FaReply /> Replying{' '}
-                      <button type="button" onClick={() => setReplyTo(null)} className="text-red-500">Cancel</button>
+              {/* Comment input always visible, but submit triggers modal if not logged in */}
+              <form onSubmit={handleAddComment} className="mb-6">
+                {replyTo && (
+                  <div className="flex items-center gap-2 mb-2 text-xs text-gray-500">
+                    <FaReply /> Replying{' '}
+                    <button type="button" onClick={() => setReplyTo(null)} className="text-red-500">Cancel</button>
+                  </div>
+                )}
+                <div className="flex gap-3">
+                  {userInfo?.profile ? (
+                    <img src={userInfo.profile} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+                  ) : (
+                    <div className="w-9 h-9 rounded-full bg-[#1B3766] text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+                      {(userInfo?.name || 'U')[0].toUpperCase()}
                     </div>
                   )}
-                  <div className="flex gap-3">
-                    {userInfo?.profile ? (
-                      <img src={userInfo.profile} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
-                    ) : (
-                      <div className="w-9 h-9 rounded-full bg-[#1B3766] text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
-                        {(userInfo?.name || 'U')[0].toUpperCase()}
-                      </div>
-                    )}
-                    <div className="flex-1">
-                      <input
-                        type="text"
-                        value={commentText}
-                        onChange={(e) => setCommentText(e.target.value)}
-                        placeholder="Add a comment..."
-                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
-                      />
-                      <button
-                        type="submit"
-                        disabled={!commentText.trim()}
-                        className="mt-2 px-4 py-1.5 bg-[#1B3766] text-white rounded-full text-xs font-medium hover:bg-[#142952] disabled:opacity-50"
-                      >
-                        Post
-                      </button>
-                    </div>
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={commentText}
+                      onChange={(e) => setCommentText(e.target.value)}
+                      placeholder="Add a comment..."
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!commentText.trim()}
+                      className="mt-2 px-4 py-1.5 bg-[#1B3766] text-white rounded-full text-xs font-medium hover:bg-[#142952] disabled:opacity-50"
+                    >
+                      Post
+                    </button>
                   </div>
-                </form>
-              ) : (
-                <div className="mb-6 p-4 bg-gray-50 rounded-xl text-center">
-                  <p className="text-sm text-gray-500">Login to join the conversation</p>
-                  <Link to="/login" className="text-xs text-[#1B3766] font-medium hover:underline mt-1 inline-block">Login now</Link>
                 </div>
-              )}
+              </form>
 
               <div className="space-y-4">
                 {video.comments?.map((comment) => {
@@ -657,7 +664,7 @@ const BiizzedVideoDetail = () => {
             </div>
           </main>
 
-          {/* Right Sidebar - Related Videos */}
+          {/* Right Sidebar - Related Videos (unchanged) */}
           <aside className="hidden lg:block w-[320px] flex-shrink-0">
             <div className="sticky top-[120px] w-[320px] h-[calc(100vh-140px)] overflow-y-auto space-y-4 pb-8 no-scrollbar">
               <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
@@ -699,9 +706,7 @@ const BiizzedVideoDetail = () => {
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-gray-900 line-clamp-2 group-hover:text-[#1B3766]">
-                            {v.title}
-                          </p>
+                          <p className="text-xs font-medium text-gray-900 line-clamp-2 group-hover:text-[#1B3766]">{v.title}</p>
                           <p className="text-[10px] text-gray-500 mt-1 flex items-center gap-1">
                             {v.authorName || 'Creator'}
                             {isRelatedYouTube && <FaYoutube className="text-red-600 text-[8px]" />}
@@ -718,6 +723,7 @@ const BiizzedVideoDetail = () => {
           </aside>
         </div>
       </div>
+      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
       <BiizzedBottomBar />
       <style>{`
         .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -728,6 +734,11 @@ const BiizzedVideoDetail = () => {
           -webkit-box-orient: vertical;
           overflow: hidden;
         }
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeInUp { animation: fadeInUp 0.28s ease-out; }
       `}</style>
     </div>
   );
