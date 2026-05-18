@@ -74,10 +74,8 @@ const MagazineStoryDetail = () => {
   const [likeComment] = useLikeMagazineCommentMutation();
   const [deleteComment] = useDeleteMagazineCommentMutation();
 
-  // Check if magazine is coming soon
   const isComingSoon = magazine?.status === 'coming_soon' || magazine?.comingSoon === true;
 
-  // Auth-guarded action
   const requireAuth = () => {
     if (!userInfo) {
       setShowAuthModal(true);
@@ -85,6 +83,8 @@ const MagazineStoryDetail = () => {
     }
     return true;
   };
+
+  // ====== ALL useEffect HOOKS MUST BE HERE, BEFORE ANY CONDITIONAL RETURNS ======
 
   useEffect(() => {
     if (magazine?.pdfUrl && !pdfDoc && !isComingSoon) {
@@ -113,6 +113,13 @@ const MagazineStoryDetail = () => {
       renderMobilePage();
     }
   }, [pdfDoc, currentMobilePage, isComingSoon]);
+
+  // 404 navigation — MUST be before any early return
+  useEffect(() => {
+    if ((error || !magazine) && !isLoading) {
+      navigate('/not-found', { replace: true });
+    }
+  }, [error, magazine, isLoading, navigate]);
 
   const renderDesktopPages = async () => {
     const leftPageNum = currentPage + 1;
@@ -220,6 +227,8 @@ const MagazineStoryDetail = () => {
     setDownloading(false);
   };
 
+  // ====== CONDITIONAL RETURNS — ALL useEffect HOOKS ARE ABOVE THIS LINE ======
+
   if (isLoading) return (
     <div className="min-h-screen bg-gray-100">
       <div className="flex justify-center items-center h-96"><FaSpinner className="w-10 h-10 text-[#1B3766] animate-spin" /></div>
@@ -227,16 +236,8 @@ const MagazineStoryDetail = () => {
     </div>
   );
 
-  if (error || !magazine) return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="max-w-2xl mx-auto px-4 py-20 text-center">
-        <FaBookOpen className="text-5xl text-gray-300 mx-auto mb-4" />
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Magazine Not Found</h1>
-        <button onClick={() => navigate(-1)} className="mt-4 px-6 py-2 bg-[#1B3766] text-white rounded-xl">Go Back</button>
-      </div>
-      <BiizzedBottomBar />
-    </div>
-  );
+  // Navigation to /not-found already fired in useEffect above
+  if (error || !magazine) return null;
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -294,7 +295,7 @@ const MagazineStoryDetail = () => {
           </div>
         </div>
 
-        {/* Coming Soon Hero Section – replaces PDF reader */}
+        {/* Coming Soon Hero Section */}
         {isComingSoon ? (
           <div className="relative bg-gradient-to-r from-[#1B3766] via-[#142952] to-[#1B3766] rounded-2xl shadow-xl overflow-hidden mb-4 min-h-[400px] flex flex-col items-center justify-center text-center p-8">
             <div className="overflow-hidden whitespace-nowrap w-full mb-8">
@@ -377,7 +378,7 @@ const MagazineStoryDetail = () => {
           )
         )}
 
-        {/* Summary – always shown */}
+        {/* Summary */}
         {magazine.summary && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 mb-4">
             <h3 className="text-sm font-semibold text-gray-900 mb-2">About This Edition</h3>
@@ -392,13 +393,12 @@ const MagazineStoryDetail = () => {
           </div>
         )}
 
-        {/* Comments Section – input always visible, submit triggers modal */}
+        {/* Comments Section */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 mb-4">
           <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
             <FaComment className="text-[#1B3766]" /> Comments ({magazine.comments?.length || 0})
           </h3>
 
-          {/* Comment input always shown */}
           <form onSubmit={handleAddComment} className="mb-6">
             {replyTo && (
               <div className="flex items-center gap-2 mb-2 text-xs text-gray-500">
@@ -454,7 +454,7 @@ const MagazineStoryDetail = () => {
           </div>
         </div>
 
-        {/* Related Magazines (includes coming soon) */}
+        {/* Related Magazines */}
         {otherMagazines.length > 0 && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
             <h3 className="text-sm font-semibold text-gray-900 mb-4">More Magazines</h3>

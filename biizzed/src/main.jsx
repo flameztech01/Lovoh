@@ -1,4 +1,4 @@
-// main.jsx (Biizzed only)
+// main.jsx (Biizzed only) – Fixed routing order, catch‑all * at the end
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { Provider } from "react-redux";
@@ -44,7 +44,7 @@ import AdminMagazines from "./adminScreen/AdminMagazines.jsx";
 import AdminVideos from "./adminScreen/AdminVideos.jsx";
 import AdminAnalytics from "./adminScreen/AdminAnalytics.jsx";
 
-// Components
+// Admin components
 import AdminLayout from "./adminComponents/AdminLayout.jsx";
 import PrivateAdminRoute from "./adminComponents/PrivateAdminRoute.jsx";
 
@@ -53,7 +53,7 @@ import usePushNotifications from "./hooks/usePushNotifications";
 
 // ==================== ROUTES ====================
 const router = createBrowserRouter([
-  // Public /biizzed entry (kept for compatibility)
+  // Redirect /biizzed to homepage (optional, kept for compatibility)
   { path: "/biizzed", element: <BiizzedScreen /> },
 
   // Main Biizzed routes
@@ -65,7 +65,6 @@ const router = createBrowserRouter([
       { path: "login", element: <BiizzedLogin /> },
       { path: "signup", element: <BiizzedSignup /> },
       { path: "feed", element: <BiizzedFeed /> },
-      { path: "feed/resubscribe", element: <BiizzedResubscribeScreen /> },
       { path: "create-video", element: <BiizzedCreateVideo /> },
       { path: "edit-video/:id", element: <BiizzedEditVideo /> },
       { path: "create-article", element: <BiizzedCreateArticle /> },
@@ -79,27 +78,16 @@ const router = createBrowserRouter([
       { path: "magazines", element: <BiizzedMagazines /> },
       { path: "articles", element: <BiizzedArticlesScreen /> },
       { path: "articles/:slug", element: <BiizzedArticleDetails /> },
+      { path: ":slug", element: <MagazineStoryDetail /> },
       { path: "search", element: <BiizzedSearch /> },
+      { path: "feed/resubscribe", element: <BiizzedResubscribeScreen /> },
       { path: "settings", element: <BiizzedSettings /> },
       { path: "notifications", element: <BiizzedNotifications /> },
-      
-      // Magazine slug — MUST be after all other specific routes
-      // Only matches valid slug patterns (alphanumeric, hyphens, no slashes)
-      { path: ":slug", element: <MagazineStoryDetail />, 
-        loader: ({ params }) => {
-          // Optional: validate slug format here
-          const isValidSlug = /^[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(params.slug);
-          if (!isValidSlug) throw new Response("Not Found", { status: 404 });
-          return null;
-        }
-      },
-      
-      // True 404 catch-all — MUST be last
-      { path: "*", element: <NotFound /> },
+      { path: "not-found", element: <NotFound /> },
     ],
   },
 
-  // Admin routes
+  // Admin routes (protected by PrivateAdminRoute)
   {
     path: "/admin",
     element: <PrivateAdminRoute />,
@@ -121,10 +109,10 @@ const router = createBrowserRouter([
     ],
   },
 
-  // Admin login
+  // Admin login (standalone)
   { path: "/admin/login", element: <AdminLogin /> },
 
-  // Global 404 — catches everything outside /
+  // Catch‑all – must be the last route
   { path: "*", element: <NotFound /> },
 ]);
 
@@ -159,5 +147,5 @@ createRoot(document.getElementById("root")).render(
         <Analytics />
       </GoogleOAuthProvider>
     </Provider>
-  </StrictMode>,
+  </StrictMode>
 );
