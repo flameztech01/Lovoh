@@ -15,6 +15,9 @@ import BiizzedLogin from "./screens/BiizzedLogin.jsx";
 import BiizzedSignup from "./screens/BiizzedSignup.jsx";
 import BiizzedFeed from "./screens/BiizzedFeed.jsx";
 import BiizzedCreateVideo from "./screens/BiizzedCreateVideo.jsx";
+import BiizzedEditVideo from "./screens/BiizzedEditVideo.jsx";
+import BiizzedEditArticle from "./screens/BiizzedEditArticle.jsx";
+import BiizzedEditMagazine from "./screens/BiizzedEditMagazine.jsx";
 import BiizzedCreateArticle from "./screens/BiizzedCreateArticle.jsx";
 import BiizzedCreateMagazine from "./screens/BiizzedCreateMagazine.jsx";
 import BiizzedProfile from "./screens/BiizzedProfile.jsx";
@@ -64,8 +67,11 @@ const router = createBrowserRouter([
       { path: "signup", element: <BiizzedSignup /> },
       { path: "feed", element: <BiizzedFeed /> },
       { path: "create-video", element: <BiizzedCreateVideo /> },
+      { path: "edit-video/:id", element: <BiizzedEditVideo /> },
       { path: "create-article", element: <BiizzedCreateArticle /> },
+      { path: "edit-article/:id", element: <BiizzedEditArticle /> },
       { path: "create-magazine", element: <BiizzedCreateMagazine /> },
+      { path: "edit-magazine/:id", element: <BiizzedEditMagazine /> },
       { path: "profile", element: <BiizzedProfile /> },
       { path: "followers", element: <BiizzedFollowers /> },
       { path: "videos", element: <BiizzedVideos /> },
@@ -138,5 +144,5 @@ createRoot(document.getElementById("root")).render(
         <Analytics />
       </GoogleOAuthProvider>
     </Provider>
-  </StrictMode>
+  </StrictMode>,
 );
