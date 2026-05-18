@@ -1,4 +1,4 @@
-// screens/BiizzedArticleDetails.jsx - Optimized with Modern Icons & Action Bar
+// screens/BiizzedArticleDetails.jsx - Optimized with Modern Icons, Action Bar & Enhanced Social Meta Tags
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -282,15 +282,24 @@ const BiizzedArticleDetails = () => {
       <Helmet>
         <title>{article.title} | Biizzed</title>
         <meta name="description" content={article.excerpt} />
+
+        {/* Open Graph / Facebook */}
+        <meta property="og:type" content="article" />
         <meta property="og:title" content={article.title} />
         <meta property="og:description" content={article.excerpt} />
         <meta property="og:image" content={coverImage} />
+        <meta property="og:image:secure_url" content={coverImage} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
         <meta property="og:url" content={shareUrl} />
-        <meta property="og:type" content="article" />
+        <meta property="og:site_name" content="Biizzed" />
+
+        {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={article.title} />
         <meta name="twitter:description" content={article.excerpt} />
         <meta name="twitter:image" content={coverImage} />
+        <meta name="twitter:image:alt" content={article.title} />
       </Helmet>
 
       <BiizzedArticlesNavbar />
