@@ -277,7 +277,7 @@ const BiizzedArticlesGrid = () => {
           {/* Magazine 1 */}
           {magazines[0] && (
             <Link 
-              to={`/${magazines[0].slug}`}
+              to={`/story/${magazines[0].slug}`}
               className="group block"
             >
               <div className="relative rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
@@ -312,7 +312,7 @@ const BiizzedArticlesGrid = () => {
           {/* Magazine 2 */}
           {magazines[1] && (
             <Link 
-              to={`/${magazines[1].slug}`}
+              to={`/story/${magazines[1].slug}`}
               className="group block"
             >
               <div className="relative rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
@@ -342,7 +342,7 @@ const BiizzedArticlesGrid = () => {
           {/* Magazine 3 */}
           {magazines[2] && (
             <Link 
-              to={`/${magazines[2].slug}`}
+              to={`/story/${magazines[2].slug}`}
               className="group block"
             >
               <div className="relative rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
@@ -380,7 +380,7 @@ const BiizzedArticlesGrid = () => {
           {/* More Editions Coming Soon */}
           {magazines[3] ? (
             <Link 
-              to={`/${magazines[3].slug}`}
+              to={`/story/${magazines[3].slug}`}
               className="group block"
             >
               <div className="relative rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">

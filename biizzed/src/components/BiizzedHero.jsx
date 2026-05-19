@@ -237,7 +237,7 @@ const BiizzedHero = () => {
               return (
                 <Link
                   key={magazine._id || index}
-                  to={`/${magazine.slug}`}
+                  to={`/story/${magazine.slug}`}
                   className="group block"
                 >
                   <div className="relative bg-white rounded-lg shadow-lg overflow-hidden border border-gray-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer">
