@@ -1,4 +1,4 @@
-// components/Header.jsx – Cross‑domain + Logo animation
+// components/Header.jsx – Cross‑domain + Logo animation (logo NOT a link)
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 
@@ -173,13 +173,9 @@ const Header = () => {
       <nav className="max-w-7xl mx-auto" ref={navContainerRef}>
         <div className="relative rounded-full bg-white/95 backdrop-blur-md border border-blue-100 shadow-[0_10px_35px_rgba(37,72,153,0.10)] px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            {/* Logo with crossfade animation */}
+            {/* Logo – NO LONGER A LINK */}
             <div className="flex-shrink-0">
-              <a
-                href={MAIN_DOMAIN}
-                className="flex items-center relative w-32 h-8"
-                onClick={scrollToTop}
-              >
+              <div className="flex items-center relative w-32 h-8 cursor-default">
                 <img
                   src={currentLogo}
                   alt="Lovoh Create"
@@ -188,10 +184,10 @@ const Header = () => {
                   }`}
                   onError={(e) => { e.target.src = "/logo.png"; }}
                 />
-              </a>
+              </div>
             </div>
 
-            {/* Desktop Navigation (same as before but using handleNavigation) */}
+            {/* Desktop Navigation (unchanged) */}
             <div className="hidden md:flex items-center gap-2 lg:gap-3">
               <button onClick={() => handleNavigation("/")} className="text-gray-700 hover:text-blue-700 px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 hover:bg-blue-50">
                 Welcome
@@ -247,7 +243,7 @@ const Header = () => {
             </div>
           </div>
 
-          {/* Mobile menu panel – same as before, using handleNavigation */}
+          {/* Mobile menu panel */}
           {isMenuOpen && (
             <>
               <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={closeAllMenus} />
