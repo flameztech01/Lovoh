@@ -4,25 +4,14 @@ const API_URL = process.env.VITE_API_URL?.replace(/\/$/, '');
 
 export default async function handler(request) {
   const url = new URL(request.url);
-  const path = url.pathname;
   
-  // Pass through any file request (let Vercel return 404 if file doesn't exist)
-  const isFile = path.includes('.') && !path.endsWith('/');
-  const isKnownPath = 
-    path.startsWith('/assets/') ||
-    path.startsWith('/static/') ||
-    path === '/favicon.ico' ||
-    path === '/manifest.json' ||
-    path === '/robots.txt' ||
-    path === '/sitemap.xml';
-  
-  if (isFile || isKnownPath) {
-    // Try to fetch the file, if 404 just return empty 404 instead of looping
-    const fileRes = await fetch(request);
-    if (fileRes.status === 404) {
-      return new Response(null, { status: 404 });
-    }
-    return fileRes;
+  // Pass through static assets
+  if (
+    url.pathname.startsWith('/assets') ||
+    url.pathname.startsWith('/static') ||
+    /\.(js|css|svg|png|jpg|jpeg|gif|ico|woff|woff2|ttf|eot|json|xml|txt|map)$/i.test(url.pathname)
+  ) {
+    return fetch(request);
   }
 
   const ua = request.headers.get('user-agent') || '';
@@ -31,16 +20,8 @@ export default async function handler(request) {
   // Humans: serve the React app
   if (!isBot) {
     const res = await fetch(new URL('/index.html', url.origin));
-    if (!res.ok) {
-      return new Response('Error loading app', { status: 500 });
-    }
     const html = await res.text();
-    return new Response(html, { 
-      headers: { 
-        'content-type': 'text/html; charset=utf-8',
-        'cache-control': 'public, max-age=0, must-revalidate'
-      } 
-    });
+    return new Response(html, { headers: { 'content-type': 'text/html' } });
   }
 
   // Bots: build meta tags
@@ -52,8 +33,8 @@ export default async function handler(request) {
   };
 
   try {
-    if (path.startsWith('/articles/')) {
-      const slug = path.replace('/articles/', '');
+    if (url.pathname.startsWith('/articles/')) {
+      const slug = url.pathname.replace('/articles/', '');
       if (!slug.startsWith('edit-')) {
         const res = await fetch(`${API_URL}/api/articles/slug/${slug}`);
         if (res.ok) {
@@ -64,20 +45,20 @@ export default async function handler(request) {
         }
       }
     }
-    else if (path.startsWith('/videos/')) {
-      const id = path.replace('/videos/', '');
+    else if (url.pathname.startsWith('/videos/')) {
+      const id = url.pathname.replace('/videos/', '');
       if (!id.startsWith('edit-')) {
         const res = await fetch(`${API_URL}/api/videos/${id}`);
         if (res.ok) {
           const v = await res.json();
           meta.title = v.title;
           meta.description = (v.description || '').slice(0, 160);
-          meta.image = abs(v.thumbnail || v.youtubeThumbnail, url.origin);
+          meta.image = abs(v.thumbnail, url.origin);
         }
       }
     }
-    else if (path.startsWith('/user/')) {
-      const id = path.replace('/user/', '');
+    else if (url.pathname.startsWith('/user/')) {
+      const id = url.pathname.replace('/user/', '');
       const res = await fetch(`${API_URL}/api/users/${id}`);
       if (res.ok) {
         const u = await res.json();
