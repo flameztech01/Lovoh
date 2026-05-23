@@ -1,8 +1,16 @@
 {
   "rewrites": [
-    { "source": "/.well-known/(.*)", "destination": "/.well-known/$1" },
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/assets/(.*)", "destination": "/assets/$1" },
-    { "source": "/(.*)", "destination": "/api/og" }
+    {
+      "source": "/articles/:slug*",
+      "destination": "/api/og"
+    },
+    {
+      "source": "/videos/:id*",
+      "destination": "/api/og"
+    },
+    {
+      "source": "/user/:id*",
+      "destination": "/api/og"
+    }
   ]
 }
