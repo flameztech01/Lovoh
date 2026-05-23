@@ -18,6 +18,22 @@ import {
   FaTimes,
 } from 'react-icons/fa';
 
+// ==================== COUNTRY CODES ====================
+const countryCodes = [
+  { name: 'Nigeria', code: '+234', flag: '🇳🇬' },
+  { name: 'United States', code: '+1', flag: '🇺🇸' },
+  { name: 'United Kingdom', code: '+44', flag: '🇬🇧' },
+  { name: 'Canada', code: '+1', flag: '🇨🇦' },
+  { name: 'India', code: '+91', flag: '🇮🇳' },
+  { name: 'Australia', code: '+61', flag: '🇦🇺' },
+  { name: 'Germany', code: '+49', flag: '🇩🇪' },
+  { name: 'France', code: '+33', flag: '🇫🇷' },
+  { name: 'South Africa', code: '+27', flag: '🇿🇦' },
+  { name: 'Kenya', code: '+254', flag: '🇰🇪' },
+  { name: 'Ghana', code: '+233', flag: '🇬🇭' },
+  { name: 'Brazil', code: '+55', flag: '🇧🇷' },
+];
+
 const BiizzedSignup = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -31,18 +47,21 @@ const BiizzedSignup = () => {
   const [resendOTP, { isLoading: resendLoading }] = useResendOTPMutation();
 
   // UI state
-  const [signupMethod, setSignupMethod] = useState('email'); // 'email' or 'google'
-  const [step, setStep] = useState('form'); // 'form' or 'otp'
+  const [signupMethod, setSignupMethod] = useState('email');
+  const [step, setStep] = useState('form');
   const [showPassword, setShowPassword] = useState(false);
 
-  // Form data
+  // Form data (without phone – phone handled separately)
   const [formData, setFormData] = useState({
     name: '',
     username: '',
     email: '',
     password: '',
-    phone: '',
   });
+
+  // Phone state
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [selectedCountry, setSelectedCountry] = useState(countryCodes[0]); // Nigeria default
 
   // OTP state
   const [otp, setOtp] = useState('');
@@ -56,7 +75,6 @@ const BiizzedSignup = () => {
     if (userInfo) navigate(redirect);
   }, [userInfo, navigate, redirect]);
 
-  // Countdown timer for resend OTP
   useEffect(() => {
     if (countdown > 0) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
@@ -68,13 +86,28 @@ const BiizzedSignup = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handlePhoneChange = (e) => {
+    const digits = e.target.value.replace(/\D/g, '');
+    setPhoneNumber(digits);
+  };
+
+  // Combine country code + local number
+  const getFullPhoneNumber = () => {
+    let local = phoneNumber;
+    if (local.startsWith('0') && selectedCountry.code !== '+0') {
+      local = local.substring(1);
+    }
+    return `${selectedCountry.code}${local}`;
   };
 
   // Email/Password Registration
   const handleEmailSignup = async (e) => {
     e.preventDefault();
-    const { name, username, email, password, phone } = formData;
+    const { name, username, email, password } = formData;
+    const fullPhone = getFullPhoneNumber();
 
     if (!name.trim()) { toast.error('Full name is required'); return; }
     if (!username.trim()) { toast.error('Username is required'); return; }
@@ -82,14 +115,15 @@ const BiizzedSignup = () => {
     if (!password.trim() || password.length < 6) { toast.error('Password must be at least 6 characters'); return; }
 
     try {
-      const res = await register({ name, username, email, password, phone }).unwrap();
+      const res = await register({ name, username, email, password, phone: fullPhone }).unwrap();
       setRegisteredEmail(res.email);
       setStep('otp');
       setCountdown(60);
       setCanResend(false);
       toast.success('Verification code sent to your email');
     } catch (error) {
-      toast.error(error?.data?.message || 'Registration failed');
+      const msg = error?.data?.message || 'Registration failed. Email or username may already exist.';
+      toast.error(msg);
     }
   };
 
@@ -126,11 +160,12 @@ const BiizzedSignup = () => {
   // Google Signup
   const handleGoogleSuccess = async (credentialResponse) => {
     const { credential } = credentialResponse;
+    const fullPhone = getFullPhoneNumber();
     try {
       const res = await googleAuth({
         token: credential,
         mode: 'signup',
-        phone: formData.phone || '',
+        phone: fullPhone,
       }).unwrap();
       dispatch(setCredentials({ ...res }));
       toast.success(`Welcome to Biizzed, ${res.name || 'Creator'}! 🎉`);
@@ -212,8 +247,7 @@ const BiizzedSignup = () => {
           {/* Signup Card */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
             {signupMethod === 'email' ? (
-              /* Email Signup Form (no OTP page – modal shown after submission) */
-              step === 'form' ? (
+              step === 'form' && (
                 <form onSubmit={handleEmailSignup} className="space-y-4">
                   <div>
                     <label className="block text-xs font-medium text-gray-500 mb-1">Full Name *</label>
@@ -265,17 +299,45 @@ const BiizzedSignup = () => {
                       </button>
                     </div>
                   </div>
+
+                  {/* Phone Number with Country Code */}
                   <div>
                     <label className="block text-xs font-medium text-gray-500 mb-1">Phone (Optional)</label>
-                    <div className="relative">
-                      <FaPhone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
-                      <input
-                        type="tel" name="phone" value={formData.phone} onChange={handleChange}
-                        placeholder="08012345678"
-                        className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
-                      />
+                    <div className="flex gap-2">
+                      <div className="relative w-28">
+                        <select
+                          value={selectedCountry.code}
+                          onChange={(e) => {
+                            const country = countryCodes.find(c => c.code === e.target.value);
+                            if (country) setSelectedCountry(country);
+                          }}
+                          className="w-full pl-2 pr-7 py-2.5 border border-gray-200 rounded-xl text-sm bg-white appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
+                        >
+                          {countryCodes.map((country) => (
+                            <option key={country.code + country.name} value={country.code}>
+                              {country.flag} {country.code}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
+                      <div className="relative flex-1">
+                        <FaPhone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+                        <input
+                          type="tel"
+                          value={phoneNumber}
+                          onChange={handlePhoneChange}
+                          placeholder="Phone number"
+                          className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
+                        />
+                      </div>
                     </div>
                   </div>
+
                   <button
                     type="submit"
                     disabled={isLoading}
@@ -285,19 +347,45 @@ const BiizzedSignup = () => {
                     Create Account
                   </button>
                 </form>
-              ) : null
+              )
             ) : (
               /* Google Signup */
               <div className="space-y-4">
+                {/* Phone (optional) for Google – same country code selector */}
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1">Phone (Optional)</label>
-                  <div className="relative">
-                    <FaPhone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
-                    <input
-                      type="tel" value={formData.phone} onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                      placeholder="08012345678"
-                      className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
-                    />
+                  <div className="flex gap-2">
+                    <div className="relative w-28">
+                      <select
+                        value={selectedCountry.code}
+                        onChange={(e) => {
+                          const country = countryCodes.find(c => c.code === e.target.value);
+                          if (country) setSelectedCountry(country);
+                        }}
+                        className="w-full pl-2 pr-7 py-2.5 border border-gray-200 rounded-xl text-sm bg-white appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
+                      >
+                        {countryCodes.map((country) => (
+                          <option key={country.code + country.name} value={country.code}>
+                            {country.flag} {country.code}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
+                    <div className="relative flex-1">
+                      <FaPhone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+                      <input
+                        type="tel"
+                        value={phoneNumber}
+                        onChange={handlePhoneChange}
+                        placeholder="Phone number"
+                        className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
+                      />
+                    </div>
                   </div>
                 </div>
                 <div className="flex justify-center">

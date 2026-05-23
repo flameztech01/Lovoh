@@ -18,7 +18,7 @@ const BiizzedVideos = () => {
   const { userInfo } = useSelector((state) => state.auth);
   const [likeVideo] = useLikeVideoMutation();
   const [activeCategory, setActiveCategory] = useState('All');
-  const [videoTypeFilter, setVideoTypeFilter] = useState('all'); // 'all', 'youtube'
+  const [videoTypeFilter, setVideoTypeFilter] = useState('all'); // 'all', 'youtube', 'uploaded'
   const [currentPage, setCurrentPage] = useState(1);
   const [hoveredVideoId, setHoveredVideoId] = useState(null);
   const videoRefs = useRef({});
@@ -34,7 +34,25 @@ const BiizzedVideos = () => {
   const videos = videosData?.videos || [];
   const totalPages = videosData?.pages || 1;
 
-  const categories = ['All', 'Education', 'Business', 'Technology', 'News', 'Entertainment', 'Tutorial', 'Interview', 'Music'];
+  // Expanded categories – now includes industry-specific ones
+  const categories = [
+    'All',
+    'Education',
+    'Business',
+    'Technology',
+    'News',
+    'Entertainment',
+    'Tutorial',
+    'Interview',
+    'Music',
+    'Sports',
+    'Agriculture',
+    'Health',
+    'Finance',
+    'Science',
+    'Lifestyle',
+    'Gaming',
+  ];
 
   const formatViews = (views) => {
     if (!views) return '0 views';
@@ -77,7 +95,6 @@ const BiizzedVideos = () => {
   const handleVideoHover = (videoId) => {
     if (hoveredVideoId === videoId) return;
     
-    // Stop all other videos
     Object.keys(videoRefs.current).forEach((id) => {
       if (videoRefs.current[id] && id !== videoId) {
         const video = videoRefs.current[id];
@@ -104,7 +121,6 @@ const BiizzedVideos = () => {
     setHoveredVideoId(null);
   };
 
-  // Get thumbnail - handle both YouTube and uploaded videos
   const getThumbnail = (video) => {
     if (video.videoType === 'youtube') {
       return video.youtubeThumbnail || video.thumbnail;
@@ -112,7 +128,6 @@ const BiizzedVideos = () => {
     return video.thumbnail;
   };
 
-  // Get video link based on type
   const getVideoLink = (video) => {
     return `/videos/${video._id}`;
   };
@@ -136,7 +151,7 @@ const BiizzedVideos = () => {
       <div className="max-w-[1400px] mx-auto px-4 py-4">
         {/* Category Pills + Video Type Filter */}
         <div className="flex items-center gap-2 mb-4 overflow-x-auto no-scrollbar pb-2 sticky top-[105px] z-30 bg-[#0f0f0f] py-2">
-          {/* Video Type Filter - Only All and YouTube */}
+          {/* Video Type Filter: All / Clips / YouTube */}
           <div className="flex items-center gap-1 mr-2 border-r border-[#3f3f3f] pr-2">
             <button
               onClick={() => { setVideoTypeFilter('all'); setCurrentPage(1); }}
@@ -147,6 +162,16 @@ const BiizzedVideos = () => {
               }`}
             >
               <FaVideo className="text-[10px]" /> All
+            </button>
+            <button
+              onClick={() => { setVideoTypeFilter('uploaded'); setCurrentPage(1); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 ${
+                videoTypeFilter === 'uploaded'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-[#272727] text-white hover:bg-[#3f3f3f]'
+              }`}
+            >
+              <FaPlay className="text-[10px]" /> Clips
             </button>
             <button
               onClick={() => { setVideoTypeFilter('youtube'); setCurrentPage(1); }}
@@ -181,6 +206,8 @@ const BiizzedVideos = () => {
           <div className="text-center py-20">
             {videoTypeFilter === 'youtube' ? (
               <FaYoutube className="text-5xl text-gray-600 mx-auto mb-4" />
+            ) : videoTypeFilter === 'uploaded' ? (
+              <FaPlay className="text-5xl text-gray-600 mx-auto mb-4" />
             ) : (
               <FaPlay className="text-5xl text-gray-600 mx-auto mb-4" />
             )}

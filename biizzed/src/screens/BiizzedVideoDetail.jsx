@@ -1,5 +1,5 @@
-// screens/BiizzedVideoDetail.jsx – Full rewrite with pre‑roll ads & Capacitor share
-import React, { useState, useEffect, useRef } from 'react';
+// screens/BiizzedVideoDetail.jsx – TikTok‑style full‑screen mode (no new routes)
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import {
@@ -7,7 +7,7 @@ import {
   FaShare, FaSpinner, FaComment, FaUser, FaReply, FaTrashAlt,
   FaLink, FaPlus, FaCheck, FaClock,
   FaYoutube, FaPlay, FaExternalLinkAlt, FaVolumeMute, FaVolumeUp,
-  FaCheckCircle, FaUserCircle, FaAd,
+  FaCheckCircle, FaUserCircle, FaAd, FaExpand, FaTimes,
 } from 'react-icons/fa';
 import {
   useGetVideoByIdQuery,
@@ -36,7 +36,7 @@ const BiizzedVideoDetail = () => {
   const navigate = useNavigate();
   const { userInfo } = useSelector((state) => state.auth);
 
-  // Pre‑roll ad
+  // --- Pre‑roll ad (unchanged) ---
   const { data: adsData } = useGetAdsQuery({
     page: 'biizzed',
     placement: 'video-pre-roll',
@@ -53,10 +53,8 @@ const BiizzedVideoDetail = () => {
   const [adMuted, setAdMuted] = useState(false);
   const adVideoRef = useRef(null);
   const mainVideoRef = useRef(null);
-
   const preRollAd = adsData?.ads?.[0];
 
-  // Reset ad when video changes
   useEffect(() => {
     setShowAd(!!preRollAd);
     setAdCompleted(false);
@@ -65,7 +63,6 @@ const BiizzedVideoDetail = () => {
     setAdPlaying(false);
   }, [preRollAd, id]);
 
-  // Countdown for skip
   useEffect(() => {
     if (adPlaying && adCountdown > 0) {
       const timer = setTimeout(() => setAdCountdown(prev => prev - 1), 1000);
@@ -75,7 +72,6 @@ const BiizzedVideoDetail = () => {
     }
   }, [adPlaying, adCountdown, adCompleted]);
 
-  // Track ad view
   useEffect(() => {
     if (showAd && preRollAd && !adCompleted) {
       trackAdView(preRollAd._id).catch(err => console.error('Ad view track error:', err));
@@ -107,7 +103,7 @@ const BiizzedVideoDetail = () => {
   const handleAdPlay = () => setAdPlaying(true);
   const handleAdPause = () => setAdPlaying(false);
 
-  // Video page state
+  // --- Main video page state ---
   const [commentText, setCommentText] = useState('');
   const [replyTo, setReplyTo] = useState(null);
   const [isYouTubePlaying, setIsYouTubePlaying] = useState(false);
@@ -126,6 +122,100 @@ const BiizzedVideoDetail = () => {
   const [followUser] = useFollowUserMutation();
   const [unfollowUser] = useUnfollowUserMutation();
   const { data: profileData, refetch: refetchProfile } = useGetProfileInfoQuery(undefined, { skip: !userInfo?._id });
+
+  // --- TikTok full‑screen feed state ---
+  const [fullscreenMode, setFullscreenMode] = useState(false);
+  const [feedPage, setFeedPage] = useState(1);
+  const [feedVideos, setFeedVideos] = useState([]);
+  const [feedHasMore, setFeedHasMore] = useState(true);
+  const [feedLoading, setFeedLoading] = useState(false);
+  const [currentSnapIndex, setCurrentSnapIndex] = useState(0);
+  const [commentModalVideoId, setCommentModalVideoId] = useState(null); // id of video whose comments to show
+  const feedContainerRef = useRef(null);
+  const videoRefs = useRef({}); // { [videoId]: HTMLVideoElement }
+
+  // Fetch videos for the feed
+  const { data: feedData, isFetching: feedIsFetching } = useGetVideosQuery(
+    { page: feedPage, limit: 10, sort: '-createdAt' },
+    { skip: !fullscreenMode } // only fetch when in fullscreen mode
+  );
+
+  useEffect(() => {
+    if (feedData?.videos) {
+      // Append new videos, avoid duplicates
+      setFeedVideos(prev => {
+        const existingIds = new Set(prev.map(v => v._id));
+        const newVideos = feedData.videos.filter(v => !existingIds.has(v._id));
+        return [...prev, ...newVideos];
+      });
+      setFeedHasMore(feedData.pages > feedPage);
+    }
+  }, [feedData]);
+
+  // Scroll‑based infinite loading
+  const handleFeedScroll = useCallback(() => {
+    if (!feedContainerRef.current || feedLoading || !feedHasMore) return;
+    const { scrollTop, scrollHeight, clientHeight } = feedContainerRef.current;
+    if (scrollTop + clientHeight >= scrollHeight - 200) {
+      setFeedPage(prev => prev + 1);
+    }
+  }, [feedLoading, feedHasMore]);
+
+  useEffect(() => {
+    if (fullscreenMode && feedContainerRef.current) {
+      const el = feedContainerRef.current;
+      el.addEventListener('scroll', handleFeedScroll, { passive: true });
+      return () => el.removeEventListener('scroll', handleFeedScroll);
+    }
+  }, [fullscreenMode, handleFeedScroll]);
+
+  // Snap detection: find which video index is most visible
+  const handleSnapChange = useCallback(() => {
+    if (!feedContainerRef.current) return;
+    const container = feedContainerRef.current;
+    const videoElements = container.querySelectorAll('.snap-video');
+    let closestIndex = 0;
+    let minDistance = Infinity;
+    videoElements.forEach((el, idx) => {
+      const rect = el.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      const distance = Math.abs(rect.top - containerRect.top);
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestIndex = idx;
+      }
+    });
+    setCurrentSnapIndex(closestIndex);
+  }, []);
+
+  useEffect(() => {
+    if (fullscreenMode && feedContainerRef.current) {
+      const container = feedContainerRef.current;
+      container.addEventListener('scroll', handleSnapChange, { passive: true });
+      return () => container.removeEventListener('scroll', handleSnapChange);
+    }
+  }, [fullscreenMode, handleSnapChange]);
+
+  // Play/pause logic: only play the video at currentSnapIndex
+  useEffect(() => {
+    if (!fullscreenMode || !feedVideos.length) return;
+    const videoToPlay = feedVideos[currentSnapIndex];
+    if (!videoToPlay || videoToPlay.videoType === 'youtube') return;
+
+    // Pause all others
+    Object.keys(videoRefs.current).forEach(vId => {
+      const v = videoRefs.current[vId];
+      if (v && vId !== videoToPlay._id) {
+        v.pause();
+      }
+    });
+
+    const currentVideoEl = videoRefs.current[videoToPlay._id];
+    if (currentVideoEl) {
+      currentVideoEl.currentTime = 0;
+      currentVideoEl.play().catch(err => console.log('Autoplay failed:', err));
+    }
+  }, [currentSnapIndex, fullscreenMode, feedVideos]);
 
   const isFollowing = () => {
     if (!profileData?.following || !video?.user?._id) return false;
@@ -248,18 +338,18 @@ const BiizzedVideoDetail = () => {
     try { await deleteComment({ id, commentId }).unwrap(); refetchVideo(); } catch { toast.error('Failed'); }
   };
 
-  // ========== CAPACITOR SHARE (same as Articles & Feed) ==========
-  const handleShare = async () => {
-    const url = `${WEBSITE_URL}/videos/${id}`;
+  // ========== SHARE ==========
+  const handleShare = async (targetVideo = video) => {
+    if (!targetVideo) return;
+    const url = `${WEBSITE_URL}/videos/${targetVideo._id}`;
     try {
       const { Share } = await import('@capacitor/share');
       await Share.share({
-        title: video.title,
-        text: video.title,
+        title: targetVideo.title,
+        text: targetVideo.title,
         url: url,
       });
-    } catch (err) {
-      // Fallback: browser clipboard or manual copy
+    } catch {
       try {
         await navigator.clipboard.writeText(url);
         toast.success('Link copied!');
@@ -273,6 +363,25 @@ const BiizzedVideoDetail = () => {
         toast.success('Link copied!');
       }
     }
+  };
+
+  // TikTok feed actions
+  const feedLikeVideo = async (videoId) => {
+    if (!userInfo) { toast.info('Login to like'); return; }
+    try {
+      await likeVideo(videoId).unwrap();
+      // Update local feed to reflect like count
+      setFeedVideos(prev => prev.map(v => v._id === videoId ? { ...v, likes: [...(v.likes || []), userInfo._id] } : v));
+    } catch { toast.error('Failed'); }
+  };
+
+  const feedAddComment = async (videoId, text) => {
+    if (!userInfo) { toast.info('Login to comment'); return; }
+    try {
+      await addComment({ id: videoId, text }).unwrap();
+      // Refetch comments for the modal? We'll rely on the modal fetch.
+      toast.success('Comment added');
+    } catch { toast.error('Failed'); }
   };
 
   const getRelatedThumbnail = (v) => {
@@ -321,6 +430,150 @@ const BiizzedVideoDetail = () => {
   const authorName = video?.authorName || 'Creator';
   const authorProfile = video?.authorProfile;
 
+  // ========== FULLSCREEN TIKTOK OVERLAY ==========
+  if (fullscreenMode) {
+    return (
+      <div className="fixed inset-0 z-[100] bg-black overflow-hidden">
+        {/* Top bar */}
+        <div className="absolute top-4 left-4 right-4 z-10 flex justify-between items-center">
+          <button
+            onClick={() => {
+              setFullscreenMode(false);
+              setFeedVideos([]); // reset feed on exit
+              setFeedPage(1);
+            }}
+            className="text-white bg-black/40 rounded-full p-2"
+          >
+            <FaTimes size={20} />
+          </button>
+          <h2 className="text-white font-bold">For You</h2>
+          <div className="w-8" />
+        </div>
+
+        {/* Vertical snap feed */}
+        <div
+          ref={feedContainerRef}
+          className="h-full overflow-y-scroll snap-y snap-mandatory"
+          style={{ scrollSnapType: 'y mandatory' }}
+        >
+          {feedVideos.map((v, index) => {
+            const isFeedYouTube = v.videoType === 'youtube';
+            return (
+              <div
+                key={v._id}
+                className="snap-video h-screen w-full snap-start relative flex items-center justify-center bg-black"
+              >
+                {/* Video content */}
+                {isFeedYouTube ? (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-white">
+                    <img
+                      src={v.youtubeThumbnail || v.thumbnail}
+                      alt=""
+                      className="max-h-full max-w-full object-contain"
+                    />
+                    <p className="mt-4 text-center text-sm">YouTube video</p>
+                    <a
+                      href={v.youtubeUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 px-4 py-2 bg-red-600 text-white rounded-full text-xs font-medium"
+                    >
+                      <FaYoutube className="inline mr-1" /> Watch on YouTube
+                    </a>
+                  </div>
+                ) : (
+                  <video
+                    ref={el => (videoRefs.current[v._id] = el)}
+                    src={v.videoUrl}
+                    className="max-h-full max-w-full object-contain"
+                    loop
+                    muted
+                    playsInline
+                    preload="metadata"
+                    onCanPlay={() => {
+                      if (index === currentSnapIndex && v._id === feedVideos[currentSnapIndex]?._id) {
+                        videoRefs.current[v._id]?.play();
+                      }
+                    }}
+                  />
+                )}
+
+                {/* Action bar – right side, like TikTok */}
+                <div className="absolute right-4 bottom-24 flex flex-col items-center gap-4 text-white">
+                  {/* Like */}
+                  <button onClick={() => feedLikeVideo(v._id)} className="flex flex-col items-center">
+                    {v.likes?.includes(userInfo?._id) ? (
+                      <FaHeart className="text-red-500 text-2xl" />
+                    ) : (
+                      <FaRegHeart className="text-2xl" />
+                    )}
+                    <span className="text-xs mt-0.5">{v.likes?.length || 0}</span>
+                  </button>
+
+                  {/* Comment */}
+                  <button
+                    onClick={() => setCommentModalVideoId(v._id)}
+                    className="flex flex-col items-center"
+                  >
+                    <FaComment className="text-2xl" />
+                    <span className="text-xs mt-0.5">{v.commentsCount || 0}</span>
+                  </button>
+
+                  {/* Share */}
+                  <button onClick={() => handleShare(v)} className="flex flex-col items-center">
+                    <FaShare className="text-2xl" />
+                    <span className="text-xs mt-0.5">Share</span>
+                  </button>
+
+                  {/* Save / Bookmark (placeholder) */}
+                  <button
+                    onClick={() => toast.info('Save coming soon')}
+                    className="flex flex-col items-center"
+                  >
+                    <FaBookmark className="text-2xl" />
+                    <span className="text-xs mt-0.5">Save</span>
+                  </button>
+                </div>
+
+                {/* Video info overlay – bottom left */}
+                <div className="absolute left-4 bottom-24 max-w-[70%] text-white">
+                  <h3 className="text-sm font-semibold line-clamp-2">{v.title}</h3>
+                  <p className="text-xs mt-1 opacity-80">
+                    {v.authorName || 'Creator'}
+                    {isFeedYouTube && <FaYoutube className="inline ml-1 text-red-500 text-xs" />}
+                  </p>
+                  <p className="text-xs opacity-60">{formatViews(v.views)} · {formatDate(v.createdAt)}</p>
+                </div>
+              </div>
+            );
+          })}
+
+          {feedLoading && (
+            <div className="h-screen flex items-center justify-center text-white">
+              <FaSpinner className="animate-spin text-2xl" />
+            </div>
+          )}
+          {!feedHasMore && feedVideos.length > 0 && (
+            <div className="h-screen flex items-center justify-center text-white text-sm opacity-50">
+              You've reached the end
+            </div>
+          )}
+        </div>
+
+        {/* Comment Bottom Sheet */}
+        {commentModalVideoId && (
+          <CommentModal
+            videoId={commentModalVideoId}
+            userInfo={userInfo}
+            onClose={() => setCommentModalVideoId(null)}
+            feedAddComment={feedAddComment}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // ========== STANDARD DETAIL VIEW (unchanged below, only adding the fullscreen button) ==========
   return (
     <div className="min-h-screen bg-gray-100">
       <Helmet>
@@ -341,7 +594,15 @@ const BiizzedVideoDetail = () => {
           <main className="flex-1 max-w-[900px] mx-auto">
 
             {/* Video Player with Pre‑roll Ad */}
-            <div className={`bg-black rounded-2xl overflow-hidden mb-4 ${getVideoContainerClass()}`}>
+            <div className={`bg-black rounded-2xl overflow-hidden mb-4 ${getVideoContainerClass()} relative group`}>
+              {/* Fullscreen button – top right */}
+              <button
+                onClick={() => setFullscreenMode(true)}
+                className="absolute top-4 right-4 z-30 bg-black/50 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <FaExpand size={18} />
+              </button>
+
               <div className={getVideoHeightClass()}>
                 {/* AD PLAYER */}
                 {showAd && preRollAd && !adCompleted && (
@@ -401,7 +662,7 @@ const BiizzedVideoDetail = () => {
                   </div>
                 )}
 
-                {/* MAIN VIDEO (hidden when ad is active) */}
+                {/* MAIN VIDEO (hidden when ad active) */}
                 <div style={{ display: showAd && !adCompleted ? 'none' : 'block' }} className="w-full h-full">
                   {isYouTube ? (
                     !isYouTubePlaying ? (
@@ -452,7 +713,7 @@ const BiizzedVideoDetail = () => {
               </div>
             </div>
 
-            {/* Video Info */}
+            {/* Video Info (unchanged) */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 mb-4">
               {/* Badges */}
               <div className="flex flex-wrap gap-2 mb-3">
@@ -500,7 +761,7 @@ const BiizzedVideoDetail = () => {
                     {isLiked ? <FaHeart className="text-red-500" /> : <FaRegHeart />}
                     {video.likes?.length || 0}
                   </button>
-                  <button onClick={handleShare} className="flex items-center gap-1.5 px-4 py-2 bg-gray-100 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors">
+                  <button onClick={() => handleShare()} className="flex items-center gap-1.5 px-4 py-2 bg-gray-100 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors">
                     <FaShare /> Share
                   </button>
                 </div>
@@ -532,7 +793,6 @@ const BiizzedVideoDetail = () => {
                   </div>
                 </Link>
 
-                {/* Follow Button */}
                 {userInfo && !isOwn && !isAdmin && (
                   <button
                     onClick={handleFollowToggle}
@@ -594,7 +854,7 @@ const BiizzedVideoDetail = () => {
               )}
             </div>
 
-            {/* Comments Section */}
+            {/* Comments Section (unchanged) */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 mb-4">
               <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                 <FaComment className="text-[#1B3766]" /> Comments ({video.comments?.length || 0})
@@ -681,7 +941,7 @@ const BiizzedVideoDetail = () => {
             </div>
           </main>
 
-          {/* Right Sidebar - Related Videos */}
+          {/* Right Sidebar - Related Videos (unchanged) */}
           <aside className="hidden lg:block w-[320px] flex-shrink-0">
             <div className="sticky top-[120px] w-[320px] h-[calc(100vh-140px)] overflow-y-auto space-y-4 pb-8 no-scrollbar">
               <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
@@ -753,6 +1013,131 @@ const BiizzedVideoDetail = () => {
           overflow: hidden;
         }
       `}</style>
+    </div>
+  );
+};
+
+// ==================== COMMENT MODAL COMPONENT ====================
+const CommentModal = ({ videoId, userInfo, onClose, feedAddComment }) => {
+  const { data: videoData, isLoading, refetch } = useGetVideoByIdQuery(videoId, { skip: !videoId });
+  const [commentText, setCommentText] = useState('');
+  const [addComment] = useAddVideoCommentMutation();
+  const [likeComment] = useLikeVideoCommentMutation();
+  const [deleteComment] = useDeleteVideoCommentMutation();
+
+  const handlePostComment = async (e) => {
+    e.preventDefault();
+    if (!commentText.trim()) return;
+    try {
+      await addComment({ id: videoId, text: commentText }).unwrap();
+      setCommentText('');
+      refetch();
+      feedAddComment?.(videoId, commentText); // sync feed if needed
+    } catch {
+      toast.error('Failed to post comment');
+    }
+  };
+
+  const handleLikeComment = async (commentId) => {
+    if (!userInfo) return;
+    try {
+      await likeComment({ id: videoId, commentId }).unwrap();
+      refetch();
+    } catch { toast.error('Failed'); }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    if (!confirm('Delete this comment?')) return;
+    try {
+      await deleteComment({ id: videoId, commentId }).unwrap();
+      refetch();
+    } catch { toast.error('Failed'); }
+  };
+
+  const formatRelativeDate = (date) => {
+    if (!date) return '';
+    const now = new Date();
+    const d = new Date(date);
+    const diffMins = Math.floor((now - d) / 60000);
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  return (
+    <div className="fixed inset-0 z-[110] flex items-end justify-center bg-black/60" onClick={onClose}>
+      <div
+        className="bg-white w-full max-w-md rounded-t-2xl p-4 max-h-[70vh] overflow-y-auto animate-slide-up"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-bold text-lg">Comments</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <FaTimes />
+          </button>
+        </div>
+
+        {isLoading ? (
+          <div className="flex justify-center py-8"><FaSpinner className="animate-spin" /></div>
+        ) : (
+          <>
+            {userInfo ? (
+              <form onSubmit={handlePostComment} className="flex gap-2 mb-4">
+                <input
+                  type="text"
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  placeholder="Add a comment..."
+                  className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
+                />
+                <button
+                  type="submit"
+                  disabled={!commentText.trim()}
+                  className="px-4 py-2 bg-[#1B3766] text-white rounded-xl text-sm font-medium disabled:opacity-50"
+                >
+                  Post
+                </button>
+              </form>
+            ) : (
+              <p className="text-sm text-gray-500 mb-4">Login to comment</p>
+            )}
+
+            <div className="space-y-4">
+              {videoData?.comments?.map((comment) => (
+                <div key={comment._id} className="flex gap-3">
+                  {comment.userProfile ? (
+                    <img src={comment.userProfile} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                      {(comment.userName || 'U')[0].toUpperCase()}
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <div className="bg-gray-50 rounded-xl px-3 py-2">
+                      <p className="text-sm font-semibold">{comment.userName || 'User'}</p>
+                      <p className="text-sm">{comment.text}</p>
+                    </div>
+                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                      <span>{formatRelativeDate(comment.createdAt)}</span>
+                      <button onClick={() => handleLikeComment(comment._id)}>Like</button>
+                      {comment.likes?.length > 0 && <span>{comment.likes.length}</span>}
+                      {(userInfo?._id === comment.user || userInfo?.role === 'admin') && (
+                        <button onClick={() => handleDeleteComment(comment._id)} className="text-red-500">Delete</button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {videoData?.comments?.length === 0 && (
+                <p className="text-center text-sm text-gray-400">No comments yet</p>
+              )}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 };
