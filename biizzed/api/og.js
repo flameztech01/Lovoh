@@ -4,16 +4,25 @@ const API_URL = process.env.VITE_API_URL?.replace(/\/$/, '');
 
 export default async function handler(request) {
   const url = new URL(request.url);
-  
-  // Pass through static assets — check path contains /assets/ or /static/ or ends with file extension
   const path = url.pathname;
-  const isAsset = 
+  
+  // Pass through any file request (let Vercel return 404 if file doesn't exist)
+  const isFile = path.includes('.') && !path.endsWith('/');
+  const isKnownPath = 
     path.startsWith('/assets/') ||
     path.startsWith('/static/') ||
-    /\.(js|css|svg|png|jpg|jpeg|gif|ico|woff|woff2|ttf|eot|json|xml|txt|map|webmanifest)(\?.*)?$/i.test(path);
+    path === '/favicon.ico' ||
+    path === '/manifest.json' ||
+    path === '/robots.txt' ||
+    path === '/sitemap.xml';
   
-  if (isAsset) {
-    return fetch(request);
+  if (isFile || isKnownPath) {
+    // Try to fetch the file, if 404 just return empty 404 instead of looping
+    const fileRes = await fetch(request);
+    if (fileRes.status === 404) {
+      return new Response(null, { status: 404 });
+    }
+    return fileRes;
   }
 
   const ua = request.headers.get('user-agent') || '';
