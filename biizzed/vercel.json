@@ -4,7 +4,7 @@
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/assets/(.*)", "destination": "/assets/$1" },
     { "source": "/static/(.*)", "destination": "/static/$1" },
-    { "source": "/(.*\\.(js|css|svg|png|jpg|jpeg|gif|ico|woff|woff2|ttf|eot|json|xml|txt|map))", "destination": "/$1" },
+    { "source": "/(.*\\.(js|css|svg|png|jpg|jpeg|gif|ico|woff|woff2|ttf|eot|json|xml|txt|map|webmanifest))", "destination": "/$1" },
     { "source": "/index.html", "destination": "/index.html" },
     { "source": "/(.*)", "destination": "/api/og" }
   ]
