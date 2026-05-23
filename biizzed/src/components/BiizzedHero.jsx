@@ -26,7 +26,6 @@ const BiizzedHero = () => {
   const { userInfo } = useSelector((state) => state.auth);
   const [currentHeadline, setCurrentHeadline] = useState(0);
   
-  // Fetch both published and coming soon magazines
   const { data: magazinesData, isLoading } = useGetMagazinesQuery({
     status: 'published,coming_soon',
     limit: 20
@@ -39,7 +38,6 @@ const BiizzedHero = () => {
   const featuredMagazines = allMagazines.filter(m => m.isFeatured === true);
   const comingSoonMagazines = allMagazines.filter(m => m.status === 'coming_soon');
 
-  // Build the display for the right column: up to 2 magazines, prioritize featured, then coming soon
   let displayMagazines = [];
   if (featuredMagazines.length >= 2) {
     displayMagazines = featuredMagazines.slice(0, 2);
@@ -58,7 +56,6 @@ const BiizzedHero = () => {
     }
   }
 
-  // Headlines
   const headlines = allMagazines.slice(0, 4).map(m => m.title) || [
     "The Future of Business Innovation",
     "Leadership Strategies for Modern Enterprises",
@@ -66,7 +63,6 @@ const BiizzedHero = () => {
     "Sustainable Business Practices"
   ];
 
-  // Auto‑rotate headlines every 3 seconds
   useEffect(() => {
     if (headlines.length === 0) return;
     const interval = setInterval(() => {
@@ -91,7 +87,6 @@ const BiizzedHero = () => {
     }
   };
 
-  // NEW: Handle "Get Notified" click for coming soon magazines
   const handleGetNotified = (e, magazineSlug) => {
     e.preventDefault();
     e.stopPropagation();
@@ -114,6 +109,24 @@ const BiizzedHero = () => {
 
   return (
     <section className="pt-23 pb-12 relative bg-white overflow-hidden">
+      {/* 🔥 DRAMATIC SHAKE + BOUNCE for Explore button */}
+      <style>{`
+        @keyframes dramatic-shake {
+          0%, 85%, 100% { transform: translateX(0) scale(1); }
+          88% { transform: translateX(-6px) scale(1.07); }
+          91% { transform: translateX(6px) scale(0.97); }
+          94% { transform: translateX(-4px) scale(1.03); }
+          97% { transform: translateX(4px) scale(0.99); }
+          99% { transform: translateX(-1px) scale(1.01); }
+        }
+        .animate-dramatic-shake {
+          animation: dramatic-shake 4s ease-in-out infinite;
+        }
+        .animate-dramatic-shake:hover {
+          animation-play-state: paused;
+        }
+      `}</style>
+
       {/* Background Pattern */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-0 right-0 w-96 h-96 bg-[#1B3766]/5 rounded-full blur-3xl"></div>
@@ -194,14 +207,17 @@ const BiizzedHero = () => {
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-3">
-              <Link
-                to="/feed"
-                className="group flex items-center justify-center gap-2 px-6 py-3 bg-[#1B3766] text-white rounded-lg font-semibold hover:bg-[#142952] transition-all duration-300 transform hover:scale-105 text-sm shadow-lg shadow-[#1B3766]/20"
-              >
-                <FaCompass className="text-sm" />
-                Explore Biizzed
-                <FaArrowRight className="text-xs group-hover:translate-x-1 transition-transform" />
-              </Link>
+              {/* Dramatic animation wrapper */}
+              <div className="animate-dramatic-shake">
+                <Link
+                  to="/feed"
+                  className="group flex items-center justify-center gap-2 px-6 py-3 bg-[#1B3766] text-white rounded-lg font-semibold hover:bg-[#142952] transition-all duration-300 transform hover:scale-105 text-sm shadow-lg shadow-[#1B3766]/20"
+                >
+                  <FaCompass className="text-sm" />
+                  Explore Biizzed
+                  <FaArrowRight className="text-xs group-hover:translate-x-1 transition-transform" />
+                </Link>
+              </div>
               
               <button 
                 onClick={handleSubscribe}
@@ -258,7 +274,6 @@ const BiizzedHero = () => {
                         </div>
                       )}
                       
-                      {/* Featured badge */}
                       {magazine.isFeatured && (
                         <div className="absolute top-2 left-2 z-10">
                           <span className="bg-[#1B3766] text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full shadow-lg flex items-center gap-0.5">
@@ -268,7 +283,6 @@ const BiizzedHero = () => {
                         </div>
                       )}
 
-                      {/* Coming Soon badge overlay */}
                       {isComingSoon && (
                         <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[2px]">
                           <span className="px-3 py-1.5 bg-amber-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1">
@@ -277,7 +291,6 @@ const BiizzedHero = () => {
                         </div>
                       )}
 
-                      {/* Read Now overlay (only for published, not coming soon) */}
                       {!isComingSoon && (
                         <div className="absolute inset-0 bg-[#1B3766]/0 group-hover:bg-[#1B3766]/30 transition-all duration-300 flex items-center justify-center">
                           <span className="text-white font-semibold text-xs sm:text-sm opacity-0 group-hover:opacity-100 transition-all duration-300 bg-[#1B3766]/80 px-4 py-2 rounded-full transform scale-90 group-hover:scale-100">
@@ -307,7 +320,6 @@ const BiizzedHero = () => {
                             </span>
                           )}
                         </div>
-                        {/* Modified bottom right action */}
                         {isComingSoon ? (
                           <button
                             onClick={(e) => handleGetNotified(e, magazine.slug)}

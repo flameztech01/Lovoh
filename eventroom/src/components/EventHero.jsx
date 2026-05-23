@@ -1,4 +1,4 @@
-// components/EventHero.jsx – Updated to use event slug for detail path
+// components/EventHero.jsx – Conditional create/login button
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
@@ -31,13 +31,12 @@ const FeaturedCardSkeleton = () => (
     </div>
   </div>
 );
-// =========================================================
 
 const EventHero = () => {
   const navigate = useNavigate();
   const { userInfo } = useSelector((state) => state.auth);
   const { data: eventsData, isLoading } = useGetEventsQuery({ upcoming: 'true' });
-  
+
   const [featuredEvent, setFeaturedEvent] = useState(null);
 
   useEffect(() => {
@@ -45,7 +44,7 @@ const EventHero = () => {
       const events = eventsData.events;
       const now = new Date();
       const upcoming = events.filter(event => new Date(event.date) >= now);
-      
+
       const featured = upcoming.find(e => e.featured) || upcoming[0] || events[0];
       if (featured) {
         let priceDisplay = 'Free';
@@ -67,7 +66,7 @@ const EventHero = () => {
           location: featured.venue || featured.location,
           price: priceDisplay,
           image: featured.images?.[0] || '/campus2.jpg',
-          slug: featured.slug,   // ← use slug from backend, not _id
+          slug: featured.slug,
           category: featured.category,
           eventType: featured.eventType,
           hasTicketTypes: featured.ticketTypes?.length > 0,
@@ -83,8 +82,11 @@ const EventHero = () => {
   };
 
   const handleCreateEvent = () => {
-    if (userInfo) { navigate('/dashboard'); }
-    else { navigate('/login?redirect=/dashboard'); }
+    if (userInfo) {
+      navigate('/dashboard');
+    } else {
+      navigate('/login?redirect=/dashboard');
+    }
   };
 
   return (
@@ -95,17 +97,17 @@ const EventHero = () => {
         <div className="absolute inset-0 bg-black/70"></div>
         <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-transparent"></div>
       </div>
-      
-      {/* Floating Elements - Hidden on mobile for better performance */}
+
+      {/* Floating Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none hidden md:block">
         <div className="absolute top-20 left-10 w-20 h-20 bg-[#79FFFF]/10 rounded-full blur-2xl animate-pulse"></div>
         <div className="absolute bottom-20 right-10 w-32 h-32 bg-[#79FFFF]/5 rounded-full blur-3xl animate-pulse delay-1000"></div>
         <div className="absolute top-1/3 right-1/4 w-16 h-16 bg-white/5 rounded-full blur-xl animate-bounce-slow"></div>
       </div>
-      
+
       <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-8 md:py-8">
         <div className="grid lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-16 items-center">
-          {/* Left Column - ALWAYS VISIBLE (static content, no loading) */}
+          {/* Left Column */}
           <div className="text-center lg:text-left">
             <div className="inline-flex items-center gap-2 bg-[#79FFFF]/20 backdrop-blur-sm border border-[#79FFFF]/30 rounded-full px-3 sm:px-4 py-1.5 mb-4 sm:mb-6 mx-auto lg:mx-0 w-fit animate-fadeInUp">
               <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[#79FFFF] rounded-full animate-pulse"></div>
@@ -115,13 +117,13 @@ const EventHero = () => {
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight mb-3 sm:mb-4 animate-fadeInUp animation-delay-100">
               Events That{' '}<span className="text-[#79FFFF]">Inspire & Connect</span>
             </h1>
-            
+
             <p className="text-sm sm:text-base md:text-lg text-gray-300 max-w-lg leading-relaxed mb-6 sm:mb-8 mx-auto lg:mx-0 animate-fadeInUp animation-delay-200">
-              Discover events hosted by creators, businesses, and communities worldwide. 
+              Discover events hosted by creators, businesses, and communities worldwide.
               From networking meetups to global conferences — or create your own.
             </p>
 
-            {/* Platform Value Cards - Mobile friendly */}
+            {/* Value Cards */}
             <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 sm:mb-8 animate-fadeInUp animation-delay-300">
               <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-2 sm:p-4 text-center hover:bg-white/10 transition-colors">
                 <FaGlobe className="text-[#79FFFF] text-xl sm:text-2xl mx-auto mb-1 sm:mb-2" />
@@ -140,20 +142,28 @@ const EventHero = () => {
               </div>
             </div>
 
-            {/* Buttons - Stack on mobile */}
+            {/* Buttons – conditional text based on auth */}
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 animate-fadeInUp animation-delay-400">
               <button onClick={handleExploreEvents}
                 className="bg-white hover:bg-gray-100 text-[#1B3766] px-6 sm:px-8 py-3 sm:py-3.5 rounded-xl font-semibold text-sm sm:text-base transition-all duration-300 transform hover:scale-105 shadow-lg w-full sm:w-auto">
                 Explore Events
               </button>
-              <button onClick={handleCreateEvent}
-                className="bg-[#79FFFF] hover:bg-[#5ee8e8] text-[#1B3766] px-6 sm:px-8 py-3 sm:py-3.5 rounded-xl font-semibold text-sm sm:text-base transition-all duration-300 transform hover:scale-105 shadow-lg flex items-center justify-center gap-2 w-full sm:w-auto group">
-                <FaPlus className="text-xs sm:text-sm" /> Create Event <FaArrowRight className="text-xs sm:text-sm group-hover:translate-x-1 transition-transform" />
-              </button>
+
+              {userInfo ? (
+                <button onClick={handleCreateEvent}
+                  className="bg-[#79FFFF] hover:bg-[#5ee8e8] text-[#1B3766] px-6 sm:px-8 py-3 sm:py-3.5 rounded-xl font-semibold text-sm sm:text-base transition-all duration-300 transform hover:scale-105 shadow-lg flex items-center justify-center gap-2 w-full sm:w-auto group">
+                  <FaPlus className="text-xs sm:text-sm" /> Create Event <FaArrowRight className="text-xs sm:text-sm group-hover:translate-x-1 transition-transform" />
+                </button>
+              ) : (
+                <button onClick={handleCreateEvent}
+                  className="bg-[#79FFFF] hover:bg-[#5ee8e8] text-[#1B3766] px-6 sm:px-8 py-3 sm:py-3.5 rounded-xl font-semibold text-sm sm:text-base transition-all duration-300 transform hover:scale-105 shadow-lg flex items-center justify-center gap-2 w-full sm:w-auto group">
+                  Login to Create Event <FaArrowRight className="text-xs sm:text-sm group-hover:translate-x-1 transition-transform" />
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Right Column - Featured Event Card (shows skeleton while loading) */}
+          {/* Right Column – Featured Event Card */}
           <div className="animate-fadeInUp animation-delay-200 mt-8 lg:mt-0">
             {isLoading ? (
               <FeaturedCardSkeleton />
@@ -163,15 +173,13 @@ const EventHero = () => {
                   <div className="relative h-48 xs:h-56 sm:h-64 overflow-hidden">
                     <img src={featuredEvent.image} alt={featuredEvent.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-                    
-                    {/* Featured Badge */}
+
                     <div className="absolute top-3 sm:top-4 left-3 sm:left-4">
                       <span className="bg-white/90 backdrop-blur-sm text-[#1B3766] px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold shadow-lg flex items-center gap-1">
                         <FaStar className="text-[8px] sm:text-[10px] text-yellow-500" /> Featured
                       </span>
                     </div>
 
-                    {/* Category & Type */}
                     <div className="absolute top-3 sm:top-4 right-3 sm:right-4 flex flex-col gap-1 sm:gap-1.5 items-end">
                       {featuredEvent.category && (
                         <span className="bg-white/20 backdrop-blur-sm text-white px-2 sm:px-2.5 py-0.5 rounded-full text-[8px] sm:text-[10px]">{featuredEvent.category}</span>
@@ -181,7 +189,6 @@ const EventHero = () => {
                       )}
                     </div>
 
-                    {/* Ticket Type Badge */}
                     {featuredEvent.hasTicketTypes && (
                       <div className="absolute bottom-12 sm:bottom-16 left-3 sm:left-4">
                         <span className="bg-purple-500/80 backdrop-blur-sm text-white text-[8px] sm:text-[10px] font-medium px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full flex items-center gap-1">
@@ -190,12 +197,12 @@ const EventHero = () => {
                       </div>
                     )}
                   </div>
-                  
+
                   <div className="p-4 sm:p-5">
                     <h3 className="text-lg sm:text-xl font-bold text-white mb-2 group-hover:text-white/90 transition-colors line-clamp-2">
                       {featuredEvent.title}
                     </h3>
-                    
+
                     <div className="space-y-1.5 sm:space-y-2 mb-3 sm:mb-4">
                       <div className="flex items-center gap-2 text-gray-300 text-xs sm:text-sm">
                         <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white/60 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -211,7 +218,7 @@ const EventHero = () => {
                         <span className="truncate">{featuredEvent.location}</span>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center justify-between">
                       <div>
                         <span className="text-lg sm:text-xl font-bold text-white">{featuredEvent.price}</span>
@@ -229,14 +236,13 @@ const EventHero = () => {
                 </div>
               </Link>
             ) : (
-              // No featured event state
               <div className="relative bg-white/10 backdrop-blur-md rounded-2xl overflow-hidden border border-white/20 shadow-xl max-w-md mx-auto lg:mx-0 p-8 text-center">
                 <FaCalendarAlt className="text-4xl text-white/30 mx-auto mb-4" />
                 <h3 className="text-lg font-bold text-white mb-2">No Events Yet</h3>
                 <p className="text-gray-300 text-sm mb-4">Be the first to create an event!</p>
                 <button onClick={handleCreateEvent}
                   className="bg-[#79FFFF] hover:bg-[#5ee8e8] text-[#1B3766] px-6 py-2.5 rounded-xl font-semibold text-sm transition-all">
-                  Create Event
+                  {userInfo ? 'Create Event' : 'Login to Create'}
                 </button>
               </div>
             )}
@@ -264,7 +270,6 @@ const EventHero = () => {
         .animate-bounce-slow { animation: bounce-slow 4s ease-in-out infinite; }
         .delay-1000 { animation-delay: 1s; }
         
-        /* Extra small screens (below 480px) */
         @media (min-width: 480px) {
           .xs\\:block { display: block; }
         }

@@ -34,15 +34,9 @@ const getBaseUrl = () => {
   return 'https://lovohcreate.com';
 };
 
-const getEventsListPath = () => {
-  if (currentSubdomain === 'events') return '/';
-  return '/';
-};
+const getEventsListPath = () => '/';
 
-const getEventRegisterPath = (slug) => {
-  if (currentSubdomain === 'events') return `/${slug}/register`;
-  return `/${slug}/register`;
-};
+const getEventRegisterPath = (slug) => `/${slug}/register`;
 
 const toAbsoluteUrl = (url) => {
   if (!url) return `${getBaseUrl()}/logo.png`;
@@ -51,7 +45,7 @@ const toAbsoluteUrl = (url) => {
   return `${getBaseUrl()}/${url}`;
 };
 
-// ==================== SKELETON COMPONENTS ====================
+// ==================== SKELETON COMPONENTS (unchanged) ====================
 const ImageSkeleton = () => (
   <div className="relative w-full h-56 sm:h-80 md:h-96 overflow-hidden bg-gray-200 animate-pulse">
     <div className="absolute inset-0 bg-gradient-to-t from-gray-300/40 to-transparent" />
@@ -109,9 +103,7 @@ const ContentSkeleton = () => (
     </div>
   </div>
 );
-// =========================================================
 
-// ==================== ERROR COMPONENT ====================
 const ErrorState = ({ error, onRetry }) => {
   const isNetworkError = !error?.status || error?.status === 'FETCH_ERROR' || error?.error?.includes('fetch') || error?.error?.includes('network');
 
@@ -176,7 +168,6 @@ const ErrorState = ({ error, onRetry }) => {
     </div>
   );
 };
-// =========================================================
 
 const EventDetail = () => {
   const { id } = useParams();   // this is the slug
@@ -291,7 +282,6 @@ const EventDetail = () => {
     return formatPrice(event.price);
   };
 
-  // FIX: removed URL from share text to avoid double link
   const getShareDetails = useCallback(() => {
     if (!event) return '';
     const date = formatDate(event.date);
@@ -311,7 +301,7 @@ const EventDetail = () => {
         await navigator.share({
           files: [file],
           title,
-          text: bodyText,   // no URL in text
+          text: bodyText,
           url,
         });
         return;
@@ -324,7 +314,6 @@ const EventDetail = () => {
       }
     }
 
-    // Fallback: plain share without file
     if (navigator.share) {
       try {
         await navigator.share({ title, text: bodyText, url });
@@ -334,7 +323,6 @@ const EventDetail = () => {
         }
       }
     } else {
-      // Desktop fallback – copy text with URL
       const fullText = `${bodyText}\n🔗 ${url}`;
       await navigator.clipboard.writeText(fullText);
       toast.success('Link copied to clipboard');
@@ -377,9 +365,10 @@ const EventDetail = () => {
     }
   };
 
+  // ✅ UPDATED: copy the actual event page URL, not the OG endpoint
   const handleCopy = async () => {
-    const ogUrl = `https://eventroom.lovohcreate.com/api/og/event/${id}`;
-    await navigator.clipboard.writeText(ogUrl);
+    const url = window.location.href.split('?')[0]; // clean URL, no query params
+    await navigator.clipboard.writeText(url);
     setCopied(true);
     toast.success('Link copied!');
     setTimeout(() => setCopied(false), 2000);
@@ -455,7 +444,7 @@ const EventDetail = () => {
     }
   };
 
-  // ==================== LOADING STATE ====================
+  // ==================== RENDER ====================
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -490,7 +479,6 @@ const EventDetail = () => {
     );
   }
 
-  // ==================== ERROR STATE ====================
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -503,7 +491,6 @@ const EventDetail = () => {
     );
   }
 
-  // ==================== NOT FOUND STATE ====================
   if (!event) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -531,13 +518,6 @@ const EventDetail = () => {
       <AllEventsNavbar />
       
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-20 sm:pt-24">
-        {/* <button 
-          onClick={handleBack} 
-          className="flex items-center gap-2 text-gray-600 hover:text-[#1B3766] mb-6 transition-colors text-sm group"
-        >
-          <FaArrowLeft className="text-xs group-hover:-translate-x-1 transition-transform" /> Back to Events
-        </button> */}
-
         {isVerifying && (
           <div className="bg-blue-50 rounded-2xl p-6 border border-blue-200 text-center mb-6">
             <FaSpinner className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-3" />
