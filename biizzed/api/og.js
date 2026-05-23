@@ -5,12 +5,14 @@ const API_URL = process.env.VITE_API_URL?.replace(/\/$/, '');
 export default async function handler(request) {
   const url = new URL(request.url);
   
-  // Pass through static assets — catch any path that contains /assets/, /static/, or ends with file extension
-  if (
-    url.pathname.startsWith('/assets') ||
-    url.pathname.startsWith('/static') ||
-    /\/[^/]+\.(js|css|svg|png|jpg|jpeg|gif|ico|woff|woff2|ttf|eot|json|xml|txt|map|webmanifest)(\?.*)?$/i.test(url.pathname)
-  ) {
+  // Pass through static assets — check path contains /assets/ or /static/ or ends with file extension
+  const path = url.pathname;
+  const isAsset = 
+    path.startsWith('/assets/') ||
+    path.startsWith('/static/') ||
+    /\.(js|css|svg|png|jpg|jpeg|gif|ico|woff|woff2|ttf|eot|json|xml|txt|map|webmanifest)(\?.*)?$/i.test(path);
+  
+  if (isAsset) {
     return fetch(request);
   }
 
@@ -32,7 +34,7 @@ export default async function handler(request) {
     });
   }
 
-  // Bots: build meta tags (same as before)
+  // Bots: build meta tags
   let meta = {
     title: 'Biizzed - Discover & Connect',
     description: 'Articles, magazines, and videos from creators worldwide.',
@@ -41,8 +43,8 @@ export default async function handler(request) {
   };
 
   try {
-    if (url.pathname.startsWith('/articles/')) {
-      const slug = url.pathname.replace('/articles/', '');
+    if (path.startsWith('/articles/')) {
+      const slug = path.replace('/articles/', '');
       if (!slug.startsWith('edit-')) {
         const res = await fetch(`${API_URL}/api/articles/slug/${slug}`);
         if (res.ok) {
@@ -53,8 +55,8 @@ export default async function handler(request) {
         }
       }
     }
-    else if (url.pathname.startsWith('/videos/')) {
-      const id = url.pathname.replace('/videos/', '');
+    else if (path.startsWith('/videos/')) {
+      const id = path.replace('/videos/', '');
       if (!id.startsWith('edit-')) {
         const res = await fetch(`${API_URL}/api/videos/${id}`);
         if (res.ok) {
@@ -65,8 +67,8 @@ export default async function handler(request) {
         }
       }
     }
-    else if (url.pathname.startsWith('/user/')) {
-      const id = url.pathname.replace('/user/', '');
+    else if (path.startsWith('/user/')) {
+      const id = path.replace('/user/', '');
       const res = await fetch(`${API_URL}/api/users/${id}`);
       if (res.ok) {
         const u = await res.json();
