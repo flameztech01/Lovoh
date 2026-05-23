@@ -1,4 +1,4 @@
-// screens/BiizzedVideoDetail.jsx – TikTok‑style full‑screen mode (no new routes)
+// screens/BiizzedVideoDetail.jsx – TikTok-style fullscreen scroll mode
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -7,7 +7,8 @@ import {
   FaShare, FaSpinner, FaComment, FaUser, FaReply, FaTrashAlt,
   FaLink, FaPlus, FaCheck, FaClock,
   FaYoutube, FaPlay, FaExternalLinkAlt, FaVolumeMute, FaVolumeUp,
-  FaCheckCircle, FaUserCircle, FaAd, FaExpand, FaTimes,
+  FaCheckCircle, FaUserCircle, FaAd, FaExpand, FaCompress,
+  FaChevronDown, FaChevronUp, FaTimes,
 } from 'react-icons/fa';
 import {
   useGetVideoByIdQuery,
@@ -36,7 +37,16 @@ const BiizzedVideoDetail = () => {
   const navigate = useNavigate();
   const { userInfo } = useSelector((state) => state.auth);
 
-  // --- Pre‑roll ad (unchanged) ---
+  // ==================== TIKTOK MODE STATE ====================
+  const [isTikTokMode, setIsTikTokMode] = useState(false);
+  const [tikTokVideos, setTikTokVideos] = useState([]);
+  const [currentTikTokIndex, setCurrentTikTokIndex] = useState(0);
+  const [showCommentsDrawer, setShowCommentsDrawer] = useState(false);
+  const [activeCommentVideoId, setActiveCommentVideoId] = useState(null);
+  const tikTokScrollRef = useRef(null);
+  const videoItemRefs = useRef({});
+
+  // ==================== PRE-ROLL AD STATE ====================
   const { data: adsData } = useGetAdsQuery({
     page: 'biizzed',
     placement: 'video-pre-roll',
@@ -53,8 +63,10 @@ const BiizzedVideoDetail = () => {
   const [adMuted, setAdMuted] = useState(false);
   const adVideoRef = useRef(null);
   const mainVideoRef = useRef(null);
+
   const preRollAd = adsData?.ads?.[0];
 
+  // Reset ad when video changes
   useEffect(() => {
     setShowAd(!!preRollAd);
     setAdCompleted(false);
@@ -63,6 +75,7 @@ const BiizzedVideoDetail = () => {
     setAdPlaying(false);
   }, [preRollAd, id]);
 
+  // Countdown for skip
   useEffect(() => {
     if (adPlaying && adCountdown > 0) {
       const timer = setTimeout(() => setAdCountdown(prev => prev - 1), 1000);
@@ -72,6 +85,7 @@ const BiizzedVideoDetail = () => {
     }
   }, [adPlaying, adCountdown, adCompleted]);
 
+  // Track ad view
   useEffect(() => {
     if (showAd && preRollAd && !adCompleted) {
       trackAdView(preRollAd._id).catch(err => console.error('Ad view track error:', err));
@@ -103,7 +117,7 @@ const BiizzedVideoDetail = () => {
   const handleAdPlay = () => setAdPlaying(true);
   const handleAdPause = () => setAdPlaying(false);
 
-  // --- Main video page state ---
+  // ==================== VIDEO DATA ====================
   const [commentText, setCommentText] = useState('');
   const [replyTo, setReplyTo] = useState(null);
   const [isYouTubePlaying, setIsYouTubePlaying] = useState(false);
@@ -112,8 +126,8 @@ const BiizzedVideoDetail = () => {
   const [localFollowing, setLocalFollowing] = useState(false);
 
   const { data: video, isLoading, error, refetch: refetchVideo } = useGetVideoByIdQuery(id);
-  const { data: relatedData } = useGetVideosQuery({ limit: 6, sort: '-createdAt' }, { skip: !video });
-  const relatedVideos = relatedData?.videos?.filter(v => v._id !== id)?.slice(0, 4) || [];
+  const { data: relatedData } = useGetVideosQuery({ limit: 50, sort: '-createdAt' }, { skip: !video });
+  const relatedVideos = relatedData?.videos?.filter(v => v._id !== id) || [];
 
   const [likeVideo] = useLikeVideoMutation();
   const [addComment] = useAddVideoCommentMutation();
@@ -123,100 +137,84 @@ const BiizzedVideoDetail = () => {
   const [unfollowUser] = useUnfollowUserMutation();
   const { data: profileData, refetch: refetchProfile } = useGetProfileInfoQuery(undefined, { skip: !userInfo?._id });
 
-  // --- TikTok full‑screen feed state ---
-  const [fullscreenMode, setFullscreenMode] = useState(false);
-  const [feedPage, setFeedPage] = useState(1);
-  const [feedVideos, setFeedVideos] = useState([]);
-  const [feedHasMore, setFeedHasMore] = useState(true);
-  const [feedLoading, setFeedLoading] = useState(false);
-  const [currentSnapIndex, setCurrentSnapIndex] = useState(0);
-  const [commentModalVideoId, setCommentModalVideoId] = useState(null); // id of video whose comments to show
-  const feedContainerRef = useRef(null);
-  const videoRefs = useRef({}); // { [videoId]: HTMLVideoElement }
-
-  // Fetch videos for the feed
-  const { data: feedData, isFetching: feedIsFetching } = useGetVideosQuery(
-    { page: feedPage, limit: 10, sort: '-createdAt' },
-    { skip: !fullscreenMode } // only fetch when in fullscreen mode
-  );
-
+  // ==================== TIKTOK MODE SETUP ====================
   useEffect(() => {
-    if (feedData?.videos) {
-      // Append new videos, avoid duplicates
-      setFeedVideos(prev => {
-        const existingIds = new Set(prev.map(v => v._id));
-        const newVideos = feedData.videos.filter(v => !existingIds.has(v._id));
-        return [...prev, ...newVideos];
-      });
-      setFeedHasMore(feedData.pages > feedPage);
+    if (video && relatedVideos.length > 0) {
+      // Build feed: current video first, then related videos
+      const feed = [video, ...relatedVideos];
+      setTikTokVideos(feed);
+      setCurrentTikTokIndex(0);
     }
-  }, [feedData]);
+  }, [video, relatedData]);
 
-  // Scroll‑based infinite loading
-  const handleFeedScroll = useCallback(() => {
-    if (!feedContainerRef.current || feedLoading || !feedHasMore) return;
-    const { scrollTop, scrollHeight, clientHeight } = feedContainerRef.current;
-    if (scrollTop + clientHeight >= scrollHeight - 200) {
-      setFeedPage(prev => prev + 1);
-    }
-  }, [feedLoading, feedHasMore]);
-
+  // Intersection Observer for TikTok scroll snap
   useEffect(() => {
-    if (fullscreenMode && feedContainerRef.current) {
-      const el = feedContainerRef.current;
-      el.addEventListener('scroll', handleFeedScroll, { passive: true });
-      return () => el.removeEventListener('scroll', handleFeedScroll);
-    }
-  }, [fullscreenMode, handleFeedScroll]);
+    if (!isTikTokMode) return;
 
-  // Snap detection: find which video index is most visible
-  const handleSnapChange = useCallback(() => {
-    if (!feedContainerRef.current) return;
-    const container = feedContainerRef.current;
-    const videoElements = container.querySelectorAll('.snap-video');
-    let closestIndex = 0;
-    let minDistance = Infinity;
-    videoElements.forEach((el, idx) => {
-      const rect = el.getBoundingClientRect();
-      const containerRect = container.getBoundingClientRect();
-      const distance = Math.abs(rect.top - containerRect.top);
-      if (distance < minDistance) {
-        minDistance = distance;
-        closestIndex = idx;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const idx = Number(entry.target.dataset.index);
+            setCurrentTikTokIndex(idx);
+            setActiveCommentVideoId(tikTokVideos[idx]?._id);
+            // Reset ad for new video
+            setShowAd(!!preRollAd);
+            setAdCompleted(false);
+            setAdCanSkip(false);
+            setAdCountdown(10);
+            setAdPlaying(false);
+          }
+        });
+      },
+      { threshold: 0.6 }
+    );
+
+    Object.values(videoItemRefs.current).forEach((el) => {
+      if (el) observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, [isTikTokMode, tikTokVideos, preRollAd]);
+
+  // Pause/play videos based on visibility in TikTok mode
+  useEffect(() => {
+    if (!isTikTokMode) return;
+
+    Object.entries(videoItemRefs.current).forEach(([idx, el]) => {
+      if (!el) return;
+      const videoEl = el.querySelector('video');
+      const iframeEl = el.querySelector('iframe');
+      const index = Number(idx);
+
+      if (index === currentTikTokIndex) {
+        if (videoEl && !showAd) {
+          videoEl.play().catch(() => {});
+        }
+      } else {
+        if (videoEl) {
+          videoEl.pause();
+          videoEl.currentTime = 0;
+        }
+        if (iframeEl) {
+          // Reset iframe by re-setting src to stop audio
+          const src = iframeEl.src;
+          iframeEl.src = '';
+          setTimeout(() => { iframeEl.src = src; }, 50);
+        }
       }
     });
-    setCurrentSnapIndex(closestIndex);
+  }, [isTikTokMode, currentTikTokIndex, showAd]);
+
+  // Handle scroll to specific video in TikTok mode
+  const scrollToVideo = useCallback((index) => {
+    const el = videoItemRefs.current[index];
+    if (el && tikTokScrollRef.current) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   }, []);
 
-  useEffect(() => {
-    if (fullscreenMode && feedContainerRef.current) {
-      const container = feedContainerRef.current;
-      container.addEventListener('scroll', handleSnapChange, { passive: true });
-      return () => container.removeEventListener('scroll', handleSnapChange);
-    }
-  }, [fullscreenMode, handleSnapChange]);
-
-  // Play/pause logic: only play the video at currentSnapIndex
-  useEffect(() => {
-    if (!fullscreenMode || !feedVideos.length) return;
-    const videoToPlay = feedVideos[currentSnapIndex];
-    if (!videoToPlay || videoToPlay.videoType === 'youtube') return;
-
-    // Pause all others
-    Object.keys(videoRefs.current).forEach(vId => {
-      const v = videoRefs.current[vId];
-      if (v && vId !== videoToPlay._id) {
-        v.pause();
-      }
-    });
-
-    const currentVideoEl = videoRefs.current[videoToPlay._id];
-    if (currentVideoEl) {
-      currentVideoEl.currentTime = 0;
-      currentVideoEl.play().catch(err => console.log('Autoplay failed:', err));
-    }
-  }, [currentSnapIndex, fullscreenMode, feedVideos]);
-
+  // ==================== HELPERS ====================
   const isFollowing = () => {
     if (!profileData?.following || !video?.user?._id) return false;
     return profileData.following.some(f => {
@@ -290,25 +288,27 @@ const BiizzedVideoDetail = () => {
   const isOwn = isOwnVideo();
   const following = localFollowing;
 
-  const handleLike = async () => {
+  // ==================== ACTIONS ====================
+  const handleLike = async (videoId) => {
+    const targetId = videoId || id;
     if (!userInfo) { toast.info('Login to like'); return; }
-    try { await likeVideo(id).unwrap(); refetchVideo(); } catch { toast.error('Failed'); }
+    try { await likeVideo(targetId).unwrap(); refetchVideo(); } catch { toast.error('Failed'); }
   };
 
-  const handleFollowToggle = async (e) => {
-    e.preventDefault(); e.stopPropagation();
+  const handleFollowToggle = async (e, targetVideo) => {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
     if (!userInfo) { toast.info('Login to follow'); return; }
-    const authorId = video?.user?._id?.toString() || video?.user?.toString();
+    const authorId = targetVideo?.user?._id?.toString() || targetVideo?.user?.toString();
     if (!authorId) return;
     try {
       if (following) {
         await unfollowUser(authorId).unwrap();
         setLocalFollowing(false);
-        toast.info(`Unfollowed ${video?.authorName || 'creator'}`);
+        toast.info(`Unfollowed ${targetVideo?.authorName || 'creator'}`);
       } else {
         await followUser(authorId).unwrap();
         setLocalFollowing(true);
-        toast.success(`Following ${video?.authorName || 'creator'}!`);
+        toast.success(`Following ${targetVideo?.authorName || 'creator'}!`);
       }
       refetchProfile();
     } catch (error) {
@@ -316,40 +316,43 @@ const BiizzedVideoDetail = () => {
     }
   };
 
-  const handleAddComment = async (e) => {
+  const handleAddComment = async (e, videoId) => {
     e.preventDefault();
+    const targetId = videoId || id;
     if (!userInfo) { toast.info('Login to comment'); return; }
     if (!commentText.trim()) return;
     try {
-      await addComment({ id, text: commentText }).unwrap();
+      await addComment({ id: targetId, text: commentText }).unwrap();
       setCommentText('');
       setReplyTo(null);
       refetchVideo();
     } catch { toast.error('Failed'); }
   };
 
-  const handleLikeComment = async (commentId) => {
+  const handleLikeComment = async (commentId, videoId) => {
+    const targetId = videoId || id;
     if (!userInfo) { toast.info('Login to like'); return; }
-    try { await likeComment({ id, commentId }).unwrap(); refetchVideo(); } catch { toast.error('Failed'); }
+    try { await likeComment({ id: targetId, commentId }).unwrap(); refetchVideo(); } catch { toast.error('Failed'); }
   };
 
-  const handleDeleteComment = async (commentId) => {
+  const handleDeleteComment = async (commentId, videoId) => {
+    const targetId = videoId || id;
     if (!confirm('Delete this comment?')) return;
-    try { await deleteComment({ id, commentId }).unwrap(); refetchVideo(); } catch { toast.error('Failed'); }
+    try { await deleteComment({ id: targetId, commentId }).unwrap(); refetchVideo(); } catch { toast.error('Failed'); }
   };
 
-  // ========== SHARE ==========
-  const handleShare = async (targetVideo = video) => {
-    if (!targetVideo) return;
-    const url = `${WEBSITE_URL}/videos/${targetVideo._id}`;
+  const handleShare = async (targetVideo) => {
+    const v = targetVideo || video;
+    const vid = v?._id || id;
+    const url = `${WEBSITE_URL}/videos/${vid}`;
     try {
       const { Share } = await import('@capacitor/share');
       await Share.share({
-        title: targetVideo.title,
-        text: targetVideo.title,
+        title: v?.title || video?.title,
+        text: v?.title || video?.title,
         url: url,
       });
-    } catch {
+    } catch (err) {
       try {
         await navigator.clipboard.writeText(url);
         toast.success('Link copied!');
@@ -365,23 +368,9 @@ const BiizzedVideoDetail = () => {
     }
   };
 
-  // TikTok feed actions
-  const feedLikeVideo = async (videoId) => {
-    if (!userInfo) { toast.info('Login to like'); return; }
-    try {
-      await likeVideo(videoId).unwrap();
-      // Update local feed to reflect like count
-      setFeedVideos(prev => prev.map(v => v._id === videoId ? { ...v, likes: [...(v.likes || []), userInfo._id] } : v));
-    } catch { toast.error('Failed'); }
-  };
-
-  const feedAddComment = async (videoId, text) => {
-    if (!userInfo) { toast.info('Login to comment'); return; }
-    try {
-      await addComment({ id: videoId, text }).unwrap();
-      // Refetch comments for the modal? We'll rely on the modal fetch.
-      toast.success('Comment added');
-    } catch { toast.error('Failed'); }
+  const handleBookmark = (targetVideo) => {
+    // Placeholder - integrate with your bookmark API
+    toast.info('Bookmark feature coming soon!');
   };
 
   const getRelatedThumbnail = (v) => {
@@ -401,7 +390,379 @@ const BiizzedVideoDetail = () => {
     return 'aspect-video';
   };
 
-  if (isLoading) {
+  // ==================== TIKTOK VIDEO ITEM RENDERER ====================
+  const renderTikTokVideoItem = (v, index) => {
+    const isCurrentYouTube = v.videoType === 'youtube';
+    const isCurrentAdmin = v.authorType === 'admin';
+    const isCurrentPortrait = v.videoUrl && !isCurrentYouTube; // Simplified check
+    const isCurrentLiked = v.likes?.includes(userInfo?._id);
+    const currentAuthorId = v?.user?._id?.toString() || v?.user?.toString();
+    const currentAuthorName = v?.authorName || 'Creator';
+    const currentIsOwn = userInfo?._id?.toString() === currentAuthorId;
+
+    return (
+      <div
+        key={v._id}
+        ref={(el) => { videoItemRefs.current[index] = el; }}
+        data-index={index}
+        className="relative w-full h-[100dvh] flex-shrink-0 snap-start snap-always overflow-hidden bg-black"
+      >
+        {/* Video Content */}
+        <div className="absolute inset-0 w-full h-full">
+          {isCurrentYouTube ? (
+            index === currentTikTokIndex ? (
+              <iframe
+                src={`https://www.youtube.com/embed/${v.youtubeId}?autoplay=1&rel=0&modestbranding=1&playsinline=1`}
+                title={v.title}
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                playsInline
+              />
+            ) : (
+              <div className="w-full h-full relative cursor-pointer" onClick={() => scrollToVideo(index)}>
+                <img
+                  src={v.youtubeThumbnail || v.thumbnail}
+                  alt={v.title}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                  <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center">
+                    <FaPlay className="text-white text-xl ml-1" />
+                  </div>
+                </div>
+                <div className="absolute top-4 right-4 bg-black/70 text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
+                  <FaYoutube className="text-red-500" /> YouTube
+                </div>
+              </div>
+            )
+          ) : v.videoUrl ? (
+            <video
+              src={v.videoUrl}
+              className="w-full h-full object-cover"
+              poster={v.thumbnail}
+              playsInline
+              loop
+              muted={index !== currentTikTokIndex}
+              controls={false}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gray-900">
+              <p className="text-gray-400">Video unavailable</p>
+            </div>
+          )}
+        </div>
+
+        {/* Gradient Overlay for text readability */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 pointer-events-none" />
+
+        {/* YouTube Badge */}
+        {isCurrentYouTube && (
+          <div className="absolute top-4 left-4 bg-red-600/90 text-white px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 z-10">
+            <FaYoutube /> YouTube
+          </div>
+        )}
+
+        {/* Admin Badge */}
+        {isCurrentAdmin && (
+          <div className="absolute top-4 left-4 bg-blue-600/90 text-white px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 z-10">
+            <FaCheckCircle className="text-[10px]" /> Admin
+          </div>
+        )}
+
+        {/* Bottom Left: Info */}
+        <div className="absolute bottom-24 left-4 right-20 z-10">
+          <h3 className="text-white font-bold text-lg mb-2 line-clamp-2 drop-shadow-lg">
+            {v.title}
+          </h3>
+          
+          <Link 
+            to={`/user/${currentAuthorId}`}
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-2 mb-3"
+          >
+            {v.authorProfile ? (
+              <img src={v.authorProfile} alt="" className="w-8 h-8 rounded-full object-cover border border-white/30" />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-red-500 text-white flex items-center justify-center text-sm font-bold">
+                {currentAuthorName[0]?.toUpperCase()}
+              </div>
+            )}
+            <div>
+              <p className="text-white font-medium text-sm drop-shadow">{currentAuthorName}</p>
+              <p className="text-white/70 text-xs">{formatViews(v.views)}</p>
+            </div>
+          </Link>
+
+          {v.description && (
+            <p className="text-white/80 text-sm line-clamp-2 drop-shadow mb-2">
+              {v.description}
+            </p>
+          )}
+
+          {/* Tags */}
+          {v.tags?.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {v.tags.slice(0, 3).map((tag, idx) => (
+                <span key={idx} className="text-xs text-white/70 bg-white/10 px-2 py-0.5 rounded-full backdrop-blur-sm">
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {isCurrentYouTube && v.youtubeUrl && (
+            <a
+              href={v.youtubeUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1.5 mt-2 text-xs text-red-400 hover:text-red-300 font-medium"
+            >
+              <FaExternalLinkAlt className="text-[10px]" /> Watch on YouTube
+            </a>
+          )}
+        </div>
+
+        {/* Right Side: Action Buttons (TikTok Style) */}
+        <div className="absolute right-2 bottom-24 flex flex-col items-center gap-5 z-20">
+          {/* Avatar with Follow */}
+          <div className="relative mb-2">
+            {v.authorProfile ? (
+              <img 
+                src={v.authorProfile} 
+                alt="" 
+                className="w-12 h-12 rounded-full object-cover border-2 border-white/30"
+                onClick={(e) => { e.stopPropagation(); navigate(`/user/${currentAuthorId}`); }}
+              />
+            ) : (
+              <div 
+                className="w-12 h-12 rounded-full bg-red-500 text-white flex items-center justify-center text-lg font-bold border-2 border-white/30"
+                onClick={(e) => { e.stopPropagation(); navigate(`/user/${currentAuthorId}`); }}
+              >
+                {currentAuthorName[0]?.toUpperCase()}
+              </div>
+            )}
+            {!currentIsOwn && userInfo && !isCurrentAdmin && (
+              <button
+                onClick={(e) => handleFollowToggle(e, v)}
+                className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-6 h-6 bg-[#1B3766] rounded-full flex items-center justify-center border-2 border-black"
+              >
+                {following ? <FaCheck className="text-white text-[10px]" /> : <FaPlus className="text-white text-[10px]" />}
+              </button>
+            )}
+          </div>
+
+          {/* Like */}
+          <button 
+            onClick={(e) => { e.stopPropagation(); handleLike(v._id); }}
+            className="flex flex-col items-center gap-1 group"
+          >
+            <div className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center group-active:scale-90 transition-transform">
+              {isCurrentLiked ? <FaHeart className="text-red-500 text-xl" /> : <FaRegHeart className="text-white text-xl" />}
+            </div>
+            <span className="text-white text-xs font-medium drop-shadow">{v.likes?.length || 0}</span>
+          </button>
+
+          {/* Comments */}
+          <button 
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              setActiveCommentVideoId(v._id);
+              setShowCommentsDrawer(true);
+            }}
+            className="flex flex-col items-center gap-1 group"
+          >
+            <div className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center group-active:scale-90 transition-transform">
+              <FaComment className="text-white text-xl" />
+            </div>
+            <span className="text-white text-xs font-medium drop-shadow">{v.comments?.length || 0}</span>
+          </button>
+
+          {/* Bookmark/Save */}
+          <button 
+            onClick={(e) => { e.stopPropagation(); handleBookmark(v); }}
+            className="flex flex-col items-center gap-1 group"
+          >
+            <div className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center group-active:scale-90 transition-transform">
+              <FaRegBookmark className="text-white text-xl" />
+            </div>
+            <span className="text-white text-xs font-medium drop-shadow">Save</span>
+          </button>
+
+          {/* Share */}
+          <button 
+            onClick={(e) => { e.stopPropagation(); handleShare(v); }}
+            className="flex flex-col items-center gap-1 group"
+          >
+            <div className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center group-active:scale-90 transition-transform">
+              <FaShare className="text-white text-xl" />
+            </div>
+            <span className="text-white text-xs font-medium drop-shadow">Share</span>
+          </button>
+        </div>
+
+        {/* Scroll Indicators */}
+        {index > 0 && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 animate-bounce">
+            <FaChevronUp className="text-white/50 text-lg" />
+          </div>
+        )}
+        {index < tikTokVideos.length - 1 && (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 animate-bounce">
+            <FaChevronDown className="text-white/50 text-lg" />
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ==================== COMMENTS DRAWER FOR TIKTOK MODE ====================
+  const renderCommentsDrawer = () => {
+    if (!showCommentsDrawer) return null;
+    
+    const activeVideo = tikTokVideos.find(v => v._id === activeCommentVideoId) || video;
+    if (!activeVideo) return null;
+
+    return (
+      <div 
+        className="fixed inset-0 z-[100] flex items-end"
+        onClick={() => setShowCommentsDrawer(false)}
+      >
+        {/* Backdrop */}
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+        
+        {/* Drawer */}
+        <div 
+          className="relative w-full bg-white rounded-t-3xl max-h-[70vh] flex flex-col animate-slide-up"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Handle */}
+          <div className="flex justify-center pt-3 pb-1">
+            <div className="w-10 h-1 bg-gray-300 rounded-full" />
+          </div>
+
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+            <h3 className="text-lg font-bold text-gray-900">
+              Comments ({activeVideo.comments?.length || 0})
+            </h3>
+            <button 
+              onClick={() => setShowCommentsDrawer(false)}
+              className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200"
+            >
+              <FaTimes className="text-gray-500 text-sm" />
+            </button>
+          </div>
+
+          {/* Comments List */}
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+            {activeVideo.comments?.length > 0 ? (
+              activeVideo.comments.map((comment) => {
+                const isCommentLiked = comment.likes?.includes(userInfo?._id);
+                return (
+                  <div key={comment._id} className="flex gap-3">
+                    {comment.userProfile ? (
+                      <img src={comment.userProfile} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0 mt-0.5" />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
+                        {(comment.userName || 'U')[0].toUpperCase()}
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="bg-gray-50 rounded-xl px-4 py-2.5">
+                        <p className="text-sm font-semibold text-gray-900">{comment.userName || 'User'}</p>
+                        <p className="text-sm text-gray-700 mt-0.5">{comment.text}</p>
+                      </div>
+                      <div className="flex items-center gap-4 mt-1 text-xs text-gray-500">
+                        <span>{formatRelativeDate(comment.createdAt)}</span>
+                        <button 
+                          onClick={() => handleLikeComment(comment._id, activeVideo._id)} 
+                          className="hover:text-[#1B3766]"
+                        >
+                          {isCommentLiked ? 'Liked' : 'Like'}
+                        </button>
+                        {comment.likes?.length > 0 && <span>{comment.likes.length}</span>}
+                        <button 
+                          onClick={() => { setReplyTo(comment._id); setCommentText(''); }} 
+                          className="hover:text-[#1B3766]"
+                        >
+                          <FaReply className="inline text-[10px]" /> Reply
+                        </button>
+                        {(userInfo?._id === comment.user || userInfo?.role === 'admin') && (
+                          <button 
+                            onClick={() => handleDeleteComment(comment._id, activeVideo._id)} 
+                            className="text-red-500"
+                          >
+                            <FaTrashAlt className="text-[10px]" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="text-center py-8">
+                <FaComment className="text-gray-300 text-4xl mx-auto mb-3" />
+                <p className="text-gray-400 text-sm">No comments yet. Be the first!</p>
+              </div>
+            )}
+          </div>
+
+          {/* Comment Input */}
+          {userInfo ? (
+            <form 
+              onSubmit={(e) => handleAddComment(e, activeVideo._id)} 
+              className="px-5 py-4 border-t border-gray-100 bg-white"
+            >
+              {replyTo && (
+                <div className="flex items-center gap-2 mb-2 text-xs text-gray-500">
+                  <FaReply /> Replying{' '}
+                  <button type="button" onClick={() => setReplyTo(null)} className="text-red-500">Cancel</button>
+                </div>
+              )}
+              <div className="flex gap-3">
+                {userInfo?.profile ? (
+                  <img src={userInfo.profile} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+                ) : (
+                  <div className="w-9 h-9 rounded-full bg-[#1B3766] text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+                    {(userInfo?.name || 'U')[0].toUpperCase()}
+                  </div>
+                )}
+                <div className="flex-1 flex gap-2">
+                  <input
+                    type="text"
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    placeholder="Add a comment..."
+                    className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
+                    autoFocus
+                  />
+                  <button
+                    type="submit"
+                    disabled={!commentText.trim()}
+                    className="px-4 py-2 bg-[#1B3766] text-white rounded-xl text-xs font-medium hover:bg-[#142952] disabled:opacity-50"
+                  >
+                    Post
+                  </button>
+                </div>
+              </div>
+            </form>
+          ) : (
+            <div className="px-5 py-4 border-t border-gray-100 text-center">
+              <Link to="/login" className="text-sm text-[#1B3766] font-medium hover:underline">
+                Login to comment
+              </Link>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // ==================== DESKTOP LOADING / ERROR ====================
+  if (isLoading && !isTikTokMode) {
     return (
       <div className="min-h-screen bg-gray-100">
         <BiizzedArticlesNavbar />
@@ -413,7 +774,7 @@ const BiizzedVideoDetail = () => {
     );
   }
 
-  if (error || !video) {
+  if ((error || !video) && !isTikTokMode) {
     return (
       <div className="min-h-screen bg-gray-100">
         <BiizzedArticlesNavbar />
@@ -430,150 +791,60 @@ const BiizzedVideoDetail = () => {
   const authorName = video?.authorName || 'Creator';
   const authorProfile = video?.authorProfile;
 
-  // ========== FULLSCREEN TIKTOK OVERLAY ==========
-  if (fullscreenMode) {
+  // ==================== TIKTOK MODE RENDER ====================
+  if (isTikTokMode) {
     return (
-      <div className="fixed inset-0 z-[100] bg-black overflow-hidden">
-        {/* Top bar */}
-        <div className="absolute top-4 left-4 right-4 z-10 flex justify-between items-center">
-          <button
-            onClick={() => {
-              setFullscreenMode(false);
-              setFeedVideos([]); // reset feed on exit
-              setFeedPage(1);
-            }}
-            className="text-white bg-black/40 rounded-full p-2"
-          >
-            <FaTimes size={20} />
-          </button>
-          <h2 className="text-white font-bold">For You</h2>
-          <div className="w-8" />
-        </div>
+      <div className="fixed inset-0 z-[90] bg-black overflow-hidden">
+        <Helmet>
+          <title>{video?.title || 'Biizzed Feed'} | Biizzed</title>
+        </Helmet>
 
-        {/* Vertical snap feed */}
-        <div
-          ref={feedContainerRef}
-          className="h-full overflow-y-scroll snap-y snap-mandatory"
-          style={{ scrollSnapType: 'y mandatory' }}
+        {/* Close Button */}
+        <button
+          onClick={() => setIsTikTokMode(false)}
+          className="absolute top-4 left-4 z-[95] w-10 h-10 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/70 transition-colors"
         >
-          {feedVideos.map((v, index) => {
-            const isFeedYouTube = v.videoType === 'youtube';
-            return (
-              <div
-                key={v._id}
-                className="snap-video h-screen w-full snap-start relative flex items-center justify-center bg-black"
-              >
-                {/* Video content */}
-                {isFeedYouTube ? (
-                  <div className="w-full h-full flex flex-col items-center justify-center text-white">
-                    <img
-                      src={v.youtubeThumbnail || v.thumbnail}
-                      alt=""
-                      className="max-h-full max-w-full object-contain"
-                    />
-                    <p className="mt-4 text-center text-sm">YouTube video</p>
-                    <a
-                      href={v.youtubeUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-2 px-4 py-2 bg-red-600 text-white rounded-full text-xs font-medium"
-                    >
-                      <FaYoutube className="inline mr-1" /> Watch on YouTube
-                    </a>
-                  </div>
-                ) : (
-                  <video
-                    ref={el => (videoRefs.current[v._id] = el)}
-                    src={v.videoUrl}
-                    className="max-h-full max-w-full object-contain"
-                    loop
-                    muted
-                    playsInline
-                    preload="metadata"
-                    onCanPlay={() => {
-                      if (index === currentSnapIndex && v._id === feedVideos[currentSnapIndex]?._id) {
-                        videoRefs.current[v._id]?.play();
-                      }
-                    }}
-                  />
-                )}
+          <FaCompress className="text-lg" />
+        </button>
 
-                {/* Action bar – right side, like TikTok */}
-                <div className="absolute right-4 bottom-24 flex flex-col items-center gap-4 text-white">
-                  {/* Like */}
-                  <button onClick={() => feedLikeVideo(v._id)} className="flex flex-col items-center">
-                    {v.likes?.includes(userInfo?._id) ? (
-                      <FaHeart className="text-red-500 text-2xl" />
-                    ) : (
-                      <FaRegHeart className="text-2xl" />
-                    )}
-                    <span className="text-xs mt-0.5">{v.likes?.length || 0}</span>
-                  </button>
-
-                  {/* Comment */}
-                  <button
-                    onClick={() => setCommentModalVideoId(v._id)}
-                    className="flex flex-col items-center"
-                  >
-                    <FaComment className="text-2xl" />
-                    <span className="text-xs mt-0.5">{v.commentsCount || 0}</span>
-                  </button>
-
-                  {/* Share */}
-                  <button onClick={() => handleShare(v)} className="flex flex-col items-center">
-                    <FaShare className="text-2xl" />
-                    <span className="text-xs mt-0.5">Share</span>
-                  </button>
-
-                  {/* Save / Bookmark (placeholder) */}
-                  <button
-                    onClick={() => toast.info('Save coming soon')}
-                    className="flex flex-col items-center"
-                  >
-                    <FaBookmark className="text-2xl" />
-                    <span className="text-xs mt-0.5">Save</span>
-                  </button>
-                </div>
-
-                {/* Video info overlay – bottom left */}
-                <div className="absolute left-4 bottom-24 max-w-[70%] text-white">
-                  <h3 className="text-sm font-semibold line-clamp-2">{v.title}</h3>
-                  <p className="text-xs mt-1 opacity-80">
-                    {v.authorName || 'Creator'}
-                    {isFeedYouTube && <FaYoutube className="inline ml-1 text-red-500 text-xs" />}
-                  </p>
-                  <p className="text-xs opacity-60">{formatViews(v.views)} · {formatDate(v.createdAt)}</p>
-                </div>
-              </div>
-            );
-          })}
-
-          {feedLoading && (
-            <div className="h-screen flex items-center justify-center text-white">
-              <FaSpinner className="animate-spin text-2xl" />
-            </div>
-          )}
-          {!feedHasMore && feedVideos.length > 0 && (
-            <div className="h-screen flex items-center justify-center text-white text-sm opacity-50">
-              You've reached the end
-            </div>
-          )}
+        {/* Video Counter */}
+        <div className="absolute top-4 right-4 z-[95] bg-black/50 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-xs font-medium">
+          {currentTikTokIndex + 1} / {tikTokVideos.length}
         </div>
 
-        {/* Comment Bottom Sheet */}
-        {commentModalVideoId && (
-          <CommentModal
-            videoId={commentModalVideoId}
-            userInfo={userInfo}
-            onClose={() => setCommentModalVideoId(null)}
-            feedAddComment={feedAddComment}
-          />
-        )}
+        {/* Scrollable Feed */}
+        <div 
+          ref={tikTokScrollRef}
+          className="h-full w-full overflow-y-auto snap-y snap-mandatory scroll-smooth"
+          style={{ 
+            scrollSnapType: 'y mandatory',
+            WebkitOverflowScrolling: 'touch',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none'
+          }}
+        >
+          {tikTokVideos.map((v, index) => renderTikTokVideoItem(v, index))}
+        </div>
+
+        {/* Comments Drawer */}
+        {renderCommentsDrawer()}
+
+        {/* Hide scrollbar */}
+        <style>{`
+          .snap-y::-webkit-scrollbar { display: none; }
+          @keyframes slide-up {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+          }
+          .animate-slide-up {
+            animation: slide-up 0.3s ease-out;
+          }
+        `}</style>
       </div>
     );
   }
 
-  // ========== STANDARD DETAIL VIEW (unchanged below, only adding the fullscreen button) ==========
+  // ==================== DESKTOP MODE RENDER (Original UI) ====================
   return (
     <div className="min-h-screen bg-gray-100">
       <Helmet>
@@ -593,16 +864,18 @@ const BiizzedVideoDetail = () => {
           {/* Main Content */}
           <main className="flex-1 max-w-[900px] mx-auto">
 
-            {/* Video Player with Pre‑roll Ad */}
-            <div className={`bg-black rounded-2xl overflow-hidden mb-4 ${getVideoContainerClass()} relative group`}>
-              {/* Fullscreen button – top right */}
+            {/* TikTok Mode Toggle */}
+            <div className="flex justify-end mb-3">
               <button
-                onClick={() => setFullscreenMode(true)}
-                className="absolute top-4 right-4 z-30 bg-black/50 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={() => setIsTikTokMode(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-[#1B3766] text-white rounded-full text-sm font-medium hover:bg-[#142952] transition-colors shadow-md"
               >
-                <FaExpand size={18} />
+                <FaExpand className="text-xs" /> Fullscreen Feed
               </button>
+            </div>
 
+            {/* Video Player with Pre‑roll Ad */}
+            <div className={`bg-black rounded-2xl overflow-hidden mb-4 ${getVideoContainerClass()}`}>
               <div className={getVideoHeightClass()}>
                 {/* AD PLAYER */}
                 {showAd && preRollAd && !adCompleted && (
@@ -662,7 +935,7 @@ const BiizzedVideoDetail = () => {
                   </div>
                 )}
 
-                {/* MAIN VIDEO (hidden when ad active) */}
+                {/* MAIN VIDEO (hidden when ad is active) */}
                 <div style={{ display: showAd && !adCompleted ? 'none' : 'block' }} className="w-full h-full">
                   {isYouTube ? (
                     !isYouTubePlaying ? (
@@ -713,7 +986,7 @@ const BiizzedVideoDetail = () => {
               </div>
             </div>
 
-            {/* Video Info (unchanged) */}
+            {/* Video Info */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 mb-4">
               {/* Badges */}
               <div className="flex flex-wrap gap-2 mb-3">
@@ -757,7 +1030,7 @@ const BiizzedVideoDetail = () => {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={handleLike} className="flex items-center gap-1.5 px-4 py-2 bg-gray-100 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors">
+                  <button onClick={() => handleLike()} className="flex items-center gap-1.5 px-4 py-2 bg-gray-100 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors">
                     {isLiked ? <FaHeart className="text-red-500" /> : <FaRegHeart />}
                     {video.likes?.length || 0}
                   </button>
@@ -793,6 +1066,7 @@ const BiizzedVideoDetail = () => {
                   </div>
                 </Link>
 
+                {/* Follow Button */}
                 {userInfo && !isOwn && !isAdmin && (
                   <button
                     onClick={handleFollowToggle}
@@ -854,14 +1128,14 @@ const BiizzedVideoDetail = () => {
               )}
             </div>
 
-            {/* Comments Section (unchanged) */}
+            {/* Comments Section */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 mb-4">
               <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                 <FaComment className="text-[#1B3766]" /> Comments ({video.comments?.length || 0})
               </h3>
 
               {userInfo ? (
-                <form onSubmit={handleAddComment} className="mb-6">
+                <form onSubmit={(e) => handleAddComment(e)} className="mb-6">
                   {replyTo && (
                     <div className="flex items-center gap-2 mb-2 text-xs text-gray-500">
                       <FaReply /> Replying{' '}
@@ -941,13 +1215,13 @@ const BiizzedVideoDetail = () => {
             </div>
           </main>
 
-          {/* Right Sidebar - Related Videos (unchanged) */}
+          {/* Right Sidebar - Related Videos */}
           <aside className="hidden lg:block w-[320px] flex-shrink-0">
             <div className="sticky top-[120px] w-[320px] h-[calc(100vh-140px)] overflow-y-auto space-y-4 pb-8 no-scrollbar">
               <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Related Videos</h3>
                 <div className="space-y-3">
-                  {relatedVideos.map((v) => {
+                  {relatedVideos.slice(0, 4).map((v) => {
                     const isRelatedYouTube = v.videoType === 'youtube';
                     const isRelatedAdmin = v.authorType === 'admin';
                     return (
@@ -1013,131 +1287,6 @@ const BiizzedVideoDetail = () => {
           overflow: hidden;
         }
       `}</style>
-    </div>
-  );
-};
-
-// ==================== COMMENT MODAL COMPONENT ====================
-const CommentModal = ({ videoId, userInfo, onClose, feedAddComment }) => {
-  const { data: videoData, isLoading, refetch } = useGetVideoByIdQuery(videoId, { skip: !videoId });
-  const [commentText, setCommentText] = useState('');
-  const [addComment] = useAddVideoCommentMutation();
-  const [likeComment] = useLikeVideoCommentMutation();
-  const [deleteComment] = useDeleteVideoCommentMutation();
-
-  const handlePostComment = async (e) => {
-    e.preventDefault();
-    if (!commentText.trim()) return;
-    try {
-      await addComment({ id: videoId, text: commentText }).unwrap();
-      setCommentText('');
-      refetch();
-      feedAddComment?.(videoId, commentText); // sync feed if needed
-    } catch {
-      toast.error('Failed to post comment');
-    }
-  };
-
-  const handleLikeComment = async (commentId) => {
-    if (!userInfo) return;
-    try {
-      await likeComment({ id: videoId, commentId }).unwrap();
-      refetch();
-    } catch { toast.error('Failed'); }
-  };
-
-  const handleDeleteComment = async (commentId) => {
-    if (!confirm('Delete this comment?')) return;
-    try {
-      await deleteComment({ id: videoId, commentId }).unwrap();
-      refetch();
-    } catch { toast.error('Failed'); }
-  };
-
-  const formatRelativeDate = (date) => {
-    if (!date) return '';
-    const now = new Date();
-    const d = new Date(date);
-    const diffMins = Math.floor((now - d) / 60000);
-    if (diffMins < 60) return `${diffMins}m ago`;
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
-    const diffDays = Math.floor(diffHours / 24);
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  };
-
-  return (
-    <div className="fixed inset-0 z-[110] flex items-end justify-center bg-black/60" onClick={onClose}>
-      <div
-        className="bg-white w-full max-w-md rounded-t-2xl p-4 max-h-[70vh] overflow-y-auto animate-slide-up"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-lg">Comments</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <FaTimes />
-          </button>
-        </div>
-
-        {isLoading ? (
-          <div className="flex justify-center py-8"><FaSpinner className="animate-spin" /></div>
-        ) : (
-          <>
-            {userInfo ? (
-              <form onSubmit={handlePostComment} className="flex gap-2 mb-4">
-                <input
-                  type="text"
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  placeholder="Add a comment..."
-                  className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
-                />
-                <button
-                  type="submit"
-                  disabled={!commentText.trim()}
-                  className="px-4 py-2 bg-[#1B3766] text-white rounded-xl text-sm font-medium disabled:opacity-50"
-                >
-                  Post
-                </button>
-              </form>
-            ) : (
-              <p className="text-sm text-gray-500 mb-4">Login to comment</p>
-            )}
-
-            <div className="space-y-4">
-              {videoData?.comments?.map((comment) => (
-                <div key={comment._id} className="flex gap-3">
-                  {comment.userProfile ? (
-                    <img src={comment.userProfile} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
-                  ) : (
-                    <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold flex-shrink-0">
-                      {(comment.userName || 'U')[0].toUpperCase()}
-                    </div>
-                  )}
-                  <div className="flex-1">
-                    <div className="bg-gray-50 rounded-xl px-3 py-2">
-                      <p className="text-sm font-semibold">{comment.userName || 'User'}</p>
-                      <p className="text-sm">{comment.text}</p>
-                    </div>
-                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
-                      <span>{formatRelativeDate(comment.createdAt)}</span>
-                      <button onClick={() => handleLikeComment(comment._id)}>Like</button>
-                      {comment.likes?.length > 0 && <span>{comment.likes.length}</span>}
-                      {(userInfo?._id === comment.user || userInfo?.role === 'admin') && (
-                        <button onClick={() => handleDeleteComment(comment._id)} className="text-red-500">Delete</button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {videoData?.comments?.length === 0 && (
-                <p className="text-center text-sm text-gray-400">No comments yet</p>
-              )}
-            </div>
-          </>
-        )}
-      </div>
     </div>
   );
 };
