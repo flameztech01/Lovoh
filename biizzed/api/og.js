@@ -5,11 +5,11 @@ const API_URL = process.env.VITE_API_URL?.replace(/\/$/, '');
 export default async function handler(request) {
   const url = new URL(request.url);
   
-  // Pass through static assets
+  // Pass through static assets — catch any path that contains /assets/, /static/, or ends with file extension
   if (
     url.pathname.startsWith('/assets') ||
     url.pathname.startsWith('/static') ||
-    /\.(js|css|svg|png|jpg|jpeg|gif|ico|woff|woff2|ttf|eot|json|xml|txt|map|webmanifest)$/i.test(url.pathname)
+    /\/[^/]+\.(js|css|svg|png|jpg|jpeg|gif|ico|woff|woff2|ttf|eot|json|xml|txt|map|webmanifest)(\?.*)?$/i.test(url.pathname)
   ) {
     return fetch(request);
   }
@@ -17,20 +17,12 @@ export default async function handler(request) {
   const ua = request.headers.get('user-agent') || '';
   const isBot = /facebookexternalhit|twitterbot|linkedinbot|whatsapp|googlebot|discordbot|slackbot|telegrambot|bingbot/i.test(ua);
 
-  // Humans: serve the React app directly without looping back through rewrites
+  // Humans: serve the React app
   if (!isBot) {
-    // Fetch index.html with explicit no-rewrite header to bypass the catch-all
-    const indexUrl = new URL('/index.html', url.origin);
-    const res = await fetch(indexUrl, {
-      headers: {
-        'Accept': 'text/html',
-      }
-    });
-    
+    const res = await fetch(new URL('/index.html', url.origin));
     if (!res.ok) {
       return new Response('Error loading app', { status: 500 });
     }
-    
     const html = await res.text();
     return new Response(html, { 
       headers: { 
@@ -40,7 +32,7 @@ export default async function handler(request) {
     });
   }
 
-  // Bots: build meta tags
+  // Bots: build meta tags (same as before)
   let meta = {
     title: 'Biizzed - Discover & Connect',
     description: 'Articles, magazines, and videos from creators worldwide.',
