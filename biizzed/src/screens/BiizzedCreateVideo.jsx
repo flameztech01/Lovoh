@@ -1,18 +1,29 @@
-// screens/BiizzedCreateVideo.jsx - With YouTube Link + Direct Upload
+// screens/BiizzedCreateVideo.jsx - Contributor-gated + YouTube Link + Direct Upload
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import {
   FaArrowLeft, FaSave, FaUpload, FaVideo, FaTrashAlt,
   FaSpinner, FaTag, FaPlay, FaTimes, FaCheckCircle,
   FaYoutube, FaLink, FaExternalLinkAlt, FaExchangeAlt,
+  FaUserEdit, FaArrowRight, FaLock,
 } from 'react-icons/fa';
 import { useUploadVideoMutation, usePostYoutubeVideoMutation } from '../slices/videoApiSlice';
+import { useGetContributorStatusQuery } from '../slices/contributorApiSlice';
 import { toast } from 'react-toastify';
 import BiizzedArticlesNavbar from '../components/BiizzedArticlesNavbar';
 import BiizzedBottomBar from '../components/BiizzedBottomBar';
 
 const BiizzedCreateVideo = () => {
   const navigate = useNavigate();
+  const { userInfo } = useSelector((state) => state.auth);
+
+  // ---------- Contributor gating ----------
+  const { data: contribData, isLoading: contribLoading } = useGetContributorStatusQuery(undefined, {
+    skip: !userInfo?._id,
+  });
+  const isContributor = contribData?.biizzed_contributor === true;
+
   const [uploadVideo, { isLoading: isUploading }] = useUploadVideoMutation();
   const [postYoutube, { isLoading: isPostingYoutube }] = usePostYoutubeVideoMutation();
 
@@ -181,6 +192,70 @@ const BiizzedCreateVideo = () => {
 
   const isLoading = isUploading || isPostingYoutube;
 
+  // ==================== GATING: Not logged in ====================
+  if (!userInfo) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <BiizzedArticlesNavbar />
+        <div className="text-center bg-white rounded-2xl shadow-lg p-8 max-w-md mx-4">
+          <FaLock className="text-4xl text-gray-400 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Login Required</h2>
+          <p className="text-sm text-gray-500 mb-6">You need to log in to create videos.</p>
+          <button
+            onClick={() => navigate('/login?redirect=/create-video')}
+            className="px-6 py-3 bg-[#1B3766] text-white rounded-xl font-semibold hover:bg-[#142952] transition-colors"
+          >
+            Login to Continue
+          </button>
+        </div>
+        <BiizzedBottomBar />
+      </div>
+    );
+  }
+
+  // ==================== GATING: Loading contributor status ====================
+  if (contribLoading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <BiizzedArticlesNavbar />
+        <div className="text-center">
+          <FaSpinner className="animate-spin text-4xl text-[#1B3766] mx-auto" />
+          <p className="mt-4 text-gray-500">Checking contributor status...</p>
+        </div>
+        <BiizzedBottomBar />
+      </div>
+    );
+  }
+
+  // ==================== GATING: Not a contributor ====================
+  if (!isContributor) {
+    return (
+      <div className="min-h-screen bg-gray-100">
+        <BiizzedArticlesNavbar />
+        <div className="flex items-center justify-center min-h-[calc(100vh-200px)] px-4">
+          <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
+            <div className="w-16 h-16 bg-[#1B3766]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FaUserEdit className="text-[#1B3766] text-2xl" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Only Contributors Can Post Videos</h2>
+            <p className="text-sm text-gray-500 mb-6">
+              You need to be an approved Biizzed contributor to upload or share YouTube videos. Apply now to start sharing your content.
+            </p>
+            <button
+              onClick={() => navigate('/contributor/apply')}
+              className="w-full py-3 bg-[#1B3766] text-white rounded-xl font-semibold hover:bg-[#142952] transition-colors flex items-center justify-center gap-2"
+            >
+              Apply to Become a Contributor
+              <FaArrowRight className="text-sm" />
+            </button>
+          </div>
+        </div>
+        <BiizzedBottomBar />
+      </div>
+    );
+  }
+
+  // ==================== CONTRIBUTOR: Render full creation form ====================
   return (
     <div className="min-h-screen bg-gray-100">
       <BiizzedArticlesNavbar />

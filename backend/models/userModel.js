@@ -2,7 +2,6 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
-// Updated cartItemSchema with seller field
 const cartItemSchema = mongoose.Schema({
   product: {
     type: mongoose.Schema.Types.ObjectId,
@@ -83,7 +82,6 @@ const userSchema = mongoose.Schema(
       enum: ["google", "local", "email"],
       default: "local",
     },
-    // OTP fields for email verification
     otp: {
       type: String,
       default: null,
@@ -92,7 +90,6 @@ const userSchema = mongoose.Schema(
       type: Date,
       default: null,
     },
-    // OTP fields for password reset
     resetPasswordOtp: {
       type: String,
       default: null,
@@ -111,58 +108,17 @@ const userSchema = mongoose.Schema(
     hasPaymentWallet: { type: Boolean, default: false },
 
     // Social features
-    followers: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-      },
-    ],
-    following: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-      },
-    ],
-    followersCount: {
-      type: Number,
-      default: 0,
-    },
-    followingCount: {
-      type: Number,
-      default: 0,
-    },
-    bookmarkedPosts: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Post",
-      },
-    ],
-    bookmarkedVideos: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Video",
-      },
-    ],
-    likedPosts: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Post",
-      },
-    ],
-    likedVideos: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Video",
-      },
-    ],
+    followers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    following: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    followersCount: { type: Number, default: 0 },
+    followingCount: { type: Number, default: 0 },
+    bookmarkedPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: "Post" }],
+    bookmarkedVideos: [{ type: mongoose.Schema.Types.ObjectId, ref: "Video" }],
+    likedPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: "Post" }],
+    likedVideos: [{ type: mongoose.Schema.Types.ObjectId, ref: "Video" }],
 
-    // Story subscribe (for magazine)
-    storySubscribe: {
-      type: Boolean,
-      default: false,
-    },
+    storySubscribe: { type: Boolean, default: false },
 
-    // Magazine/Article social features
     likedArticles: [{ type: mongoose.Schema.Types.ObjectId, ref: "Article" }],
     likedMagazines: [{ type: mongoose.Schema.Types.ObjectId, ref: "Magazine" }],
     bookmarkedArticles: [
@@ -174,14 +130,10 @@ const userSchema = mongoose.Schema(
     storySubscribeAt: Date,
     storyUnsubscribeAt: Date,
 
-    // Cart field
     cart: [cartItemSchema],
 
-    // Seller application fields
-    isSeller: {
-      type: Boolean,
-      default: false,
-    },
+    // Seller fields
+    isSeller: { type: Boolean, default: false },
     sellerStatus: {
       type: String,
       enum: ["not_applied", "pending", "approved", "rejected", "suspended"],
@@ -218,31 +170,43 @@ const userSchema = mongoose.Schema(
       responseTime: { type: Number, default: 0 },
       followers: { type: Number, default: 0 },
     },
-    // Duplicate fields kept for compatibility (existing code uses both)
-    paystackRecipientCode: { type: String, default: "" },
-    paystackSubaccountCode: { type: String, default: "" },
     hasPaystackAccount: { type: Boolean, default: false },
+
+    // ---------- NEW CONTRIBUTOR FIELDS ----------
+    biizzed_contributor: {
+      type: Boolean,
+      default: false,
+    },
+    contributor_application: {
+      status: {
+        type: String,
+        enum: ["not_applied", "pending", "approved", "rejected"],
+        default: "not_applied",
+      },
+      queryLetter: { type: String, default: "" },
+      publishedWorks: [{ type: String }], // URLs of best published works (2-3)
+      briefBio: { type: String, default: "" },
+      resume: { type: String, default: "" }, // file URL or path
+      adminNotes: { type: String, default: "" },
+      submittedAt: { type: Date },
+      reviewedAt: { type: Date },
+    },
   },
   {
-    timestamps: true, // adds createdAt and updatedAt automatically
+    timestamps: true,
   }
 );
 
-// ============================================================
-// 🔥 AUTO-DELETE UNVERIFIED ACCOUNTS AFTER 10 MINUTES
-// ============================================================
-// This TTL index will automatically remove any user document
-// where isVerified = false, 10 minutes after its createdAt time.
-// Once verified, the document is no longer eligible for deletion.
+// TTL index to remove unverified users after 10 minutes
 userSchema.index(
   { createdAt: 1 },
   {
-    expireAfterSeconds: 600, // 10 minutes = 600 seconds
+    expireAfterSeconds: 600,
     partialFilterExpression: { isVerified: false },
   }
 );
 
-// Encrypt password before saving (only for local auth)
+// Encrypt password before saving
 userSchema.pre("save", async function (next) {
   if (
     !this.isModified("password") ||
@@ -250,13 +214,12 @@ userSchema.pre("save", async function (next) {
   ) {
     return next();
   }
-
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
   next();
 });
 
-// Match password method
+// Match password
 userSchema.methods.matchPassword = async function (enteredPassword) {
   if (this.authMethod === "google") {
     return false;
@@ -267,13 +230,13 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 // Cart helper methods
 userSchema.methods.addToCart = function (product, quantity = 1) {
   const cartItemIndex = this.cart.findIndex(
-    (item) => item.product.toString() === product._id.toString(),
+    (item) => item.product.toString() === product._id.toString()
   );
 
   const getItemPrice = (qty) => {
     if (product.bulkPricing && product.bulkPricing.length > 0) {
       const sortedPricing = [...product.bulkPricing].sort(
-        (a, b) => b.minQuantity - a.minQuantity,
+        (a, b) => b.minQuantity - a.minQuantity
       );
       for (const tier of sortedPricing) {
         if (qty >= tier.minQuantity) {
@@ -281,16 +244,15 @@ userSchema.methods.addToCart = function (product, quantity = 1) {
         }
       }
     }
-
     if (qty >= 2 && product.bulkPrice) {
       return product.bulkPrice;
     }
-
     const basePrice = product.retailPrice || product.price || 0;
     if (product.discount && product.discount > 0) {
       const now = new Date();
-      const isDiscountValid = (!product.discountStartDate || now >= product.discountStartDate) &&
-                              (!product.discountEndDate || now <= product.discountEndDate);
+      const isDiscountValid =
+        (!product.discountStartDate || now >= product.discountStartDate) &&
+        (!product.discountEndDate || now <= product.discountEndDate);
       if (isDiscountValid) {
         return basePrice * (1 - product.discount / 100);
       }
@@ -315,13 +277,12 @@ userSchema.methods.addToCart = function (product, quantity = 1) {
       brandName: product.brandName,
     });
   }
-
   return this.save();
 };
 
 userSchema.methods.removeFromCart = function (productId) {
   this.cart = this.cart.filter(
-    (item) => item.product.toString() !== productId.toString(),
+    (item) => item.product.toString() !== productId.toString()
   );
   return this.save();
 };
@@ -329,20 +290,18 @@ userSchema.methods.removeFromCart = function (productId) {
 userSchema.methods.updateCartItemQuantity = function (
   productId,
   quantity,
-  product,
+  product
 ) {
   const cartItem = this.cart.find(
-    (item) => item.product.toString() === productId.toString(),
+    (item) => item.product.toString() === productId.toString()
   );
-
   if (cartItem) {
     cartItem.quantity = quantity;
-
     if (product) {
       const getItemPrice = (qty) => {
         if (product.bulkPricing && product.bulkPricing.length > 0) {
           const sortedPricing = [...product.bulkPricing].sort(
-            (a, b) => b.minQuantity - a.minQuantity,
+            (a, b) => b.minQuantity - a.minQuantity
           );
           for (const tier of sortedPricing) {
             if (qty >= tier.minQuantity) {
@@ -355,21 +314,22 @@ userSchema.methods.updateCartItemQuantity = function (
         }
         if (product.discount && product.discount > 0) {
           const now = new Date();
-          const isDiscountValid = (!product.discountStartDate || now >= product.discountStartDate) &&
-                                  (!product.discountEndDate || now <= product.discountEndDate);
+          const isDiscountValid =
+            (!product.discountStartDate || now >= product.discountStartDate) &&
+            (!product.discountEndDate || now <= product.discountEndDate);
           if (isDiscountValid) {
-            return (product.retailPrice || product.price || 0) * (1 - product.discount / 100);
+            return (
+              (product.retailPrice || product.price || 0) *
+              (1 - product.discount / 100)
+            );
           }
         }
         return product.retailPrice || product.price || 0;
       };
-
       cartItem.price = getItemPrice(quantity);
     }
-
     return this.save();
   }
-
   throw new Error("Item not found in cart");
 };
 
@@ -382,7 +342,7 @@ userSchema.methods.getCartTotal = function () {
   if (!this.cart || this.cart.length === 0) return 0;
   return this.cart.reduce(
     (total, item) => total + (item.price || 0) * (item.quantity || 0),
-    0,
+    0
   );
 };
 

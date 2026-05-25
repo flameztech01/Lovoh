@@ -42,6 +42,7 @@ const AdminSidebar = () => {
     { path: '/admin/magazines', label: 'Magazines', icon: FaBookOpen },
     { path: '/admin/videos', label: 'Videos', icon: FaVideo },
     { path: '/admin/analytics', label: 'Analytics', icon: FaChartLine },
+    { path: '/admin/contributors', label: 'Contributors', icon: FaUsers },
   ];
 
   return (

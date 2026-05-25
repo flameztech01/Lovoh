@@ -1,4 +1,4 @@
-// components/BiizzedArticlesNavbar.jsx - Cleaned version (no subdomain logic, no /biizzed prefix)
+// components/BiizzedArticlesNavbar.jsx – Contributor-gated create button
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
@@ -14,8 +14,11 @@ import {
   FaSignInAlt,
   FaUserPlus,
   FaPlus,
+  FaUserEdit,
+  FaArrowRight,
 } from "react-icons/fa";
 import { useGetNotificationsQuery } from "../slices/notificationApiSlice";
+import { useGetContributorStatusQuery } from "../slices/contributorApiSlice";
 
 const BiizzedArticlesNavbar = () => {
   const navigate = useNavigate();
@@ -24,6 +27,7 @@ const BiizzedArticlesNavbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showContributorPrompt, setShowContributorPrompt] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("feed");
 
@@ -33,6 +37,12 @@ const BiizzedArticlesNavbar = () => {
     { skip: !userInfo }
   );
   const unreadCount = notifData?.unreadCount || 0;
+
+  // Fetch contributor status (skip if not logged in)
+  const { data: contribData } = useGetContributorStatusQuery(undefined, {
+    skip: !userInfo?._id,
+  });
+  const isContributor = contribData?.biizzed_contributor === true;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -79,12 +89,20 @@ const BiizzedArticlesNavbar = () => {
     }
   };
 
-  const handleCreateOption = (type) => {
+  // Open create modal only if contributor; otherwise show prompt
+  const handleCreateButtonClick = () => {
     if (!userInfo) {
-      navigate(`/login?redirect=/create-${type}`);
-      setShowCreateModal(false);
+      navigate("/login?redirect=/feed");
       return;
     }
+    if (contribData && !isContributor) {
+      setShowContributorPrompt(true);
+    } else {
+      setShowCreateModal(true);
+    }
+  };
+
+  const handleCreateOption = (type) => {
     setShowCreateModal(false);
     navigate(`/create-${type}`);
   };
@@ -135,7 +153,7 @@ const BiizzedArticlesNavbar = () => {
             <div className="flex items-center gap-1">
               {/* Create Button - Always visible */}
               <button
-                onClick={() => setShowCreateModal(true)}
+                onClick={handleCreateButtonClick}
                 className="w-9 h-9 rounded-full bg-[#1B3766] text-white flex items-center justify-center hover:bg-[#142952] transition-colors"
               >
                 <FaPlus className="text-sm" />
@@ -225,7 +243,51 @@ const BiizzedArticlesNavbar = () => {
 
       <div className="h-[105px]"></div>
 
-      {/* Create Modal */}
+      {/* Contributor Prompt Modal */}
+      {showContributorPrompt && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowContributorPrompt(false)}
+          />
+          <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl p-6 animate-slideUp">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-[#1B3766]/10 rounded-full flex items-center justify-center mx-auto mb-3">
+                <FaUserEdit className="text-[#1B3766] text-2xl" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">
+                Become a Contributor
+              </h3>
+              <p className="text-sm text-gray-500 mt-2">
+                You need to be an approved contributor to create articles,
+                magazines, and videos. Apply now to share your content with the
+                community.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  setShowContributorPrompt(false);
+                  navigate("/contributor/apply");
+                }}
+                className="w-full py-3 bg-[#1B3766] text-white rounded-xl font-semibold hover:bg-[#142952] transition-colors flex items-center justify-center gap-2"
+              >
+                Apply to Contribute
+                <FaArrowRight className="text-sm" />
+              </button>
+              <button
+                onClick={() => setShowContributorPrompt(false)}
+                className="w-full py-2.5 border border-gray-200 rounded-xl text-gray-600 font-medium text-sm hover:bg-gray-50 transition-colors"
+              >
+                Maybe Later
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Modal (only for contributors) */}
       {showCreateModal && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
           <div
@@ -238,11 +300,7 @@ const BiizzedArticlesNavbar = () => {
                 <FaPlus className="text-[#1B3766] text-xl" />
               </div>
               <h3 className="text-lg font-bold text-gray-900">Create New</h3>
-              <p className="text-sm text-gray-500">
-                {userInfo
-                  ? "Choose what you want to publish"
-                  : "Login to start creating"}
-              </p>
+              <p className="text-sm text-gray-500">Choose what to publish</p>
             </div>
 
             <div className="space-y-3">
@@ -267,21 +325,6 @@ const BiizzedArticlesNavbar = () => {
                 </button>
               ))}
             </div>
-
-            {!userInfo && (
-              <div className="mt-4 p-3 bg-[#1B3766]/5 rounded-xl text-center">
-                <p className="text-xs text-gray-600 mb-2">
-                  You'll need an account to publish
-                </p>
-                <Link
-                  to="/signup"
-                  onClick={() => setShowCreateModal(false)}
-                  className="inline-block px-4 py-1.5 bg-[#1B3766] text-white rounded-full text-xs font-medium hover:bg-[#142952] transition-colors"
-                >
-                  Create Free Account
-                </Link>
-              </div>
-            )}
 
             <button
               onClick={() => setShowCreateModal(false)}
@@ -346,7 +389,9 @@ const BiizzedArticlesNavbar = () => {
                     <button
                       key={cat}
                       onClick={() => {
-                        navigate(`/articles?category=${encodeURIComponent(cat)}`);
+                        navigate(
+                          `/articles?category=${encodeURIComponent(cat)}`
+                        );
                         setShowSearch(false);
                       }}
                       className="px-3 py-1.5 bg-gray-100 hover:bg-[#1B3766]/10 text-xs text-gray-600 hover:text-[#1B3766] rounded-lg transition-colors"

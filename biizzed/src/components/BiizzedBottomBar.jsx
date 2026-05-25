@@ -1,13 +1,15 @@
-// components/BiizzedBottomBar.jsx - Cleaned version (no subdomain logic, no /biizzed prefix)
-import React, { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+// components/BiizzedBottomBar.jsx – Contributor-gated create button
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useSelector } from "react-redux";
 import {
   FaHome, FaCompass, FaPlusCircle, FaBookOpen, FaVideo,
   FaNewspaper,
   FaFire, FaClock, FaStar, FaSlidersH, FaPlus,
+  FaUserEdit, FaArrowRight,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
+import { useGetContributorStatusQuery } from "../slices/contributorApiSlice";
 
 const BiizzedBottomBar = () => {
   const navigate = useNavigate();
@@ -15,6 +17,14 @@ const BiizzedBottomBar = () => {
   const { userInfo } = useSelector((state) => state.auth);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showContributorPrompt, setShowContributorPrompt] = useState(false);
+
+  // Fetch contributor status (skip if not logged in)
+  const { data: contribData } = useGetContributorStatusQuery(undefined, {
+    skip: !userInfo?._id,
+  });
+
+  const isContributor = contribData?.biizzed_contributor === true;
 
   const isActive = (path) => {
     return location.pathname === path;
@@ -49,6 +59,16 @@ const BiizzedBottomBar = () => {
       navigate('/login?redirect=/feed');
       return;
     }
+
+    // If contributor status is loaded and user is NOT a contributor, show prompt
+    if (contribData && !isContributor) {
+      setShowContributorPrompt(true);
+      return;
+    }
+
+    // If still loading, we could show a loader or just wait, but for now we'll just open the modal
+    // (The prompt check will happen when data arrives; if not ready, we still show modal? We'll open anyway but later the prompt may override; better to wait)
+    // We'll open the create modal only if confirmed contributor
     setShowCreateModal(true);
   };
 
@@ -113,7 +133,44 @@ const BiizzedBottomBar = () => {
         <FaSlidersH className="text-lg" />
       </button>
 
-      {/* Create Modal */}
+      {/* Contributor Prompt Modal */}
+      {showContributorPrompt && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowContributorPrompt(false)} />
+          <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl p-6 animate-slideUp">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-[#1B3766]/10 rounded-full flex items-center justify-center mx-auto mb-3">
+                <FaUserEdit className="text-[#1B3766] text-2xl" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">Become a Contributor</h3>
+              <p className="text-sm text-gray-500 mt-2">
+                You need to be an approved contributor to create articles, magazines, and videos. Apply now to share your content with the community.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  setShowContributorPrompt(false);
+                  navigate('/contributor/apply');
+                }}
+                className="w-full py-3 bg-[#1B3766] text-white rounded-xl font-semibold hover:bg-[#142952] transition-colors flex items-center justify-center gap-2"
+              >
+                Apply to Contribute
+                <FaArrowRight className="text-sm" />
+              </button>
+              <button
+                onClick={() => setShowContributorPrompt(false)}
+                className="w-full py-2.5 border border-gray-200 rounded-xl text-gray-600 font-medium text-sm hover:bg-gray-50 transition-colors"
+              >
+                Maybe Later
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Modal (only for contributors) */}
       {showCreateModal && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowCreateModal(false)} />

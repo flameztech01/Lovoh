@@ -1,13 +1,15 @@
-// screens/BiizzedCreateArticle.jsx
+// screens/BiizzedCreateArticle.jsx – Contributor-gated
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import {
   FaArrowLeft, FaSave, FaImage, FaTrashAlt, FaPlus,
   FaBold, FaItalic, FaUnderline, FaAlignLeft, FaAlignCenter, FaAlignRight,
   FaListUl, FaListOl, FaLink, FaHeading, FaEye, FaQuoteRight, FaTimes,
-  FaSpinner, FaTag, FaNewspaper, FaCamera,
+  FaSpinner, FaTag, FaNewspaper, FaCamera, FaUserEdit, FaArrowRight, FaLock,
 } from 'react-icons/fa';
 import { useCreateArticleMutation } from '../slices/articlesApiSlice';
+import { useGetContributorStatusQuery } from '../slices/contributorApiSlice';
 import { toast } from 'react-toastify';
 import BiizzedArticlesNavbar from '../components/BiizzedArticlesNavbar';
 import BiizzedBottomBar from '../components/BiizzedBottomBar';
@@ -21,7 +23,14 @@ const ToolbarButton = ({ onClick, icon: Icon, title }) => (
 const BiizzedCreateArticle = () => {
   const navigate = useNavigate();
   const editorRef = useRef(null);
+  const { userInfo } = useSelector((state) => state.auth);
   const [createArticle, { isLoading }] = useCreateArticleMutation();
+
+  // Fetch contributor status (skip if not logged in)
+  const { data: contribData, isLoading: contribLoading } = useGetContributorStatusQuery(undefined, {
+    skip: !userInfo?._id,
+  });
+  const isContributor = contribData?.biizzed_contributor === true;
 
   const [formData, setFormData] = useState({
     title: '', excerpt: '', category: '', tags: '',
@@ -118,6 +127,70 @@ const BiizzedCreateArticle = () => {
     }
   };
 
+  // If not logged in, show login prompt
+  if (!userInfo) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <BiizzedArticlesNavbar />
+        <div className="text-center bg-white rounded-2xl shadow-lg p-8 max-w-md mx-4">
+          <FaLock className="text-4xl text-gray-400 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Login Required</h2>
+          <p className="text-sm text-gray-500 mb-6">You need to log in to create articles.</p>
+          <button
+            onClick={() => navigate('/login?redirect=/create-article')}
+            className="px-6 py-3 bg-[#1B3766] text-white rounded-xl font-semibold hover:bg-[#142952] transition-colors"
+          >
+            Login to Continue
+          </button>
+        </div>
+        <BiizzedBottomBar />
+      </div>
+    );
+  }
+
+  // If contributor status is loading, show spinner
+  if (contribLoading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <BiizzedArticlesNavbar />
+        <div className="text-center">
+          <FaSpinner className="animate-spin text-4xl text-[#1B3766] mx-auto" />
+          <p className="mt-4 text-gray-500">Checking contributor status...</p>
+        </div>
+        <BiizzedBottomBar />
+      </div>
+    );
+  }
+
+  // If not a contributor, show application prompt
+  if (!isContributor) {
+    return (
+      <div className="min-h-screen bg-gray-100">
+        <BiizzedArticlesNavbar />
+        <div className="flex items-center justify-center min-h-[calc(100vh-200px)] px-4">
+          <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
+            <div className="w-16 h-16 bg-[#1B3766]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FaUserEdit className="text-[#1B3766] text-2xl" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Only Contributors Can Publish</h2>
+            <p className="text-sm text-gray-500 mb-6">
+              You need to be an approved Biizzed contributor to create articles. Apply now to share your stories and insights.
+            </p>
+            <button
+              onClick={() => navigate('/contributor/apply')}
+              className="w-full py-3 bg-[#1B3766] text-white rounded-xl font-semibold hover:bg-[#142952] transition-colors flex items-center justify-center gap-2"
+            >
+              Apply to Become a Contributor
+              <FaArrowRight className="text-sm" />
+            </button>
+          </div>
+        </div>
+        <BiizzedBottomBar />
+      </div>
+    );
+  }
+
+  // Contributor – show the full creation form
   return (
     <div className="min-h-screen bg-gray-100">
       <BiizzedArticlesNavbar />

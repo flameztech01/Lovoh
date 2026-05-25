@@ -1,19 +1,28 @@
-// screens/BiizzedCreateMagazine.jsx – With Coming Soon support
+// screens/BiizzedCreateMagazine.jsx – Contributor-gated + Coming Soon support
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import {
   FaArrowLeft, FaSave, FaUpload, FaImage, FaTrashAlt,
   FaSpinner, FaTag, FaBookOpen, FaFilePdf, FaTimes,
-  FaClock, FaInfoCircle,
+  FaClock, FaInfoCircle, FaUserEdit, FaArrowRight, FaLock,
 } from 'react-icons/fa';
 import { useCreateMagazineMutation } from '../slices/magApiSlice';
+import { useGetContributorStatusQuery } from '../slices/contributorApiSlice';
 import { toast } from 'react-toastify';
 import BiizzedArticlesNavbar from '../components/BiizzedArticlesNavbar';
 import BiizzedBottomBar from '../components/BiizzedBottomBar';
 
 const BiizzedCreateMagazine = () => {
   const navigate = useNavigate();
+  const { userInfo } = useSelector((state) => state.auth);
   const [createMagazine, { isLoading }] = useCreateMagazineMutation();
+
+  // Contributor gating
+  const { data: contribData, isLoading: contribLoading } = useGetContributorStatusQuery(undefined, {
+    skip: !userInfo?._id,
+  });
+  const isContributor = contribData?.biizzed_contributor === true;
 
   const [formData, setFormData] = useState({
     title: '', summary: '', author: '', category: '', tags: '',
@@ -58,7 +67,6 @@ const BiizzedCreateMagazine = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Basic validation
     if (!formData.title.trim()) { toast.error('Title is required'); return; }
     if (!formData.summary.trim()) { toast.error('Summary is required'); return; }
     if (!formData.category) { toast.error('Category is required'); return; }
@@ -94,6 +102,70 @@ const BiizzedCreateMagazine = () => {
     }
   };
 
+  // -- Not logged in --
+  if (!userInfo) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <BiizzedArticlesNavbar />
+        <div className="text-center bg-white rounded-2xl shadow-lg p-8 max-w-md mx-4">
+          <FaLock className="text-4xl text-gray-400 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Login Required</h2>
+          <p className="text-sm text-gray-500 mb-6">You need to log in to create magazines.</p>
+          <button
+            onClick={() => navigate('/login?redirect=/create-magazine')}
+            className="px-6 py-3 bg-[#1B3766] text-white rounded-xl font-semibold hover:bg-[#142952] transition-colors"
+          >
+            Login to Continue
+          </button>
+        </div>
+        <BiizzedBottomBar />
+      </div>
+    );
+  }
+
+  // -- Loading contributor status --
+  if (contribLoading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <BiizzedArticlesNavbar />
+        <div className="text-center">
+          <FaSpinner className="animate-spin text-4xl text-[#1B3766] mx-auto" />
+          <p className="mt-4 text-gray-500">Checking contributor status...</p>
+        </div>
+        <BiizzedBottomBar />
+      </div>
+    );
+  }
+
+  // -- Not a contributor --
+  if (!isContributor) {
+    return (
+      <div className="min-h-screen bg-gray-100">
+        <BiizzedArticlesNavbar />
+        <div className="flex items-center justify-center min-h-[calc(100vh-200px)] px-4">
+          <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
+            <div className="w-16 h-16 bg-[#1B3766]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FaUserEdit className="text-[#1B3766] text-2xl" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Only Contributors Can Publish</h2>
+            <p className="text-sm text-gray-500 mb-6">
+              You need to be an approved Biizzed contributor to create magazines. Apply now to share your publications with the community.
+            </p>
+            <button
+              onClick={() => navigate('/contributor/apply')}
+              className="w-full py-3 bg-[#1B3766] text-white rounded-xl font-semibold hover:bg-[#142952] transition-colors flex items-center justify-center gap-2"
+            >
+              Apply to Become a Contributor
+              <FaArrowRight className="text-sm" />
+            </button>
+          </div>
+        </div>
+        <BiizzedBottomBar />
+      </div>
+    );
+  }
+
+  // -- Contributor: show magazine creation form --
   return (
     <div className="min-h-screen bg-gray-100">
       <BiizzedArticlesNavbar />

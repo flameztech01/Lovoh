@@ -51,6 +51,8 @@ import BiizzedResubscribeScreen from "./screens/BiizzedResubscribeScreen.jsx";
 import BiizzedSettings from "./screens/BiizzedSettings.jsx";
 import BiizzedNotifications from "./screens/BiizzedNotifications.jsx";
 
+import BiizzedContributorApply from "./screens/BiizzedContributorApply.jsx";
+
 import NotFound from "./screens/NotFound.jsx";
 
 // ==================== ADMIN ====================
@@ -62,6 +64,7 @@ import AdminArticles from "./adminScreen/AdminArticles.jsx";
 import AdminMagazines from "./adminScreen/AdminMagazines.jsx";
 import AdminVideos from "./adminScreen/AdminVideos.jsx";
 import AdminAnalytics from "./adminScreen/AdminAnalytics.jsx";
+import AdminContributors from "./adminScreen/AdminContributors.jsx";
 
 import AdminLayout from "./adminComponents/AdminLayout.jsx";
 import PrivateAdminRoute from "./adminComponents/PrivateAdminRoute.jsx";
@@ -165,6 +168,8 @@ const router = createBrowserRouter([
         element: <BiizzedNotifications />,
       },
 
+      { path: "contributor/apply", element: <BiizzedContributorApply /> },
+
       // 404
       { path: "not-found", element: <NotFound /> },
     ],
@@ -191,6 +196,7 @@ const router = createBrowserRouter([
           { path: "magazines", element: <AdminMagazines /> },
           { path: "videos", element: <AdminVideos /> },
           { path: "analytics", element: <AdminAnalytics /> },
+          { path: "contributors", element: <AdminContributors /> },
         ],
       },
     ],

@@ -1,4 +1,4 @@
-// screens/BiizzedProfile.jsx – Fixed dropdown menu overflow issue
+// screens/BiizzedProfile.jsx – Fixed contributor status data access
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -22,6 +22,7 @@ import {
 import {
   useSubscribeMutation, useUnsubscribeMutation, useGetSubscriptionStatusQuery,
 } from "../slices/subscribeApiSlice";
+import { useGetContributorStatusQuery } from "../slices/contributorApiSlice";
 import BiizzedArticlesNavbar from "../components/BiizzedArticlesNavbar";
 import BiizzedBottomBar from "../components/BiizzedBottomBar";
 import { useSelector, useDispatch } from "react-redux";
@@ -62,15 +63,20 @@ const BiizzedProfile = () => {
     data: profile, isLoading: profileLoading, refetch: refetchProfile,
   } = useGetProfileInfoQuery(undefined, { skip: !userInfo });
 
+  // Contributor status
+  const {
+    data: contribData, isLoading: contribLoading,
+  } = useGetContributorStatusQuery(undefined, { skip: !userInfo?._id });
+
   // User's own content
   const {
     data: myArticlesData, isLoading: articlesLoading, refetch: refetchArticles,
   } = useGetMyArticlesQuery({ limit: 50, status: "published,coming_soon,draft" }, { skip: !userInfo });
-  
+
   const {
     data: myMagazinesData, isLoading: magazinesLoading, refetch: refetchMagazines,
   } = useGetMyMagazinesQuery({ limit: 50, status: "published,coming_soon,draft" }, { skip: !userInfo });
-  
+
   const {
     data: myVideosData, isLoading: videosLoading, refetch: refetchVideos,
   } = useGetMyVideosQuery({ limit: 50 }, { skip: !userInfo });
@@ -297,11 +303,19 @@ const BiizzedProfile = () => {
 
   const totalPosts = filteredArticles.length + filteredMagazines.length + myVideos.length;
 
+  // ----- CORRECTED Contributor status helpers (data is nested inside contribData.data) -----
+  const contribApplicationData = contribData?.data?.contributor_application;
+  const isContributorApproved = contribData?.data?.biizzed_contributor === true || contribData?.biizzed_contributor === true;
+  const contributorAppStatus = contribApplicationData?.status;
+  const isContributorPending = contributorAppStatus === "pending";
+  const isContributorRejected = contributorAppStatus === "rejected";
+  const hasNotApplied = contributorAppStatus === "not_applied" || !contributorAppStatus;
+
   // Status badge renderer
   const StatusBadge = ({ item }) => {
     const status = getItemStatus(item);
     if (status === "published" && !item.isFeatured && !item.featuredRequest) return null;
-    
+
     return (
       <div className="flex flex-wrap gap-1 mt-1">
         {status === "coming_soon" && (
@@ -340,7 +354,7 @@ const BiizzedProfile = () => {
         <div className="px-3 py-1.5 text-[10px] text-gray-400 border-b border-gray-100 mb-1">
           Status: <span className="font-medium capitalize">{status}</span>
         </div>
-        
+
         {showFeaturedRequest && status !== "draft" && (
           <button
             onClick={(e) => {
@@ -358,7 +372,7 @@ const BiizzedProfile = () => {
             {isFeatured ? "Already Featured" : isFeaturedRequested ? "Request Pending" : "Request Featured"}
           </button>
         )}
-        
+
         <button
           onClick={(e) => {
             e.preventDefault();
@@ -368,7 +382,7 @@ const BiizzedProfile = () => {
         >
           <FaEdit className="text-[10px]" /> Edit
         </button>
-        
+
         {status === "coming_soon" && (
           <button
             onClick={(e) => {
@@ -380,7 +394,7 @@ const BiizzedProfile = () => {
             <FaCheck className="text-[10px]" /> Publish Now
           </button>
         )}
-        
+
         <button
           onClick={(e) => {
             e.preventDefault();
@@ -394,38 +408,38 @@ const BiizzedProfile = () => {
     );
   };
 
-  // ====== FIXED CONTENT CARD - NO overflow-hidden ======
+  // ====== FIXED CONTENT CARD ======
   const ContentCard = ({ item, type }) => {
     const status = getItemStatus(item);
-    const imageUrl = type === "magazine" 
+    const imageUrl = type === "magazine"
       ? (item.coverImage || "/placeholder-article.jpg")
       : (item.featuredImage || item.images?.[0] || "/placeholder-article.jpg");
-    const linkTo = type === "magazine" 
-      ? `/${item.slug}` 
+    const linkTo = type === "magazine"
+      ? `/${item.slug}`
       : `/articles/${item.slug}`;
     const isMenuOpen = menuOpenId === `${type}-${item._id}`;
 
     return (
       <div key={item._id} className={`relative bg-white rounded-xl shadow-sm border transition-all hover:shadow-md ${
-        status === "draft" ? "border-gray-200 opacity-75" : 
+        status === "draft" ? "border-gray-200 opacity-75" :
         status === "coming_soon" ? "border-orange-200" : "border-gray-100"
       }`}>
         <Link to={linkTo} className="flex gap-3 p-4">
-          <img 
-            src={imageUrl} 
-            alt="" 
+          <img
+            src={imageUrl}
+            alt=""
             className={`w-24 h-24 rounded-lg object-cover flex-shrink-0 ${
               status === "draft" ? "grayscale-[30%]" : ""
-            }`} 
+            }`}
           />
           <div className="flex-1 min-w-0">
             <h3 className="text-sm font-bold text-gray-900 line-clamp-2">{item.title}</h3>
             <p className="text-xs text-gray-500 mt-1">
               {item.category} {type !== "magazine" && `• ${item.readTime || "5 min"}`}
             </p>
-            
+
             <StatusBadge item={item} />
-            
+
             <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
               <span><FaHeart className="inline mr-1" />{item.likes?.length || 0}</span>
               <span><FaEye className="inline mr-1" />{item.views || 0}</span>
@@ -438,7 +452,7 @@ const BiizzedProfile = () => {
             </div>
           </div>
         </Link>
-        
+
         {/* Menu button */}
         <div className="absolute top-2 right-2 z-10">
           <button
@@ -454,10 +468,10 @@ const BiizzedProfile = () => {
           </button>
         </div>
 
-        {/* Fixed dropdown - portal-like behavior with fixed positioning */}
+        {/* Fixed dropdown */}
         {isMenuOpen && (
           <div className="fixed inset-0 z-[90]" onClick={() => setMenuOpenId(null)}>
-            <div 
+            <div
               className="absolute z-[100]"
               style={{
                 top: menuPosition.top,
@@ -478,7 +492,7 @@ const BiizzedProfile = () => {
     const rect = e.currentTarget.getBoundingClientRect();
     setMenuPosition({
       top: rect.bottom + window.scrollY + 4,
-      left: rect.left + window.scrollX - 140, // align right edge of menu with button
+      left: rect.left + window.scrollX - 140,
     });
     setMenuOpenId(`${type}-${id}`);
   };
@@ -491,16 +505,32 @@ const BiizzedProfile = () => {
         {/* Profile Header */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-4">
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
-            {profile?.profile ? (
-              <img src={profile.profile} alt={profile.name} className="w-20 h-20 rounded-full object-cover border-4 border-white shadow" />
-            ) : (
-              <div className="w-20 h-20 rounded-full bg-[#1B3766] text-white flex items-center justify-center text-2xl font-bold">
-                {(profile?.name || "U")[0].toUpperCase()}
-              </div>
-            )}
+            {/* Avatar with contributor badge */}
+            <div className="relative">
+              {profile?.profile ? (
+                <img src={profile.profile} alt={profile.name} className="w-20 h-20 rounded-full object-cover border-4 border-white shadow" />
+              ) : (
+                <div className="w-20 h-20 rounded-full bg-[#1B3766] text-white flex items-center justify-center text-2xl font-bold">
+                  {(profile?.name || "U")[0].toUpperCase()}
+                </div>
+              )}
+              {/* Contributor badge on avatar */}
+              {isContributorApproved && (
+                <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white flex items-center justify-center shadow">
+                  <FaCheckCircle className="text-white text-xs" />
+                </div>
+              )}
+            </div>
 
             <div className="flex-1 text-center sm:text-left">
-              <h1 className="text-xl font-bold text-gray-900">{profile?.name || "User"}</h1>
+              <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
+                <h1 className="text-xl font-bold text-gray-900">{profile?.name || "User"}</h1>
+                {isContributorApproved && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                    <FaCheckCircle className="text-[10px]" /> Contributor
+                  </span>
+                )}
+              </div>
               <p className="text-sm text-gray-500">@{profile?.username || "user"}</p>
               {profile?.bio && <p className="text-sm text-gray-600 mt-1">{profile.bio}</p>}
 
@@ -517,6 +547,30 @@ const BiizzedProfile = () => {
                   <p className="text-lg font-bold text-gray-900">{totalPosts}</p>
                   <p className="text-xs text-gray-500">Posts</p>
                 </div>
+              </div>
+
+              {/* Contributor application status / CTA */}
+              <div className="mt-3">
+                {contribLoading ? (
+                  <span className="text-xs text-gray-400 inline-flex items-center gap-1">
+                    <FaSpinner className="animate-spin" /> Loading contributor info...
+                  </span>
+                ) : hasNotApplied ? (
+                  <button
+                    onClick={() => navigate('/contributor/apply')}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#1B3766] text-white rounded-xl text-sm font-medium hover:bg-[#142952] transition-colors"
+                  >
+                    <FaPlus className="text-xs" /> Apply to Contribute
+                  </button>
+                ) : isContributorPending ? (
+                  <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">
+                    <FaClock className="text-[10px]" /> Pending Approval
+                  </span>
+                ) : isContributorRejected ? (
+                  <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-red-100 text-red-700 rounded-full text-xs font-medium">
+                    <FaTimes className="text-[10px]" /> Application Rejected
+                  </span>
+                ) : null}
               </div>
             </div>
 
@@ -583,7 +637,7 @@ const BiizzedProfile = () => {
               {showDrafts ? "Showing All" : "Published Only"}
             </button>
             <span className="text-xs text-gray-400">
-              {activeTab === "articles" 
+              {activeTab === "articles"
                 ? `${myArticles.filter(a => isDraft(a)).length} drafts, ${myArticles.filter(a => isComingSoon(a)).length} coming soon`
                 : `${myMagazines.filter(m => isDraft(m)).length} drafts, ${myMagazines.filter(m => isComingSoon(m)).length} coming soon`
               }
@@ -699,7 +753,7 @@ const BiizzedProfile = () => {
                   {/* Video dropdown */}
                   {menuOpenId === `video-${video._id}` && (
                     <div className="fixed inset-0 z-[90]" onClick={() => setMenuOpenId(null)}>
-                      <div 
+                      <div
                         className="absolute z-[100]"
                         style={{
                           top: menuPosition.top,
@@ -821,21 +875,21 @@ const BiizzedProfile = () => {
             </div>
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
-              <input 
-                type="text" 
-                value={editName} 
-                onChange={(e) => setEditName(e.target.value)} 
-                placeholder="Your name" 
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766] transition-all" 
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="Your name"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766] transition-all"
               />
             </div>
             <div className="flex gap-3">
               <button onClick={closeEditModal} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-600 font-medium text-sm hover:bg-gray-50 transition-colors">
                 Cancel
               </button>
-              <button 
-                onClick={handleSaveProfile} 
-                disabled={isUpdating} 
+              <button
+                onClick={handleSaveProfile}
+                disabled={isUpdating}
                 className="flex-1 py-2.5 bg-[#1B3766] text-white rounded-xl font-medium text-sm hover:bg-[#142952] disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
               >
                 {isUpdating ? <><FaSpinner className="animate-spin text-xs" /> Saving...</> : <><FaCheck className="text-xs" /> Save Changes</>}

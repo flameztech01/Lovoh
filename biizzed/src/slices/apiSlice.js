@@ -3,7 +3,7 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { logout } from './authslice.js';
 
 const baseQuery = fetchBaseQuery({
-  baseUrl: `${import.meta.env.VITE_API_URL || 'https://api.lovohcreate.com'}/api`,
+  baseUrl: `${import.meta.env.VITE_API_URL || ''}/api`,
   credentials: 'include',
   prepareHeaders: (headers, { getState }) => {
     const token = getState().auth?.userInfo?.token || getState().auth?.adminInfo?.token;
