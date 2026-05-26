@@ -60,8 +60,15 @@ app.use(cookieParser());
 app.use(logger);
 
 // Health check - handles ALL methods including HEAD
-app.all("/", (req, res) => {
-  res.status(200).send("Lovoh Create API is running 🚀");
+app.get("/", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Lovoh Create API is running 🚀",
+  });
+});
+
+app.head("/", (req, res) => {
+  res.sendStatus(200);
 });
 
 // Routes
