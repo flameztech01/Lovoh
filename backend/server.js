@@ -61,7 +61,7 @@ app.use(logger);
 
 // Health check - handles ALL methods including HEAD
 app.all("/", (req, res) => {
-  res.status(200).send("Teens Connect API is running 🚀");
+  res.status(200).send("Lovoh Create API is running 🚀");
 });
 
 // Routes
