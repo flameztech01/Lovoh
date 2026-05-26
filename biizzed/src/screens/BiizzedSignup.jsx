@@ -1,7 +1,6 @@
 // screens/BiizzedSignup.jsx
-// Full-screen Signup: Left random articles slider | Right form (no scroll)
-// Mobile: Only form (full viewport, no scroll)
-// Removed feature cards to save space
+// Full-screen Signup: Left random articles slider (fixed) | Right form (scrollable)
+// Mobile: Only form (scrollable)
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
@@ -40,14 +39,13 @@ const countryCodes = [
   { name: 'Brazil', code: '+55', flag: '🇧🇷' },
 ];
 
-// ========== RANDOM ARTICLES SLIDER COMPONENT (Full height) ==========
+// ========== RANDOM ARTICLES SLIDER COMPONENT (Fixed, no scroll) ==========
 const ArticlesSlider = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
   const intervalRef = useRef(null);
 
-  // Fetch random published articles
   const { data: articlesData, isLoading } = useGetArticlesQuery({
     status: 'published',
     page: 1,
@@ -56,8 +54,6 @@ const ArticlesSlider = () => {
   });
 
   const articles = articlesData?.articles || [];
-
-  // Randomize the articles order on load
   const [randomizedArticles, setRandomizedArticles] = useState([]);
 
   useEffect(() => {
@@ -71,7 +67,6 @@ const ArticlesSlider = () => {
     }
   }, [articles]);
 
-  // Auto-rotate slides every 8 seconds
   useEffect(() => {
     if (randomizedArticles.length > 1) {
       intervalRef.current = setInterval(() => {
@@ -83,7 +78,6 @@ const ArticlesSlider = () => {
     };
   }, [randomizedArticles.length]);
 
-  // Reset timer on manual navigation
   const resetTimer = useCallback(() => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
@@ -141,12 +135,10 @@ const ArticlesSlider = () => {
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Main Slide */}
       <div
         key={currentArticle._id}
         className="absolute inset-0 transition-opacity duration-700 ease-in-out animate-fadeIn"
       >
-        {/* Background Image with Overlay */}
         <div className="absolute inset-0">
           <img
             src={currentArticle.featuredImage || fallbackImage}
@@ -157,9 +149,7 @@ const ArticlesSlider = () => {
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/30" />
         </div>
 
-        {/* Content Overlay */}
         <div className="absolute inset-0 flex flex-col justify-end p-6 pb-12">
-          {/* Category Badge */}
           <div className="mb-3">
             <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white/20 backdrop-blur-sm rounded-full text-white text-xs font-medium">
               <FaNewspaper className="text-[10px]" />
@@ -167,26 +157,22 @@ const ArticlesSlider = () => {
             </span>
           </div>
 
-          {/* Title */}
           <h2 className="text-2xl sm:text-3xl font-bold text-white leading-tight mb-2 line-clamp-3">
             {currentArticle.title}
           </h2>
 
-          {/* Excerpt */}
           {currentArticle.excerpt && (
             <p className="text-white/80 text-sm mb-4 line-clamp-2">
               {currentArticle.excerpt}
             </p>
           )}
 
-          {/* Author & Meta */}
           <div className="flex items-center gap-2 text-white/70 text-xs mb-4">
             <span>By {currentArticle.author || 'Biizzed Creator'}</span>
             <span>•</span>
             <span>{Math.ceil((currentArticle.content?.length || 1000) / 1000)} min read</span>
           </div>
 
-          {/* Engagement Stats */}
           <div className="flex items-center gap-4 text-white/60 text-xs">
             <span className="flex items-center gap-1">
               <FaRegHeart /> {(currentArticle.likesCount || 0).toLocaleString()}
@@ -201,7 +187,6 @@ const ArticlesSlider = () => {
         </div>
       </div>
 
-      {/* Navigation Arrows (Desktop only) */}
       {randomizedArticles.length > 1 && (
         <>
           <button
@@ -223,7 +208,6 @@ const ArticlesSlider = () => {
         </>
       )}
 
-      {/* Dots Indicator */}
       {randomizedArticles.length > 1 && (
         <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-10">
           {randomizedArticles.map((_, idx) => (
@@ -240,7 +224,6 @@ const ArticlesSlider = () => {
         </div>
       )}
 
-      {/* Quote Overlay Card */}
       <div className="absolute top-8 left-6 right-6">
         <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20">
           <FaQuoteLeft className="text-white/40 text-xl mb-2" />
@@ -260,18 +243,15 @@ const BiizzedSignup = () => {
   const location = useLocation();
   const { userInfo } = useSelector((state) => state.auth);
 
-  // API hooks
   const [googleAuth, { isLoading: googleLoading }] = useGoogleAuthMutation();
   const [register, { isLoading: registerLoading }] = useRegisterMutation();
   const [verifyEmail, { isLoading: verifyLoading }] = useVerifyEmailMutation();
   const [resendOTP, { isLoading: resendLoading }] = useResendOTPMutation();
 
-  // UI state
   const [signupMethod, setSignupMethod] = useState('email');
   const [step, setStep] = useState('form');
   const [showPassword, setShowPassword] = useState(false);
 
-  // Form data
   const [formData, setFormData] = useState({
     name: '',
     username: '',
@@ -279,11 +259,9 @@ const BiizzedSignup = () => {
     password: '',
   });
 
-  // Phone state
   const [phoneNumber, setPhoneNumber] = useState('');
   const [selectedCountry, setSelectedCountry] = useState(countryCodes[0]);
 
-  // OTP state
   const [otp, setOtp] = useState('');
   const [registeredEmail, setRegisteredEmail] = useState('');
   const [countdown, setCountdown] = useState(0);
@@ -322,7 +300,6 @@ const BiizzedSignup = () => {
     return `${selectedCountry.code}${local}`;
   };
 
-  // Email/Password Registration
   const handleEmailSignup = async (e) => {
     e.preventDefault();
     const { name, username, email, password } = formData;
@@ -346,7 +323,6 @@ const BiizzedSignup = () => {
     }
   };
 
-  // Verify OTP
   const handleVerifyOTP = async (e) => {
     e.preventDefault();
     if (!otp || otp.length !== 6) {
@@ -363,7 +339,6 @@ const BiizzedSignup = () => {
     }
   };
 
-  // Resend OTP
   const handleResendOTP = async () => {
     if (!canResend) return;
     try {
@@ -376,7 +351,6 @@ const BiizzedSignup = () => {
     }
   };
 
-  // Google Signup
   const handleGoogleSuccess = async (credentialResponse) => {
     const { credential } = credentialResponse;
     const fullPhone = getFullPhoneNumber();
@@ -400,15 +374,15 @@ const BiizzedSignup = () => {
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-white flex flex-col lg:flex-row">
-      {/* LEFT SIDE - RANDOM ARTICLES SLIDER (Desktop only, full height) */}
-      <div className="hidden lg:block lg:w-1/2 relative bg-[#1B3766] h-full">
+      {/* LEFT SIDE - FIXED, NO SCROLL */}
+      <div className="hidden lg:block lg:w-1/2 relative bg-[#1B3766] h-full overflow-hidden">
         <ArticlesSlider />
       </div>
 
-      {/* RIGHT SIDE - SIGNUP FORM (Full height, no scroll) */}
+      {/* RIGHT SIDE - SCROLLABLE FORM ONLY */}
       <div className="flex-1 h-full bg-gray-50 flex flex-col overflow-hidden">
-        {/* Mobile Header with Back button and Logo */}
-        <div className="lg:hidden bg-white border-b border-gray-100 px-4 py-4 flex-shrink-0">
+        {/* Mobile Header - Sticky */}
+        <div className="lg:hidden bg-white border-b border-gray-100 px-4 py-4 flex-shrink-0 sticky top-0 z-10">
           <div className="flex items-center justify-between">
             <button onClick={() => navigate(-1)} className="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-600">
               <FaArrowLeft className="text-sm" />
@@ -418,95 +392,146 @@ const BiizzedSignup = () => {
           </div>
         </div>
 
-        {/* Form Container - Flex column with no overflow */}
-        <div className="flex-1 flex flex-col justify-center px-4 py-6 lg:py-0">
-          <div className="max-w-md mx-auto w-full">
-            {/* Desktop Header (hidden on mobile) */}
-            <div className="hidden lg:block text-center mb-6">
-              <div className="w-14 h-14 bg-[#1B3766]/10 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                <FaNewspaper className="text-[#1B3766] text-2xl" />
+        {/* SCROLLABLE FORM AREA - This is the only part that scrolls */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="flex flex-col justify-start px-4 py-6 lg:py-8">
+            <div className="max-w-md mx-auto w-full pb-8">
+              {/* Desktop Header */}
+              <div className="hidden lg:block text-center mb-6">
+                <div className="w-14 h-14 bg-[#1B3766]/10 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                  <FaNewspaper className="text-[#1B3766] text-2xl" />
+                </div>
+                <h1 className="text-2xl font-bold text-gray-900">Join Biizzed</h1>
+                <p className="text-gray-500 text-sm mt-1">Create, publish, and connect with a global audience</p>
               </div>
-              <h1 className="text-2xl font-bold text-gray-900">Join Biizzed</h1>
-              <p className="text-gray-500 text-sm mt-1">Create, publish, and connect with a global audience</p>
-            </div>
 
-            {/* Method Toggle */}
-            <div className="flex gap-2 bg-gray-100 p-1 rounded-xl mb-5">
-              <button
-                onClick={() => setSignupMethod('email')}
-                className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
-                  signupMethod === 'email' ? 'bg-white text-[#1B3766] shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Email Signup
-              </button>
-              <button
-                onClick={() => setSignupMethod('google')}
-                className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
-                  signupMethod === 'google' ? 'bg-white text-[#1B3766] shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Google Signup
-              </button>
-            </div>
+              {/* Method Toggle */}
+              <div className="flex gap-2 bg-gray-100 p-1 rounded-xl mb-5">
+                <button
+                  onClick={() => setSignupMethod('email')}
+                  className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+                    signupMethod === 'email' ? 'bg-white text-[#1B3766] shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Email Signup
+                </button>
+                <button
+                  onClick={() => setSignupMethod('google')}
+                  className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+                    signupMethod === 'google' ? 'bg-white text-[#1B3766] shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Google Signup
+                </button>
+              </div>
 
-            {/* Signup Card */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 sm:p-6">
-              {signupMethod === 'email' ? (
-                step === 'form' && (
-                  <form onSubmit={handleEmailSignup} className="space-y-3">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">Full Name *</label>
-                      <div className="relative">
-                        <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
-                        <input
-                          type="text" name="name" value={formData.name} onChange={handleChange}
-                          required placeholder="John Doe"
-                          className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
-                        />
+              {/* Signup Card */}
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 sm:p-6">
+                {signupMethod === 'email' ? (
+                  step === 'form' && (
+                    <form onSubmit={handleEmailSignup} className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Full Name *</label>
+                        <div className="relative">
+                          <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+                          <input
+                            type="text" name="name" value={formData.name} onChange={handleChange}
+                            required placeholder="John Doe"
+                            className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
+                          />
+                        </div>
                       </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">Username *</label>
-                      <div className="relative">
-                        <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
-                        <input
-                          type="text" name="username" value={formData.username} onChange={handleChange}
-                          required placeholder="johndoe"
-                          className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
-                        />
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Username *</label>
+                        <div className="relative">
+                          <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+                          <input
+                            type="text" name="username" value={formData.username} onChange={handleChange}
+                            required placeholder="johndoe"
+                            className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
+                          />
+                        </div>
                       </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">Email *</label>
-                      <div className="relative">
-                        <FaEnvelope className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
-                        <input
-                          type="email" name="email" value={formData.email} onChange={handleChange}
-                          required placeholder="you@example.com"
-                          className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
-                        />
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Email *</label>
+                        <div className="relative">
+                          <FaEnvelope className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+                          <input
+                            type="email" name="email" value={formData.email} onChange={handleChange}
+                            required placeholder="you@example.com"
+                            className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
+                          />
+                        </div>
                       </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">Password *</label>
-                      <div className="relative">
-                        <FaLock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
-                        <input
-                          type={showPassword ? 'text' : 'password'} name="password" value={formData.password} onChange={handleChange}
-                          required placeholder="•••••••• (min 6 chars)"
-                          className="w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
-                        />
-                        <button
-                          type="button" onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                        >
-                          {showPassword ? <FaEyeSlash className="text-sm" /> : <FaEye className="text-sm" />}
-                        </button>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Password *</label>
+                        <div className="relative">
+                          <FaLock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+                          <input
+                            type={showPassword ? 'text' : 'password'} name="password" value={formData.password} onChange={handleChange}
+                            required placeholder="•••••••• (min 6 chars)"
+                            className="w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
+                          />
+                          <button
+                            type="button" onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          >
+                            {showPassword ? <FaEyeSlash className="text-sm" /> : <FaEye className="text-sm" />}
+                          </button>
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Phone Number with Country Code */}
+                      {/* Phone Number with Country Code */}
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Phone (Optional)</label>
+                        <div className="flex gap-2">
+                          <div className="relative w-28">
+                            <select
+                              value={selectedCountry.code}
+                              onChange={(e) => {
+                                const country = countryCodes.find(c => c.code === e.target.value);
+                                if (country) setSelectedCountry(country);
+                              }}
+                              className="w-full pl-2 pr-7 py-2.5 border border-gray-200 rounded-xl text-sm bg-white appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
+                            >
+                              {countryCodes.map((country) => (
+                                <option key={country.code + country.name} value={country.code}>
+                                  {country.flag} {country.code}
+                                </option>
+                              ))}
+                            </select>
+                            <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </div>
+                          </div>
+                          <div className="relative flex-1">
+                            <FaPhone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+                            <input
+                              type="tel"
+                              value={phoneNumber}
+                              onChange={handlePhoneChange}
+                              placeholder="Phone number"
+                              className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={isLoading}
+                        className="w-full py-2.5 bg-[#1B3766] text-white rounded-xl font-medium text-sm hover:bg-[#142952] transition-all disabled:opacity-50 flex items-center justify-center gap-2 mt-1"
+                      >
+                        {registerLoading ? <FaSpinner className="animate-spin" /> : null}
+                        Create Account
+                      </button>
+                    </form>
+                  )
+                ) : (
+                  /* Google Signup */
+                  <div className="space-y-4">
                     <div>
                       <label className="block text-xs font-medium text-gray-500 mb-1">Phone (Optional)</label>
                       <div className="flex gap-2">
@@ -543,110 +568,60 @@ const BiizzedSignup = () => {
                         </div>
                       </div>
                     </div>
-
-                    <button
-                      type="submit"
-                      disabled={isLoading}
-                      className="w-full py-2.5 bg-[#1B3766] text-white rounded-xl font-medium text-sm hover:bg-[#142952] transition-all disabled:opacity-50 flex items-center justify-center gap-2 mt-1"
-                    >
-                      {registerLoading ? <FaSpinner className="animate-spin" /> : null}
-                      Create Account
-                    </button>
-                  </form>
-                )
-              ) : (
-                /* Google Signup */
-                <div className="space-y-4">
-                  {/* Phone (optional) for Google */}
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Phone (Optional)</label>
-                    <div className="flex gap-2">
-                      <div className="relative w-28">
-                        <select
-                          value={selectedCountry.code}
-                          onChange={(e) => {
-                            const country = countryCodes.find(c => c.code === e.target.value);
-                            if (country) setSelectedCountry(country);
-                          }}
-                          className="w-full pl-2 pr-7 py-2.5 border border-gray-200 rounded-xl text-sm bg-white appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
-                        >
-                          {countryCodes.map((country) => (
-                            <option key={country.code + country.name} value={country.code}>
-                              {country.flag} {country.code}
-                            </option>
-                          ))}
-                        </select>
-                        <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                          </svg>
+                    <div className="flex justify-center">
+                      {googleLoading ? (
+                        <div className="flex items-center gap-3 px-8 py-3 bg-gray-100 rounded-xl">
+                          <FaSpinner className="animate-spin text-[#1B3766]" />
+                          <span className="text-gray-600 text-sm">Creating account...</span>
                         </div>
-                      </div>
-                      <div className="relative flex-1">
-                        <FaPhone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
-                        <input
-                          type="tel"
-                          value={phoneNumber}
-                          onChange={handlePhoneChange}
-                          placeholder="Phone number"
-                          className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
+                      ) : (
+                        <GoogleLogin
+                          onSuccess={handleGoogleSuccess}
+                          onError={handleGoogleError}
+                          theme="outline"
+                          size="large"
+                          text="signup_with"
+                          shape="pill"
+                          width="300"
                         />
-                      </div>
+                      )}
+                    </div>
+                    <div className="relative my-2">
+                      <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
+                      <div className="relative flex justify-center text-xs"><span className="bg-white px-3 text-gray-400">free forever</span></div>
+                    </div>
+                    <div className="space-y-1.5">
+                      {[
+                        'Publish articles, magazines & videos',
+                        'Build your audience & followers',
+                        'Like, bookmark & share content',
+                        'Connect with creators worldwide',
+                      ].map((benefit, index) => (
+                        <div key={index} className="flex items-center gap-2 text-sm text-gray-600">
+                          <FaCheck className="text-green-500 text-xs flex-shrink-0" />
+                          {benefit}
+                        </div>
+                      ))}
                     </div>
                   </div>
-                  <div className="flex justify-center">
-                    {googleLoading ? (
-                      <div className="flex items-center gap-3 px-8 py-3 bg-gray-100 rounded-xl">
-                        <FaSpinner className="animate-spin text-[#1B3766]" />
-                        <span className="text-gray-600 text-sm">Creating account...</span>
-                      </div>
-                    ) : (
-                      <GoogleLogin
-                        onSuccess={handleGoogleSuccess}
-                        onError={handleGoogleError}
-                        theme="outline"
-                        size="large"
-                        text="signup_with"
-                        shape="pill"
-                        width="300"
-                      />
-                    )}
-                  </div>
-                  <div className="relative my-2">
-                    <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
-                    <div className="relative flex justify-center text-xs"><span className="bg-white px-3 text-gray-400">free forever</span></div>
-                  </div>
-                  <div className="space-y-1.5">
-                    {[
-                      'Publish articles, magazines & videos',
-                      'Build your audience & followers',
-                      'Like, bookmark & share content',
-                      'Connect with creators worldwide',
-                    ].map((benefit, index) => (
-                      <div key={index} className="flex items-center gap-2 text-sm text-gray-600">
-                        <FaCheck className="text-green-500 text-xs flex-shrink-0" />
-                        {benefit}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
+
+              {/* Login Link */}
+              <p className="text-center text-sm text-gray-500 mt-5">
+                Already have an account?{' '}
+                <Link to={redirect ? `/login?redirect=${redirect}` : '/login'} className="text-[#1B3766] font-medium hover:underline">
+                  Sign in
+                </Link>
+              </p>
+
+              {/* Terms */}
+              <p className="text-center text-xs text-gray-400 mt-3 pb-4">
+                By signing up, you agree to Biizzed's{' '}
+                <Link to="/terms" className="underline">Terms</Link> and{' '}
+                <Link to="/privacy" className="underline">Privacy</Link>
+              </p>
             </div>
-
-            {/* Login Link */}
-            <p className="text-center text-sm text-gray-500 mt-5">
-              Already have an account?{' '}
-              <Link to={redirect ? `/login?redirect=${redirect}` : '/login'} className="text-[#1B3766] font-medium hover:underline">
-                Sign in
-              </Link>
-            </p>
-
-            {/* Terms */}
-            <p className="text-center text-xs text-gray-400 mt-3 pb-4">
-              By signing up, you agree to Biizzed's{' '}
-              <Link to="/terms" className="underline">Terms</Link> and{' '}
-              <Link to="/privacy" className="underline">Privacy</Link>
-            </p>
           </div>
         </div>
       </div>
@@ -712,7 +687,6 @@ const BiizzedSignup = () => {
         </div>
       )}
 
-      {/* Animation styles */}
       <style>{`
         @keyframes fadeIn {
           from { opacity: 0; }

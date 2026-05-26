@@ -59,11 +59,13 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(logger);
 
-app.all("/", (req, res) => {
-  if (req.method === 'HEAD') {
-    return res.status(200).end();
-  }
+// To this:
+app.get("/", (req, res) => {
   res.send("Teens Connect API is running 🚀");
+});
+
+app.head("/", (req, res) => {
+  res.status(200).end();
 });
 
 // Routes
