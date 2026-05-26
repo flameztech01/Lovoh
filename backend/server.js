@@ -47,7 +47,7 @@ app.use(cors({
         'capacitor://localhost',
     ],
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
@@ -59,13 +59,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(logger);
 
-// To this:
-app.get("/", (req, res) => {
-  res.send("Teens Connect API is running 🚀");
-});
-
-app.head("/", (req, res) => {
-  res.status(200).end();
+// Health check - handles ALL methods including HEAD
+app.all("/", (req, res) => {
+  res.status(200).send("Teens Connect API is running 🚀");
 });
 
 // Routes
