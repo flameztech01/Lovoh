@@ -1,22 +1,46 @@
 // components/CustomFormSidebar.jsx - Mobile Friendly with Real Data
 import React, { useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   FaThLarge, FaPlusCircle, FaClipboardList, FaChartBar,
   FaCog, FaUsers, FaFolderOpen, FaStar, FaArchive,
   FaQuestionCircle, FaClipboardCheck, FaBars, FaTimes,
+  FaSignOutAlt,
 } from 'react-icons/fa';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { useGetMyCustomFormsQuery } from '../slices/customFormApiSlice';
+import { logout, clearAllAuth } from '../slices/authSlice';
 
 const CustomFormSidebar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
   const { userInfo } = useSelector((state) => state.auth);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const { data: formsData } = useGetMyCustomFormsQuery({ sort: '-updatedAt', limit: 5 });
   const forms = formsData?.forms || [];
   const totalSubmissions = forms.reduce((sum, f) => sum + (f.submissions || 0), 0);
+
+  const handleLogout = () => {
+    // Clear everything - no room for error
+    dispatch(clearAllAuth());
+    dispatch(logout());
+    
+    // Clear localStorage directly for extra safety
+    localStorage.removeItem('adminInfo');
+    localStorage.removeItem('userInfo');
+    localStorage.removeItem('bizzzed-pwa-dismissed');
+    
+    // Clear sessionStorage
+    sessionStorage.clear();
+    
+    // Close mobile menu if open
+    setMobileOpen(false);
+    
+    // Navigate to signup
+    navigate('/custom-form/signup');
+  };
 
   const menuItems = [
     {
@@ -128,6 +152,17 @@ const CustomFormSidebar = () => {
         <NavLink to="/custom-form/help" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition-colors">
           <FaQuestionCircle className="text-gray-400 text-sm" /> Help & Support
         </NavLink>
+      </div>
+
+      {/* Logout Button */}
+      <div className="border-t border-gray-100 p-4">
+        <button 
+          onClick={handleLogout}
+          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-red-600 hover:bg-red-50 transition-colors group"
+        >
+          <FaSignOutAlt className="text-red-500 text-sm group-hover:text-red-600" />
+          <span className="font-medium">Logout</span>
+        </button>
       </div>
 
       <div className="border-t border-gray-200 p-4">
