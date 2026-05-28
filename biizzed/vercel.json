@@ -1,16 +1,4 @@
 {
-  "rewrites": [
-    {
-      "source": "/articles/:slug*",
-      "destination": "/api/og"
-    },
-    {
-      "source": "/videos/:id*",
-      "destination": "/api/og"
-    },
-    {
-      "source": "/user/:id*",
-      "destination": "/api/og"
-    }
-  ]
+  "source": "/(.*)",
+  "destination": "/index.html"
 }
