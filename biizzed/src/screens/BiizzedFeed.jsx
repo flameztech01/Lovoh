@@ -236,6 +236,12 @@ const BiizzedFeed = () => {
     return 'Editorial';
   };
 
+  const getUsername = (item) => {
+    if (item.type === 'article') return item.authorId?.username || null;
+    if (item.type === 'video') return item.user?.username || null;
+    return null;
+  };
+
   const getProf = (item) => {
     if (item.type === 'article') return item.authorId?.profile || item.authorProfile || null;
     if (item.type === 'video') return item.authorProfile || item.user?.profile || null;
@@ -288,7 +294,7 @@ const BiizzedFeed = () => {
     } catch { setOptBookmarks(p => ({ ...p, [k]: cb })); toast.error('Failed'); }
   };
 
-  const doFollow = async (uid, name, e) => {
+  const doFollow = async (uid, username, name, e) => {
     e.preventDefault(); e.stopPropagation();
     if (!requireAuth('follow')) return;
     const tid = extractId(uid);
@@ -298,7 +304,7 @@ const BiizzedFeed = () => {
     setOptFollows(p => ({ ...p, [tid]: !(p[tid] ?? cf) }));
     try {
       if (cf) { await unfollowU(tid).unwrap(); }
-      else { await followU(tid).unwrap(); toast.success(`Following ${name || 'user'}!`); }
+      else { await followU(tid).unwrap(); toast.success(`Following @${username || name}!`); }
     } catch (err) {
       setOptFollows(p => ({ ...p, [tid]: cf }));
       if (err?.data?.message?.includes('already')) setOptFollows(p => ({ ...p, [tid]: true }));
@@ -340,7 +346,7 @@ const BiizzedFeed = () => {
     if (dir === 'prev' && featIdx > 0) setFeatIdx(i => i - 1);
   };
 
-  // Capacitor share handler (same as BiizzedArticlesScreen)
+  // Capacitor share handler
   const handleShare = async (item, e, path) => {
     e.preventDefault();
     e.stopPropagation();
@@ -353,7 +359,6 @@ const BiizzedFeed = () => {
         url: url,
       });
     } catch (err) {
-      // Fallback: browser clipboard or manual copy
       try {
         await navigator.clipboard.writeText(url);
         toast.success('Link copied!');
@@ -552,7 +557,7 @@ const BiizzedFeed = () => {
                       <h4 className="font-semibold text-lg mb-2">Weekly Digest</h4>
                       <p className="text-xs text-white/70 mb-4 leading-relaxed">
                         {sidebarSubscribed
-                          ? "You’re receiving our weekly highlights. Toggle to unsubscribe."
+                          ? "You're receiving our weekly highlights. Toggle to unsubscribe."
                           : "Get the best articles & magazines every Friday, straight to your inbox."}
                       </p>
                       <button
@@ -645,6 +650,7 @@ const BiizzedFeed = () => {
                 const itemObj = item;
                 const aid = getAid(itemObj);
                 const aname = getName(itemObj);
+                const aUsername = getUsername(itemObj);
                 const aprof = getProf(itemObj);
                 const f = isF(aid);
                 const own = myId && aid ? myId === aid : false;
@@ -653,8 +659,8 @@ const BiizzedFeed = () => {
                 const admin = isAdmin(itemObj);
                 const yt = isYouTube(itemObj);
                 if (itemObj.type === 'magazine') return <MBC key={`m-${itemObj._id}`} item={itemObj} idx={idx} total={items.length} ld={ld} bm={bm} fmtD={fmtD} doLike={doLike} doBook={doBook} handleShare={handleShare} />;
-                if (itemObj.type === 'video') return <VC key={`v-${itemObj._id}`} item={itemObj} idx={idx} total={items.length} aid={aid} aname={aname} aprof={aprof} f={f} own={own} admin={admin} yt={yt} ld={ld} fmtD={fmtD} fmtDur={fmtDur} doLike={doLike} doFollow={doFollow} handleShare={handleShare} />;
-                return <AC key={`a-${itemObj._id}`} item={itemObj} idx={idx} total={items.length} aid={aid} aname={aname} aprof={aprof} f={f} own={own} admin={admin} ld={ld} bm={bm} fmtD={fmtD} getImg={getImg} doLike={doLike} doBook={doBook} doFollow={doFollow} handleShare={handleShare} />;
+                if (itemObj.type === 'video') return <VC key={`v-${itemObj._id}`} item={itemObj} idx={idx} total={items.length} aid={aid} aname={aname} aUsername={aUsername} aprof={aprof} f={f} own={own} admin={admin} yt={yt} ld={ld} fmtD={fmtD} fmtDur={fmtDur} doLike={doLike} doFollow={doFollow} handleShare={handleShare} />;
+                return <AC key={`a-${itemObj._id}`} item={itemObj} idx={idx} total={items.length} aid={aid} aname={aname} aUsername={aUsername} aprof={aprof} f={f} own={own} admin={admin} ld={ld} bm={bm} fmtD={fmtD} getImg={getImg} doLike={doLike} doBook={doBook} doFollow={doFollow} handleShare={handleShare} />;
               })}
             </div>
 
@@ -668,7 +674,7 @@ const BiizzedFeed = () => {
           {/* Right Sidebar */}
           <aside className="hidden xl:block w-[280px] flex-shrink-0">
             <div className="fixed top-[120px] w-[280px] h-[calc(100vh-140px)] overflow-y-auto space-y-4 pb-8 no-scrollbar">
-              {/* People You May Know */}
+              {/* People You May Know - Updated to show username instead of followers count */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">People You May Know</h3>
                 {myId ? (sugs.length > 0 ? (
@@ -679,11 +685,11 @@ const BiizzedFeed = () => {
                       return (
                         <div key={uid} className="flex items-center gap-3">
                           {user.profile ? <img src={user.profile} alt="" className="w-10 h-10 rounded-full object-cover flex-shrink-0" /> : <div className="w-10 h-10 rounded-full bg-[#1B3766] text-white flex items-center justify-center text-sm font-bold flex-shrink-0">{(user.name||'U')[0].toUpperCase()}</div>}
-                          <Link to={`/user/${uid}`} className="flex-1 min-w-0">
+                          <Link to={`/user/${user.username}`} className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-900 truncate hover:underline">{user.name}</p>
-                            <p className="text-xs text-gray-500">{user.followersCount||0} followers</p>
+                            <p className="text-xs text-gray-500 truncate">@{user.username}</p>
                           </Link>
-                          <button onClick={(e) => doFollow(uid, user.name, e)} className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-full transition-colors flex-shrink-0 ${ff ? 'bg-[#1B3766] text-white hover:bg-red-500' : 'text-[#1B3766] border border-[#1B3766] hover:bg-[#1B3766] hover:text-white'}`}>
+                          <button onClick={(e) => doFollow(uid, user.username, user.name, e)} className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-full transition-colors flex-shrink-0 ${ff ? 'bg-[#1B3766] text-white hover:bg-red-500' : 'text-[#1B3766] border border-[#1B3766] hover:bg-[#1B3766] hover:text-white'}`}>
                             {ff ? <><FaCheck className="text-[8px]" /> Following</> : <><FaPlus className="text-[8px]" /> Follow</>}
                           </button>
                         </div>
@@ -698,7 +704,7 @@ const BiizzedFeed = () => {
                 <FaEnvelope className="text-3xl mx-auto mb-3 text-[#79FFFF]" />
                 {userInfo ? (subStatusLoading ? (<div className="text-center py-4"><FaSpinner className="animate-spin text-2xl mx-auto text-white/70" /></div>) : (<>
                   <h4 className="font-semibold text-lg mb-2">Weekly Digest</h4>
-                  <p className="text-xs text-white/70 mb-4 leading-relaxed">{sidebarSubscribed ? "You’re receiving our weekly highlights. Toggle to unsubscribe." : "Get the best articles & magazines every Friday, straight to your inbox."}</p>
+                  <p className="text-xs text-white/70 mb-4 leading-relaxed">{sidebarSubscribed ? "You're receiving our weekly highlights. Toggle to unsubscribe." : "Get the best articles & magazines every Friday, straight to your inbox."}</p>
                   <button onClick={handleAuthSubscribeToggle} disabled={isSubscribing || isUnsubscribing} className={`w-full py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60 ${sidebarSubscribed ? "bg-white/20 text-white hover:bg-white/30" : "bg-white text-[#1B3766] hover:bg-gray-100"}`}>{isSubscribing || isUnsubscribing ? "Updating..." : sidebarSubscribed ? "Unsubscribe" : "Subscribe Free"}</button>
                   {sidebarSubscribed && <FaCheckCircle className="text-white/50 text-xs mx-auto mt-2" />}
                 </>)) : (<>
@@ -728,6 +734,7 @@ const FAC = ({ item, fmtD, getImg, getLD, isB, doLike, doBook }) => {
   const { liked, count } = getLD(item);
   const n = item.author || 'Editorial';
   const p = item.authorId?.profile;
+  const username = item.authorId?.username;
   return (
     <Link to={`/articles/${item.slug}`} className="block relative w-full h-[300px] sm:h-[400px] lg:h-[350px] overflow-hidden">
       <img src={getImg(item)} alt="" className="w-full h-full object-cover" onError={e => e.target.src='/placeholder-article.jpg'} />
@@ -737,10 +744,10 @@ const FAC = ({ item, fmtD, getImg, getLD, isB, doLike, doBook }) => {
         <span className="px-3 py-1 bg-white/90 text-gray-900 text-xs font-bold rounded-full"><FaNewspaper className="text-[10px] inline mr-1"/>Article</span>
       </div>
       <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6">
-        <div className="flex items-center gap-2 mb-2">
+        <Link to={`/user/${username || n}`} onClick={e => e.stopPropagation()} className="flex items-center gap-2 mb-2 hover:opacity-80">
           {p ? <img src={p} alt="" className="w-6 h-6 rounded-full object-cover border border-white/50" /> : <div className="w-6 h-6 rounded-full bg-[#1B3766] text-white flex items-center justify-center text-[10px] font-bold">{n[0]}</div>}
           <span className="text-white/90 text-sm">{n}</span><span className="text-white/50 text-sm">·</span><span className="text-white/50 text-sm">{fmtD(item.publishedAt || item.createdAt)}</span>
-        </div>
+        </Link>
         <h2 className="text-xl sm:text-2xl font-bold text-white leading-tight mb-2">{item.title}</h2>
         <div className="flex items-center gap-4">
           <button onClick={e => doLike(item, e)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${liked ? 'bg-red-500 text-white' : 'bg-white/20 text-white'}`}>{liked ? <FaHeart/> : <FaRegHeart/>} {count}</button>
@@ -777,25 +784,25 @@ const FMC = ({ item, fmtD, getLD, isB, doLike, doBook }) => {
 };
 
 // ====== ARTICLE CARD ======
-const AC = ({ item, idx, total, aid, aname, aprof, f, own, admin, ld, bm, fmtD, getImg, doLike, doBook, doFollow, handleShare }) => {
+const AC = ({ item, idx, total, aid, aname, aUsername, aprof, f, own, admin, ld, bm, fmtD, getImg, doLike, doBook, doFollow, handleShare }) => {
   const sharePath = `/articles/${item.slug}`;
   return (
     <article className="border-b border-gray-200 hover:bg-gray-50/50 transition-colors cursor-pointer">
       <Link to={`/articles/${item.slug}`} className="block">
         <div className="flex">
           <div className="flex flex-col items-center w-[48px] pt-3 px-2">
-            <Link to={`/user/${aid}`} onClick={e => e.stopPropagation()}>
+            <Link to={`/user/${aUsername || aid}`} onClick={e => e.stopPropagation()}>
               {aprof ? <img src={aprof} alt="" className="w-10 h-10 rounded-full object-cover"/> : <div className="w-10 h-10 rounded-full bg-[#1B3766] text-white flex items-center justify-center text-sm font-bold">{aname[0]}</div>}
             </Link>
             {idx < total - 1 && <div className="w-[2px] flex-1 bg-gray-200 mt-2"/>}
           </div>
           <div className="flex-1 pt-3 pr-3 pb-3">
             <div className="flex items-center gap-1.5 mb-0.5">
-              <Link to={`/user/${aid}`} onClick={e=>e.stopPropagation()} className="font-bold text-gray-900 text-[15px] hover:underline truncate">{aname}</Link>
+              <Link to={`/user/${aUsername || aid}`} onClick={e=>e.stopPropagation()} className="font-bold text-gray-900 text-[15px] hover:underline truncate">{aname}</Link>
               {admin && <span className="flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-bold rounded-full"><FaCheckCircle className="text-[8px]" /> Admin</span>}
               <span className="text-gray-500 text-[15px]">·</span><span className="text-gray-500 text-[15px]">{fmtD(item.publishedAt || item.createdAt)}</span>
               {!own && !!aid && !admin && (
-                <button onClick={e => doFollow(aid, aname, e)} className={`ml-2 flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-full ${f ? 'bg-[#1B3766] text-white' : 'text-[#1B3766] border border-[#1B3766]'}`}>{f ? <><FaCheck className="text-[8px]"/>Following</> : <><FaPlus className="text-[8px]"/>Follow</>}</button>
+                <button onClick={e => doFollow(aid, aUsername, aname, e)} className={`ml-2 flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-full ${f ? 'bg-[#1B3766] text-white' : 'text-[#1B3766] border border-[#1B3766]'}`}>{f ? <><FaCheck className="text-[8px]"/>Following</> : <><FaPlus className="text-[8px]"/>Follow</>}</button>
               )}
             </div>
             <span className="text-[#1B3766] text-[13px] font-medium block mb-1"><FaNewspaper className="text-[10px] inline mr-1"/>Article · <span className="text-gray-500">{item.readTime||'5 min'} read</span></span>
@@ -833,7 +840,7 @@ const MBC = ({ item, idx, total, ld, bm, fmtD, doLike, doBook, handleShare }) =>
 };
 
 // ====== VIDEO CARD WITH AUTO-PLAY ======
-const VC = ({ item, idx, total, aid, aname, aprof, f, own, admin, yt, ld, fmtD, fmtDur, doLike, doFollow, handleShare }) => {
+const VC = ({ item, idx, total, aid, aname, aUsername, aprof, f, own, admin, yt, ld, fmtD, fmtDur, doLike, doFollow, handleShare }) => {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
   const [isMuted, setIsMuted] = useState(true);
@@ -879,7 +886,7 @@ const VC = ({ item, idx, total, aid, aname, aprof, f, own, admin, yt, ld, fmtD, 
       <Link to={`/videos/${item._id}`} className="block">
         <div className="flex">
           <div className="flex flex-col items-center w-[48px] pt-3 px-2">
-            <Link to={`/user/${aid}`} onClick={e=>e.stopPropagation()}>
+            <Link to={`/user/${aUsername || aid}`} onClick={e=>e.stopPropagation()}>
               {aprof ? <img src={aprof} alt="" className="w-10 h-10 rounded-full object-cover"/> : (
                 <div className={`w-10 h-10 rounded-full text-white flex items-center justify-center text-sm font-bold ${yt ? 'bg-red-600' : 'bg-red-500'}`}>
                   {yt ? <FaYoutube className="text-lg" /> : aname[0]}
@@ -890,12 +897,12 @@ const VC = ({ item, idx, total, aid, aname, aprof, f, own, admin, yt, ld, fmtD, 
           </div>
           <div className="flex-1 pt-3 pr-3 pb-3">
             <div className="flex items-center gap-1.5 mb-0.5">
-              <Link to={`/user/${aid}`} onClick={e=>e.stopPropagation()} className="font-bold text-gray-900 text-[15px] hover:underline truncate">{aname}</Link>
+              <Link to={`/user/${aUsername || aid}`} onClick={e=>e.stopPropagation()} className="font-bold text-gray-900 text-[15px] hover:underline truncate">{aname}</Link>
               {yt && <span className="flex items-center gap-0.5 px-1.5 py-0.5 bg-red-50 text-red-600 text-[10px] font-bold rounded-full"><FaYoutube className="text-[8px]" /> YouTube</span>}
               {admin && <span className="flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-bold rounded-full"><FaCheckCircle className="text-[8px]" /> Admin</span>}
               <span className="text-gray-500">·</span><span className="text-gray-500 text-[15px]">{fmtD(item.createdAt)}</span>
               {!own && !!aid && !admin && (
-                <button onClick={e => doFollow(aid, aname, e)} className={`ml-2 flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-full ${f ? 'bg-[#1B3766] text-white' : 'text-[#1B3766] border border-[#1B3766]'}`}>{f ? <><FaCheck className="text-[8px]"/>Following</> : <><FaPlus className="text-[8px]"/>Follow</>}</button>
+                <button onClick={e => doFollow(aid, aUsername, aname, e)} className={`ml-2 flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-full ${f ? 'bg-[#1B3766] text-white' : 'text-[#1B3766] border border-[#1B3766]'}`}>{f ? <><FaCheck className="text-[8px]"/>Following</> : <><FaPlus className="text-[8px]"/>Follow</>}</button>
               )}
             </div>
             <span className={`text-[13px] font-medium block mb-1 ${yt ? 'text-red-600' : 'text-red-500'}`}>
@@ -929,7 +936,6 @@ const VC = ({ item, idx, total, aid, aname, aprof, f, own, admin, yt, ld, fmtD, 
 };
 
 // ====== ACTION BAR ======
-// Uses the same Capacitor share function as BiizzedArticlesScreen
 const AB = ({ item, ld, bm, doLike, doBook, handleShare, sharePath, yt }) => {
   return (
     <div className="flex items-center justify-between">
@@ -946,7 +952,6 @@ const AB = ({ item, ld, bm, doLike, doBook, handleShare, sharePath, yt }) => {
           <FaEye className="text-sm" />
           <span className="text-[13px] font-medium">{item.views || 0}</span>
         </div>
-        {/* Share button using Capacitor + fallback */}
         <button
           onClick={(e) => handleShare(item, e, sharePath)}
           className="group flex items-center gap-1.5 px-3 py-2 rounded-full text-gray-500 hover:text-[#1B3766] hover:bg-[#1B3766]/5 transition-colors"

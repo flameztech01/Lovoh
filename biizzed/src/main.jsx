@@ -53,6 +53,8 @@ import BiizzedNotifications from "./screens/BiizzedNotifications.jsx";
 
 import BiizzedContributorApply from "./screens/BiizzedContributorApply.jsx";
 
+import BiizzedViewProfile from "./screens/BiizzedViewProfile.jsx";
+
 import NotFound from "./screens/NotFound.jsx";
 
 // ==================== ADMIN ====================
@@ -158,7 +160,8 @@ const router = createBrowserRouter([
 
       // User
       { path: "profile", element: <BiizzedProfile /> },
-      { path: "followers", element: <BiizzedFollowers /> },
+      { path: "subscribers", element: <BiizzedFollowers /> },
+      { path: "user/:username", element: <BiizzedViewProfile /> },
 
       // Misc
       { path: "search", element: <BiizzedSearch /> },

@@ -1,14 +1,18 @@
 // controllers/userController.js - with notification calls for follower events
-import express from 'express';
-import mongoose from 'mongoose';
-import userMessage from '../models/userMessageModel.js';
-import User from '../models/userModel.js';
-import asyncHandler from 'express-async-handler';
+import express from "express";
+import mongoose from "mongoose";
+import userMessage from "../models/userMessageModel.js";
+import User from "../models/userModel.js";
+import asyncHandler from "express-async-handler";
 import generateUserToken from "../utils/generateUserToken.js";
 import { OAuth2Client } from "google-auth-library";
-import { notifyFollowerEvent } from './notificationController.js';   // <-- new
-import bcrypt from 'bcryptjs';
-import { sendOTPEmail, sendPasswordResetEmail } from '../utils/sendOTPEmail.js'; // your email utility
+import { notifyFollowerEvent } from "./notificationController.js"; // <-- new
+import bcrypt from "bcryptjs";
+import { sendOTPEmail, sendPasswordResetEmail } from "../utils/sendOTPEmail.js"; // your email utility
+// Add these imports with your other imports
+import Article from "../models/articleModel.js";
+import Magazine from "../models/magazineModel.js";
+import Video from "../models/videoModel.js";
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -88,10 +92,11 @@ const googleAuth = asyncHandler(async (req, res) => {
       throw new Error("Account already exists. Please login instead.");
     }
 
-    const baseUsername = (email?.split("@")[0] || name || "user")
-      .toLowerCase()
-      .replace(/\s+/g, "")
-      .replace(/[^a-z0-9_]/g, "") || "user";
+    const baseUsername =
+      (email?.split("@")[0] || name || "user")
+        .toLowerCase()
+        .replace(/\s+/g, "")
+        .replace(/[^a-z0-9_]/g, "") || "user";
 
     let username = baseUsername;
     let counter = 1;
@@ -116,7 +121,9 @@ const googleAuth = asyncHandler(async (req, res) => {
   if (mode === "login") {
     if (!user) {
       res.status(404);
-      throw new Error("No account found with this email. Please sign up first.");
+      throw new Error(
+        "No account found with this email. Please sign up first.",
+      );
     }
 
     // Only add Google ID if not already present
@@ -153,8 +160,6 @@ const googleAuth = asyncHandler(async (req, res) => {
   });
 });
 
-
-
 const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
@@ -173,7 +178,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
   if (!name || !username || !email || !password) {
     res.status(400);
-    throw new Error('Name, username, email, and password are required');
+    throw new Error("Name, username, email, and password are required");
   }
 
   // Check if user already exists (verified or unverified)
@@ -183,25 +188,28 @@ const registerUser = asyncHandler(async (req, res) => {
     // If the user is already verified → block re-registration
     if (existingUser.isVerified) {
       res.status(400);
-      throw new Error('User with that email or username already exists. Please login instead.');
+      throw new Error(
+        "User with that email or username already exists. Please login instead.",
+      );
     }
 
     // Unverified user → update their information and send a new OTP
     existingUser.name = name;
     existingUser.username = username;
-    existingUser.password = password;        // model's pre-save will hash it
-    existingUser.phone = phone || '';
+    existingUser.password = password; // model's pre-save will hash it
+    existingUser.phone = phone || "";
     existingUser.otp = generateOTP();
     existingUser.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
     await existingUser.save();
 
     // Send new OTP email (fire and forget)
     sendOTPEmail(existingUser.email, existingUser.otp).catch((err) =>
-      console.error('OTP email error:', err)
+      console.error("OTP email error:", err),
     );
 
     return res.status(200).json({
-      message: 'An unverified account already exists. A new OTP has been sent to your email.',
+      message:
+        "An unverified account already exists. A new OTP has been sent to your email.",
       email: existingUser.email,
     });
   }
@@ -215,20 +223,20 @@ const registerUser = asyncHandler(async (req, res) => {
     username,
     email,
     password,
-    phone: phone || '',
+    phone: phone || "",
     isVerified: false,
-    authMethod: 'email',
+    authMethod: "email",
     otp,
     otpExpiry,
   });
 
   // Send OTP email (fire and forget)
   sendOTPEmail(user.email, otp).catch((err) =>
-    console.error('OTP email error:', err)
+    console.error("OTP email error:", err),
   );
 
   res.status(201).json({
-    message: 'Registration successful. Please check your email for the OTP.',
+    message: "Registration successful. Please check your email for the OTP.",
     email: user.email,
   });
 });
@@ -242,27 +250,27 @@ const verifyEmail = asyncHandler(async (req, res) => {
   const user = await User.findOne({ email });
   if (!user) {
     res.status(404);
-    throw new Error('User not found');
+    throw new Error("User not found");
   }
 
   if (user.isVerified) {
     res.status(400);
-    throw new Error('Email already verified');
+    throw new Error("Email already verified");
   }
 
   if (!user.otp || !user.otpExpiry) {
     res.status(400);
-    throw new Error('No OTP found. Please request a new one.');
+    throw new Error("No OTP found. Please request a new one.");
   }
 
   if (user.otp !== otp) {
     res.status(400);
-    throw new Error('Invalid OTP');
+    throw new Error("Invalid OTP");
   }
 
   if (user.otpExpiry < new Date()) {
     res.status(400);
-    throw new Error('OTP has expired. Please request a new one.');
+    throw new Error("OTP has expired. Please request a new one.");
   }
 
   // Verify user
@@ -295,27 +303,27 @@ const resendOTP = asyncHandler(async (req, res) => {
   const user = await User.findOne({ email });
   if (!user) {
     res.status(404);
-    throw new Error('User not found');
+    throw new Error("User not found");
   }
 
   if (user.isVerified) {
     res.status(400);
-    throw new Error('Email is already verified');
+    throw new Error("Email is already verified");
   }
 
   // Generate new OTP
-  const otp = generateOTP();   // same generateOTP() shown above
+  const otp = generateOTP(); // same generateOTP() shown above
   user.otp = otp;
   user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
   await user.save();
 
   // Send email
   sendOTPEmail(user.email, otp).catch((err) =>
-    console.error('OTP email error:', err)
+    console.error("OTP email error:", err),
   );
 
   res.status(200).json({
-    message: 'New OTP sent to your email',
+    message: "New OTP sent to your email",
     email: user.email,
   });
 });
@@ -328,30 +336,32 @@ const loginUser = asyncHandler(async (req, res) => {
 
   if (!email || !password) {
     res.status(400);
-    throw new Error('Email and password are required');
+    throw new Error("Email and password are required");
   }
 
   const user = await User.findOne({ email });
   if (!user) {
     res.status(401);
-    throw new Error('Invalid email or password');
+    throw new Error("Invalid email or password");
   }
 
   // If the user's password is auto-generated for Google auth, they cannot use email login
-  if (!user.password || user.password.startsWith('google-auth-')) {
+  if (!user.password || user.password.startsWith("google-auth-")) {
     res.status(401);
-    throw new Error('This account uses Google Sign-In. Please log in with Google.');
+    throw new Error(
+      "This account uses Google Sign-In. Please log in with Google.",
+    );
   }
 
   if (!user.isVerified) {
     res.status(403);
-    throw new Error('Email not verified. Please verify first.');
+    throw new Error("Email not verified. Please verify first.");
   }
 
   const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) {
     res.status(401);
-    throw new Error('Invalid email or password');
+    throw new Error("Invalid email or password");
   }
 
   const token = generateUserToken(res, user._id);
@@ -379,12 +389,55 @@ const updateProfile = asyncHandler(async (req, res) => {
     throw new Error("User not found");
   }
 
-  const { name } = req.body;
+  const { name, username, phone, bio } = req.body;
 
+  // Update name
   if (name !== undefined && name.trim() !== "") {
     user.name = name.trim();
   }
 
+  // Update username (with uniqueness check)
+  if (username !== undefined && username.trim() !== "") {
+    const trimmedUsername = username.trim();
+
+    // Check if username is already taken by another user
+    const existingUser = await User.findOne({
+      username: trimmedUsername,
+      _id: { $ne: user._id },
+    });
+
+    if (existingUser) {
+      res.status(400);
+      throw new Error("Username already taken");
+    }
+
+    user.username = trimmedUsername;
+  }
+
+  // Update phone number (with uniqueness check)
+  if (phone !== undefined && phone.trim() !== "") {
+    const trimmedPhone = phone.trim();
+
+    // Check if phone number is already used by another user
+    const existingUser = await User.findOne({
+      phone: trimmedPhone,
+      _id: { $ne: user._id },
+    });
+
+    if (existingUser) {
+      res.status(400);
+      throw new Error("Phone number already registered to another account");
+    }
+
+    user.phone = trimmedPhone;
+  }
+
+  // Update bio
+  if (bio !== undefined) {
+    user.bio = bio.trim() || ""; // Allow empty bio
+  }
+
+  // Update profile picture if file uploaded
   if (req.file) {
     user.profile = req.file.path;
   }
@@ -394,8 +447,10 @@ const updateProfile = asyncHandler(async (req, res) => {
   res.status(200).json({
     _id: updatedUser._id,
     name: updatedUser.name,
+    username: updatedUser.username,
     email: updatedUser.email,
     phone: updatedUser.phone,
+    bio: updatedUser.bio,
     profile: updatedUser.profile,
     authMethod: updatedUser.authMethod,
     message: req.file ? "Profile updated with new picture" : "Profile updated",
@@ -405,32 +460,41 @@ const updateProfile = asyncHandler(async (req, res) => {
 // @desc    Get current user's profile info
 // @route   GET /api/users/profile
 // @access  Private
+// @desc    Get current user's profile info
+// @route   GET /api/users/profile
+// @access  Private
 const getProfileInfo = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id)
-    .select('-password')
-    .populate('followers', 'name username profile')
-    .populate('following', 'name username profile')
-    .populate('likedArticles', 'title slug featuredImage images category readTime')
-    .populate('likedMagazines', 'title slug coverImage category')
-    .populate('bookmarkedArticles', 'title slug featuredImage images category')
-    .populate('bookmarkedMagazines', 'title slug coverImage category');
+    .select("-password")
+    .populate("followers", "name username profile")
+    .populate("following", "name username profile")
+    .populate(
+      "likedArticles",
+      "title slug featuredImage images category readTime",
+    )
+    .populate("likedMagazines", "title slug coverImage category")
+    .populate("bookmarkedArticles", "title slug featuredImage images category")
+    .populate("bookmarkedMagazines", "title slug coverImage category");
 
   if (!user) {
     res.status(404);
     throw new Error("User not found");
   }
 
+  // Make sure counts are accurate
+  user.followersCount = user.followers.length;
+  user.followingCount = user.following.length;
+
   res.json(user);
 });
-
 // @desc    Get user profile by ID (public)
 // @route   GET /api/users/profile/:id
 // @access  Public
 const getProfileById = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id)
-    .select('-password -email -phone')
-    .populate('followers', 'name username profile')
-    .populate('following', 'name username profile');
+    .select("-password -email -phone")
+    .populate("followers", "name username profile")
+    .populate("following", "name username profile");
 
   if (!user) {
     res.status(404);
@@ -444,43 +508,43 @@ const getProfileById = asyncHandler(async (req, res) => {
 // @route   POST /api/users/follow/:id
 // @access  Private
 const followUser = asyncHandler(async (req, res) => {
-  console.log('🔵 followUser called');
-  console.log('  req.params.id:', req.params.id, 'type:', typeof req.params.id);
-  console.log('  req.user._id:', req.user._id);
-  
+  console.log("🔵 followUser called");
+  console.log("  req.params.id:", req.params.id, "type:", typeof req.params.id);
+  console.log("  req.user._id:", req.user._id);
+
   const userToFollowId = req.params.id;
-  
+
   if (!mongoose.Types.ObjectId.isValid(userToFollowId)) {
-    console.log('❌ Invalid ObjectId format');
+    console.log("❌ Invalid ObjectId format");
     res.status(400);
-    throw new Error('Invalid user ID format');
+    throw new Error("Invalid user ID format");
   }
 
   const userToFollow = await User.findById(userToFollowId);
   if (!userToFollow) {
-    console.log('❌ User not found');
+    console.log("❌ User not found");
     res.status(404);
-    throw new Error('User not found');
+    throw new Error("User not found");
   }
 
   const currentUser = await User.findById(req.user._id);
-  
+
   const isAlreadyFollowing = currentUser.following.includes(userToFollowId);
   if (isAlreadyFollowing) {
-    console.log('❌ Already following');
+    console.log("❌ Already following");
     res.status(400);
-    throw new Error('Already following this user');
+    throw new Error("Already following this user");
   }
 
   if (req.user._id.toString() === userToFollowId) {
-    console.log('❌ Cannot follow yourself');
+    console.log("❌ Cannot follow yourself");
     res.status(400);
-    throw new Error('Cannot follow yourself');
+    throw new Error("Cannot follow yourself");
   }
 
   currentUser.following.push(userToFollowId);
   userToFollow.followers.push(req.user._id);
-  
+
   await currentUser.save();
   await userToFollow.save();
 
@@ -488,11 +552,11 @@ const followUser = asyncHandler(async (req, res) => {
   await notifyFollowerEvent({
     targetUserId: userToFollowId,
     followerName: currentUser.name || currentUser.username,
-    type: 'follow',
+    type: "follow",
   });
 
-  console.log('✅ Follow successful');
-  res.json({ message: 'Followed successfully' });
+  console.log("✅ Follow successful");
+  res.json({ message: "Followed successfully" });
 });
 
 // @desc    Unfollow a user
@@ -529,7 +593,7 @@ const unfollowUser = asyncHandler(async (req, res) => {
   await notifyFollowerEvent({
     targetUserId: req.params.id,
     followerName: currentUser.name || currentUser.username,
-    type: 'unfollow',
+    type: "unfollow",
   });
 
   res.json({
@@ -546,15 +610,14 @@ const unfollowUser = asyncHandler(async (req, res) => {
 const getFollowers = asyncHandler(async (req, res) => {
   const { page = 1, limit = 20 } = req.query;
 
-  const user = await User.findById(req.params.id)
-    .populate({
-      path: 'followers',
-      select: 'name username profile bio',
-      options: {
-        limit: limit * 1,
-        skip: (page - 1) * limit,
-      },
-    });
+  const user = await User.findById(req.params.id).populate({
+    path: "followers",
+    select: "name username profile bio",
+    options: {
+      limit: limit * 1,
+      skip: (page - 1) * limit,
+    },
+  });
 
   if (!user) {
     res.status(404);
@@ -577,15 +640,14 @@ const getFollowers = asyncHandler(async (req, res) => {
 const getFollowing = asyncHandler(async (req, res) => {
   const { page = 1, limit = 20 } = req.query;
 
-  const user = await User.findById(req.params.id)
-    .populate({
-      path: 'following',
-      select: 'name username profile bio',
-      options: {
-        limit: limit * 1,
-        skip: (page - 1) * limit,
-      },
-    });
+  const user = await User.findById(req.params.id).populate({
+    path: "following",
+    select: "name username profile bio",
+    options: {
+      limit: limit * 1,
+      skip: (page - 1) * limit,
+    },
+  });
 
   if (!user) {
     res.status(404);
@@ -607,14 +669,14 @@ const getFollowing = asyncHandler(async (req, res) => {
 // @access  Private
 const getUserSuggestions = asyncHandler(async (req, res) => {
   const currentUser = await User.findById(req.user._id);
-  
+
   const excludeIds = [...currentUser.following, req.user._id];
-  
+
   const suggestions = await User.find({
     _id: { $nin: excludeIds },
     isVerified: true,
   })
-    .select('name username profile bio followersCount')
+    .select("name username profile bio followersCount")
     .sort({ followersCount: -1 })
     .limit(10);
 
@@ -628,8 +690,8 @@ const logout = asyncHandler(async (req, res) => {
   res.cookie("jwt", "", {
     httpOnly: true,
     expires: new Date(0),
-    secure: process.env.NODE_ENV !== 'development',
-    sameSite: 'None',
+    secure: process.env.NODE_ENV !== "development",
+    sameSite: "None",
   });
 
   res.status(200).json({ message: "Logged out successfully" });
@@ -648,19 +710,21 @@ const deleteAccount = asyncHandler(async (req, res) => {
 
   await User.updateMany(
     { followers: req.user._id },
-    { $pull: { followers: req.user._id }, $inc: { followersCount: -1 } }
+    { $pull: { followers: req.user._id }, $inc: { followersCount: -1 } },
   );
-  
+
   await User.updateMany(
     { following: req.user._id },
-    { $pull: { following: req.user._id }, $inc: { followingCount: -1 } }
+    { $pull: { following: req.user._id }, $inc: { followingCount: -1 } },
   );
 
   if (user.profile && !user.profile.includes("googleusercontent")) {
     try {
       const publicId = user.profile.split("/").pop().split(".")[0];
       if (publicId) {
-        await cloudinary.uploader.destroy(`The_Brave_ProfilePicture/${publicId}`);
+        await cloudinary.uploader.destroy(
+          `The_Brave_ProfilePicture/${publicId}`,
+        );
       }
     } catch (error) {
       console.error("Error deleting image from Cloudinary:", error);
@@ -672,8 +736,8 @@ const deleteAccount = asyncHandler(async (req, res) => {
   res.cookie("jwt", "", {
     httpOnly: true,
     expires: new Date(0),
-    secure: process.env.NODE_ENV !== 'development',
-    sameSite: 'None',
+    secure: process.env.NODE_ENV !== "development",
+    sameSite: "None",
   });
 
   res.status(200).json({ message: "Account deleted successfully" });
@@ -684,16 +748,18 @@ const postMessage = asyncHandler(async (req, res, next) => {
 
   if (!name || !email || !subject || !message) {
     res.status(400);
-    throw new Error('Input all Fields');
+    throw new Error("Input all Fields");
   }
 
   const messages = await userMessage.create({
-    name, email, subject, message,
+    name,
+    email,
+    subject,
+    message,
   });
 
   res.status(201).json(messages);
 });
-
 
 // @desc    Send OTP for password reset
 // @route   POST /api/users/forgot-password
@@ -703,19 +769,25 @@ const forgotPassword = asyncHandler(async (req, res) => {
 
   if (!email) {
     res.status(400);
-    throw new Error('Email is required');
+    throw new Error("Email is required");
   }
 
   const user = await User.findOne({ email });
 
   // For security, always return same message even if email not found
   if (!user) {
-    return res.status(200).json({ message: 'If that email exists, we have sent a reset code.' });
+    return res
+      .status(200)
+      .json({ message: "If that email exists, we have sent a reset code." });
   }
 
   // Do not allow password reset for accounts that never set a password (e.g., pure Google)
-  if (!user.password || user.password.startsWith('google-auth-')) {
-    return res.status(400).json({ message: 'This account uses Google Sign-In. Please log in with Google.' });
+  if (!user.password || user.password.startsWith("google-auth-")) {
+    return res
+      .status(400)
+      .json({
+        message: "This account uses Google Sign-In. Please log in with Google.",
+      });
   }
 
   // Generate 6-digit OTP
@@ -725,9 +797,11 @@ const forgotPassword = asyncHandler(async (req, res) => {
   await user.save();
 
   // Send email (don't await – fire and forget to avoid delaying response)
-  sendPasswordResetEmail(user.email, otp).catch(err => console.error('Password reset email error:', err));
+  sendPasswordResetEmail(user.email, otp).catch((err) =>
+    console.error("Password reset email error:", err),
+  );
 
-  res.status(200).json({ message: 'Password reset code sent to your email.' });
+  res.status(200).json({ message: "Password reset code sent to your email." });
 });
 
 // @desc    Reset password using OTP
@@ -738,30 +812,30 @@ const resetPassword = asyncHandler(async (req, res) => {
 
   if (!email || !otp || !newPassword) {
     res.status(400);
-    throw new Error('Email, OTP, and new password are required');
+    throw new Error("Email, OTP, and new password are required");
   }
 
   if (newPassword.length < 6) {
     res.status(400);
-    throw new Error('Password must be at least 6 characters');
+    throw new Error("Password must be at least 6 characters");
   }
 
   const user = await User.findOne({ email });
   if (!user) {
     res.status(404);
-    throw new Error('User not found');
+    throw new Error("User not found");
   }
 
   // Check OTP existence and match
   if (!user.resetPasswordOtp || user.resetPasswordOtp !== otp) {
     res.status(400);
-    throw new Error('Invalid OTP');
+    throw new Error("Invalid OTP");
   }
 
   // Check expiry
   if (user.resetPasswordExpiry < new Date()) {
     res.status(400);
-    throw new Error('OTP has expired. Please request a new one.');
+    throw new Error("OTP has expired. Please request a new one.");
   }
 
   // Update password (pre‑save hook will hash it)
@@ -770,7 +844,168 @@ const resetPassword = asyncHandler(async (req, res) => {
   user.resetPasswordExpiry = undefined;
   await user.save();
 
-  res.status(200).json({ message: 'Password reset successful. Please log in with your new password.' });
+  res
+    .status(200)
+    .json({
+      message:
+        "Password reset successful. Please log in with your new password.",
+    });
+});
+
+// Add this to your userController.js
+
+// @desc    Get user profile with all their posts (articles, magazines, videos)
+// @route   GET /api/users/profile/:id/posts
+// @access  Public
+const getUserPosts = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { page = 1, limit = 20, type } = req.query; // type can be 'articles', 'magazines', 'videos', or undefined for all
+
+  // Check if user exists
+  const user = await User.findById(id).select(
+    "name username profile bio followersCount followingCount",
+  );
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+
+  const result = { user: { ...user.toObject(), _id: user._id.toString() } };
+  const posts = {};
+
+  // Fetch articles if requested
+  if (!type || type === "articles") {
+    const articlesQuery = {
+      createdBy: id,
+      status: { $in: ["published", "coming_soon"] }, // Only show published and coming soon to other users
+    };
+
+    const articles = await Article.find(articlesQuery)
+      .select(
+        "title slug featuredImage images category excerpt status comingSoon likes views createdAt",
+      )
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .lean();
+
+    const articlesCount = await Article.countDocuments(articlesQuery);
+
+    posts.articles = {
+      items: articles.map((article) => ({
+        ...article,
+        _id: article._id.toString(),
+        likesCount: article.likes?.length || 0,
+      })),
+      total: articlesCount,
+      page: Number(page),
+      pages: Math.ceil(articlesCount / limit),
+    };
+  }
+
+  // Fetch magazines if requested
+  if (!type || type === "magazines") {
+    const magazinesQuery = {
+      createdBy: id,
+      status: { $in: ["published", "coming_soon"] },
+    };
+
+    const magazines = await Magazine.find(magazinesQuery)
+      .select(
+        "title slug coverImage category summary status comingSoon likes views createdAt",
+      )
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .lean();
+
+    const magazinesCount = await Magazine.countDocuments(magazinesQuery);
+
+    posts.magazines = {
+      items: magazines.map((mag) => ({
+        ...mag,
+        _id: mag._id.toString(),
+        likesCount: mag.likes?.length || 0,
+      })),
+      total: magazinesCount,
+      page: Number(page),
+      pages: Math.ceil(magazinesCount / limit),
+    };
+  }
+
+  // Fetch videos if requested
+  if (!type || type === "videos") {
+    const videosQuery = {
+      user: id,
+      status: "published", // Only published videos
+    };
+
+    const videos = await Video.find(videosQuery)
+      .select(
+        "title thumbnail videoUrl category description likes views duration createdAt",
+      )
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .lean();
+
+    const videosCount = await Video.countDocuments(videosQuery);
+
+    posts.videos = {
+      items: videos.map((video) => ({
+        ...video,
+        _id: video._id.toString(),
+        likesCount: video.likes?.length || 0,
+      })),
+      total: videosCount,
+      page: Number(page),
+      pages: Math.ceil(videosCount / limit),
+    };
+  }
+
+  res.json({
+    user: result.user,
+    posts,
+  });
+});
+
+// @desc    Get single user profile by username (for public viewing)
+// @route   GET /api/users/profile/username/:username
+// @access  Public
+const getProfileByUsername = asyncHandler(async (req, res) => {
+  const user = await User.findOne({ username: req.params.username })
+    .select("-password -email -phone")
+    .populate("followers", "name username profile")
+    .populate("following", "name username profile");
+
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+
+  // Get user's published posts count
+  const articlesCount = await Article.countDocuments({
+    createdBy: user._id,
+    status: { $in: ["published", "coming_soon"] },
+  });
+  const magazinesCount = await Magazine.countDocuments({
+    createdBy: user._id,
+    status: { $in: ["published", "coming_soon"] },
+  });
+  const videosCount = await Video.countDocuments({
+    user: user._id,
+    status: "published",
+  });
+
+  res.json({
+    ...user.toObject(),
+    postsCount: {
+      articles: articlesCount,
+      magazines: magazinesCount,
+      videos: videosCount,
+      total: articlesCount + magazinesCount + videosCount,
+    },
+  });
 });
 
 export {
@@ -792,4 +1027,6 @@ export {
   getUserSuggestions,
   forgotPassword,
   resetPassword,
+  getUserPosts,        // <-- new
+  getProfileByUsername,
 };

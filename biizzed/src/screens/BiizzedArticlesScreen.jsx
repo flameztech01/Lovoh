@@ -1,4 +1,4 @@
-// screens/BiizzedArticlesScreen.jsx – With Auth Modal for login prompts
+// screens/BiizzedArticlesScreen.jsx - COMPLETE FIXED VERSION
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
@@ -322,7 +322,7 @@ const BiizzedArticlesScreen = () => {
     }
   };
 
-  const handleFollowToggle = async (userId, name, e) => {
+  const handleFollowToggle = async (userId, username, name, e) => {
     e.preventDefault();
     e.stopPropagation();
     if (!requireAuth()) return;
@@ -335,7 +335,7 @@ const BiizzedArticlesScreen = () => {
         await unfollowUser(tid).unwrap();
       } else {
         await followUser(tid).unwrap();
-        toast.success(`Following ${name || "user"}!`);
+        toast.success(`Following @${username || name || "user"}!`);
       }
     } catch (err) {
       setOptFollows((p) => ({ ...p, [tid]: cf }));
@@ -500,7 +500,7 @@ const BiizzedArticlesScreen = () => {
                 </nav>
               </div>
 
-              {/* Sidebar Ad Slider (carousel) */}
+              {/* Sidebar Ad Slider */}
               {sidebarAds.length > 0 && (
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-3 overflow-hidden">
                   <div className="relative">
@@ -544,7 +544,7 @@ const BiizzedArticlesScreen = () => {
                 </div>
               )}
 
-              {/* Banner Ad Cards (stacked) */}
+              {/* Banner Ad Cards */}
               {bannerAds.map((ad) => (
                 <div
                   key={ad._id}
@@ -558,7 +558,7 @@ const BiizzedArticlesScreen = () => {
                 </div>
               ))}
 
-              {/* People You May Know */}
+              {/* People You May Know - Using username route */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
                   People You May Know
@@ -585,12 +585,12 @@ const BiizzedArticlesScreen = () => {
                                   {(user.name || "U")[0].toUpperCase()}
                                 </div>
                               )}
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-900 truncate">{user.name}</p>
-                                <p className="text-xs text-gray-500">{user.followersCount || 0} followers</p>
-                              </div>
+                              <Link to={`/user/${user.username}`} className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate hover:underline">{user.name}</p>
+                                <p className="text-xs text-gray-500 truncate">@{user.username}</p>
+                              </Link>
                               <button
-                                onClick={(e) => handleFollowToggle(uid, user.name, e)}
+                                onClick={(e) => handleFollowToggle(uid, user.username, user.name, e)}
                                 className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-full flex-shrink-0 ${
                                   ff
                                     ? "bg-[#1B3766] text-white"
@@ -622,7 +622,6 @@ const BiizzedArticlesScreen = () => {
               {/* Weekly Digest Subscription Card */}
               <div className="bg-[#1B3766] rounded-2xl shadow-sm p-5 text-white">
                 <FaEnvelope className="text-3xl mx-auto mb-3 text-[#79FFFF]" />
-
                 {userInfo ? (
                   subStatusLoading ? (
                     <div className="text-center py-4">
@@ -633,7 +632,7 @@ const BiizzedArticlesScreen = () => {
                       <h4 className="font-semibold text-lg mb-2">Weekly Digest</h4>
                       <p className="text-xs text-white/70 mb-4 leading-relaxed">
                         {sidebarSubscribed
-                          ? "You’re receiving our weekly highlights. Toggle to unsubscribe."
+                          ? "You're receiving our weekly highlights. Toggle to unsubscribe."
                           : "Get the best articles & magazines every Friday, straight to your inbox."}
                       </p>
                       <button
@@ -820,6 +819,7 @@ const BiizzedArticlesScreen = () => {
                     article.authorId?._id || article.authorId || article.createdBy
                   );
                   const authorName = article.author || "Editorial";
+                  const authorUsername = article.authorId?.username || null;
                   const authorProfile = article.authorId?.profile || null;
                   const admin = isAdmin(article);
                   const following = isF(authorId);
@@ -834,9 +834,9 @@ const BiizzedArticlesScreen = () => {
                     >
                       <Link to={`/articles/${article.slug}`} className="block">
                         <div className="flex">
-                          {/* Avatar column */}
+                          {/* Avatar column - Using username route */}
                           <div className="flex flex-col items-center w-[48px] pt-3 px-2 sm:px-0">
-                            <Link to={`/user/${authorId}`} onClick={(e) => e.stopPropagation()}>
+                            <Link to={`/user/${authorUsername || authorId}`} onClick={(e) => e.stopPropagation()}>
                               {authorProfile ? (
                                 <img
                                   src={authorProfile}
@@ -856,10 +856,10 @@ const BiizzedArticlesScreen = () => {
 
                           {/* Content */}
                           <div className="flex-1 min-w-0 pt-3 pr-3 sm:pr-4 pb-3">
-                            {/* Author row */}
+                            {/* Author row - Using username route */}
                             <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
                               <Link
-                                to={`/user/${authorId}`}
+                                to={`/user/${authorUsername || authorId}`}
                                 onClick={(e) => e.stopPropagation()}
                                 className="font-bold text-gray-900 text-[15px] hover:underline truncate"
                               >
@@ -876,7 +876,7 @@ const BiizzedArticlesScreen = () => {
                               </span>
                               {!isOwn && authorId && !admin && (
                                 <button
-                                  onClick={(e) => handleFollowToggle(authorId, authorName, e)}
+                                  onClick={(e) => handleFollowToggle(authorId, authorUsername, authorName, e)}
                                   className={`ml-2 flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-full ${
                                     following ? "bg-[#1B3766] text-white" : "text-[#1B3766] border border-[#1B3766]"
                                   }`}
@@ -1002,7 +1002,7 @@ const BiizzedArticlesScreen = () => {
           {/* Right Sidebar */}
           <aside className="hidden xl:block w-[280px] flex-shrink-0">
             <div className="fixed top-[120px] w-[280px] h-[calc(100vh-140px)] overflow-y-auto space-y-4 pb-8 no-scrollbar">
-              {/* People You May Know */}
+              {/* People You May Know - Using username route */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
                   People You May Know
@@ -1029,12 +1029,12 @@ const BiizzedArticlesScreen = () => {
                                   {(user.name || "U")[0].toUpperCase()}
                                 </div>
                               )}
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-900 truncate">{user.name}</p>
-                                <p className="text-xs text-gray-500">{user.followersCount || 0} followers</p>
-                              </div>
+                              <Link to={`/user/${user.username}`} className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate hover:underline">{user.name}</p>
+                                <p className="text-xs text-gray-500 truncate">@{user.username}</p>
+                              </Link>
                               <button
-                                onClick={(e) => handleFollowToggle(uid, user.name, e)}
+                                onClick={(e) => handleFollowToggle(uid, user.username, user.name, e)}
                                 className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-full flex-shrink-0 ${
                                   ff
                                     ? "bg-[#1B3766] text-white"
@@ -1066,7 +1066,6 @@ const BiizzedArticlesScreen = () => {
               {/* Weekly Digest Subscription Card */}
               <div className="bg-[#1B3766] rounded-2xl shadow-sm p-5 text-white">
                 <FaEnvelope className="text-3xl mx-auto mb-3 text-[#79FFFF]" />
-
                 {userInfo ? (
                   subStatusLoading ? (
                     <div className="text-center py-4">
@@ -1077,7 +1076,7 @@ const BiizzedArticlesScreen = () => {
                       <h4 className="font-semibold text-lg mb-2">Weekly Digest</h4>
                       <p className="text-xs text-white/70 mb-4 leading-relaxed">
                         {sidebarSubscribed
-                          ? "You’re receiving our weekly highlights. Toggle to unsubscribe."
+                          ? "You're receiving our weekly highlights. Toggle to unsubscribe."
                           : "Get the best articles & magazines every Friday, straight to your inbox."}
                       </p>
                       <button

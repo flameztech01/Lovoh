@@ -216,6 +216,7 @@ const BiizzedArticleDetails = () => {
   const additionalImages = images.slice(1);
 
   const authorId = extractId(article?.authorId?._id || article?.authorId || article?.createdBy);
+  const authorUsername = article?.authorId?.username || article?.authorUsername || authorId;
   const authorName = article?.author || 'Editorial';
   const authorProfile = article?.authorId?.profile || null;
   const isOwn = myId && authorId ? myId === authorId : false;
@@ -470,18 +471,22 @@ const BiizzedArticleDetails = () => {
               )}
 
               <div className="p-6">
-                {/* Author Info with Follow */}
+                {/* Author Info with Follow - NOW CLICKABLE */}
                 <div className="flex items-center gap-3 mb-4">
-                  {authorProfile ? (
-                    <img src={authorProfile} alt="" className="w-11 h-11 rounded-full object-cover" />
-                  ) : (
-                    <div className="w-11 h-11 rounded-full bg-[#1B3766] text-white flex items-center justify-center text-sm font-bold">
-                      {authorName[0]?.toUpperCase()}
-                    </div>
-                  )}
+                  <Link to={`/user/${authorUsername}`} onClick={(e) => e.stopPropagation()}>
+                    {authorProfile ? (
+                      <img src={authorProfile} alt="" className="w-11 h-11 rounded-full object-cover cursor-pointer hover:opacity-80 transition" />
+                    ) : (
+                      <div className="w-11 h-11 rounded-full bg-[#1B3766] text-white flex items-center justify-center text-sm font-bold cursor-pointer hover:opacity-80 transition">
+                        {authorName[0]?.toUpperCase()}
+                      </div>
+                    )}
+                  </Link>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <p className="text-sm font-semibold text-gray-900 truncate">{authorName}</p>
+                      <Link to={`/user/${authorUsername}`} className="text-sm font-semibold text-gray-900 truncate hover:text-[#1B3766] hover:underline transition">
+                        {authorName}
+                      </Link>
                       {isAdmin() && (
                         <span className="flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-bold rounded-full">
                           <FaCheckCircle className="text-[8px]" /> Admin
@@ -581,19 +586,24 @@ const BiizzedArticleDetails = () => {
                       const isCommentLiked = comment.likes?.includes(userInfo?._id);
                       const hasReplies = comment.replies?.length > 0;
                       const showReply = showReplies[comment._id];
+                      const commentUsername = comment.user?.username || comment.userName;
 
                       return (
                         <div key={comment._id} className="flex gap-3">
-                          {comment.userProfile ? (
-                            <img src={comment.userProfile} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0 mt-0.5" />
-                          ) : (
-                            <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
-                              {(comment.userName || 'U')[0].toUpperCase()}
-                            </div>
-                          )}
+                          <Link to={`/user/${commentUsername || comment.user}`}>
+                            {comment.userProfile ? (
+                              <img src={comment.userProfile} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0 mt-0.5 hover:opacity-80 transition" />
+                            ) : (
+                              <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5 hover:opacity-80 transition">
+                                {(comment.userName || 'U')[0].toUpperCase()}
+                              </div>
+                            )}
+                          </Link>
                           <div className="flex-1 min-w-0">
                             <div className="bg-gray-50 rounded-xl px-4 py-2.5">
-                              <p className="text-sm font-semibold text-gray-900">{comment.userName || 'User'}</p>
+                              <Link to={`/user/${commentUsername || comment.user}`} className="text-sm font-semibold text-gray-900 hover:text-[#1B3766] hover:underline transition">
+                                {comment.userName || 'User'}
+                              </Link>
                               <p className="text-sm text-gray-700 mt-0.5">{comment.text}</p>
                             </div>
                             <div className="flex items-center gap-4 mt-1 text-xs text-gray-500">
@@ -614,24 +624,33 @@ const BiizzedArticleDetails = () => {
                                 </button>
                                 {showReply && (
                                   <div className="mt-2 ml-4 space-y-3 border-l-2 border-gray-200 pl-4">
-                                    {comment.replies.map((reply) => (
-                                      <div key={reply._id} className="flex gap-2">
-                                        <div className="w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5">{(reply.userName || 'U')[0].toUpperCase()}</div>
-                                        <div className="flex-1 min-w-0">
-                                          <div className="bg-gray-50 rounded-xl px-3 py-2">
-                                            <p className="text-xs font-semibold text-gray-900">{reply.userName || 'User'}</p>
-                                            <p className="text-xs text-gray-700 mt-0.5">{reply.text}</p>
-                                          </div>
-                                          <div className="flex items-center gap-3 mt-1 text-[10px] text-gray-500">
-                                            <span>{formatRelativeDate(reply.createdAt)}</span>
-                                            <button onClick={() => handleLikeComment(comment._id, reply._id)}>Like</button>
-                                            {(userInfo?._id === reply.user || userInfo?.role === 'admin') && (
-                                              <button onClick={() => handleDeleteComment(comment._id, reply._id)} className="text-red-500">Delete</button>
-                                            )}
+                                    {comment.replies.map((reply) => {
+                                      const replyUsername = reply.user?.username || reply.userName;
+                                      return (
+                                        <div key={reply._id} className="flex gap-2">
+                                          <Link to={`/user/${replyUsername || reply.user}`}>
+                                            <div className="w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5 hover:opacity-80 transition">
+                                              {(reply.userName || 'U')[0].toUpperCase()}
+                                            </div>
+                                          </Link>
+                                          <div className="flex-1 min-w-0">
+                                            <div className="bg-gray-50 rounded-xl px-3 py-2">
+                                              <Link to={`/user/${replyUsername || reply.user}`} className="text-xs font-semibold text-gray-900 hover:text-[#1B3766] hover:underline transition">
+                                                {reply.userName || 'User'}
+                                              </Link>
+                                              <p className="text-xs text-gray-700 mt-0.5">{reply.text}</p>
+                                            </div>
+                                            <div className="flex items-center gap-3 mt-1 text-[10px] text-gray-500">
+                                              <span>{formatRelativeDate(reply.createdAt)}</span>
+                                              <button onClick={() => handleLikeComment(comment._id, reply._id)}>Like</button>
+                                              {(userInfo?._id === reply.user || userInfo?.role === 'admin') && (
+                                                <button onClick={() => handleDeleteComment(comment._id, reply._id)} className="text-red-500">Delete</button>
+                                              )}
+                                            </div>
                                           </div>
                                         </div>
-                                      </div>
-                                    ))}
+                                      );
+                                    })}
                                   </div>
                                 )}
                               </div>
@@ -673,38 +692,44 @@ const BiizzedArticleDetails = () => {
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
                   <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Related Articles</h3>
                   <div className="space-y-3">
-                    {relatedArticles.map((related) => (
-                      <Link key={related._id} to={`/articles/${related.slug}`} className="flex gap-3 group">
-                        <img 
-                          src={related.featuredImage || related.images?.[0] || '/placeholder-article.jpg'} 
-                          alt="" 
-                          className="w-16 h-16 rounded-lg object-cover flex-shrink-0" 
-                          onError={(e) => { e.target.src = '/placeholder-article.jpg'; }}
-                        />
-                        <div className="min-w-0">
-                          <p className="text-xs font-medium text-gray-900 line-clamp-2 group-hover:text-[#1B3766] transition-colors">{related.title}</p>
-                          <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-400">
-                            <span>{related.category}</span>
-                            <span>•</span>
-                            <span>{related.readTime || '5 min'}</span>
+                    {relatedArticles.map((related) => {
+                      const relatedAuthorId = extractId(related.authorId?._id || related.authorId);
+                      const relatedAuthorUsername = related.authorId?.username || relatedAuthorId;
+                      return (
+                        <Link key={related._id} to={`/articles/${related.slug}`} className="flex gap-3 group">
+                          <img 
+                            src={related.featuredImage || related.images?.[0] || '/placeholder-article.jpg'} 
+                            alt="" 
+                            className="w-16 h-16 rounded-lg object-cover flex-shrink-0" 
+                            onError={(e) => { e.target.src = '/placeholder-article.jpg'; }}
+                          />
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium text-gray-900 line-clamp-2 group-hover:text-[#1B3766] transition-colors">{related.title}</p>
+                            <Link to={`/user/${relatedAuthorUsername}`} className="text-[10px] text-gray-500 hover:text-[#1B3766] hover:underline mt-1 inline-block">
+                              By {related.author || 'Editorial'}
+                            </Link>
                           </div>
-                        </div>
-                      </Link>
-                    ))}
+                        </Link>
+                      );
+                    })}
                   </div>
                 </div>
               )}
 
-              {/* Author Info */}
+              {/* Author Info - CLICKABLE */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 text-center">
-                {authorProfile ? (
-                  <img src={authorProfile} alt="" className="w-14 h-14 rounded-full object-cover mx-auto mb-2" />
-                ) : (
-                  <div className="w-14 h-14 rounded-full bg-[#1B3766] text-white flex items-center justify-center text-lg font-bold mx-auto mb-2">
-                    {authorName[0]?.toUpperCase()}
-                  </div>
-                )}
-                <p className="text-sm font-semibold text-gray-900">{authorName}</p>
+                <Link to={`/user/${authorUsername}`}>
+                  {authorProfile ? (
+                    <img src={authorProfile} alt="" className="w-14 h-14 rounded-full object-cover mx-auto mb-2 hover:opacity-80 transition" />
+                  ) : (
+                    <div className="w-14 h-14 rounded-full bg-[#1B3766] text-white flex items-center justify-center text-lg font-bold mx-auto mb-2 hover:opacity-80 transition">
+                      {authorName[0]?.toUpperCase()}
+                    </div>
+                  )}
+                </Link>
+                <Link to={`/user/${authorUsername}`} className="text-sm font-semibold text-gray-900 hover:text-[#1B3766] hover:underline transition">
+                  {authorName}
+                </Link>
                 <p className="text-xs text-gray-500 mt-0.5">Author</p>
               </div>
             </div>

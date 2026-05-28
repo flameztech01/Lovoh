@@ -1,11 +1,12 @@
-// screens/BiizzedProfile.jsx – Fixed contributor status data access
-import React, { useState, useEffect, useRef, useCallback } from "react";
+// screens/BiizzedProfile.jsx – Fixed menu and renamed followers to subscribers
+import React, { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   FaUser, FaNewspaper, FaBookOpen, FaVideo, FaHeart, FaBookmark,
   FaSpinner, FaEdit, FaTrashAlt, FaPlus, FaEllipsisV, FaSignOutAlt,
   FaCamera, FaTimes, FaCheck, FaCog, FaEnvelope, FaCheckCircle,
-  FaStar, FaClock, FaEye, FaEyeSlash, FaFilter,
+  FaStar, FaClock, FaEye, FaEyeSlash, FaFilter, FaUserEdit,
+  FaUsers,
 } from "react-icons/fa";
 import {
   useGetProfileInfoQuery, useUpdateProfileMutation, useLogoutMutation,
@@ -34,29 +35,30 @@ const BiizzedProfile = () => {
   const dispatch = useDispatch();
   const { userInfo } = useSelector((state) => state.auth);
   const [activeTab, setActiveTab] = useState("articles");
-  const [menuOpenId, setMenuOpenId] = useState(null);
+  const [activeMenuId, setActiveMenuId] = useState(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const [showDrafts, setShowDrafts] = useState(true);
-  const menuButtonRef = useRef(null);
 
   // Edit Profile Modal state
   const [showEditModal, setShowEditModal] = useState(false);
   const [editName, setEditName] = useState("");
+  const [editUsername, setEditUsername] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editBio, setEditBio] = useState("");
   const [editProfilePic, setEditProfilePic] = useState(null);
   const [editPreview, setEditPreview] = useState("");
 
   // Close menu when clicking outside
   useEffect(() => {
+    if (!activeMenuId) return;
     const handleClickOutside = (e) => {
-      if (menuButtonRef.current && !menuButtonRef.current.contains(e.target)) {
-        setMenuOpenId(null);
+      if (!e.target.closest('.menu-dropdown') && !e.target.closest('.menu-button')) {
+        setActiveMenuId(null);
       }
     };
-    if (menuOpenId) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
-    }
-  }, [menuOpenId]);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [activeMenuId]);
 
   // Profile
   const {
@@ -150,7 +152,7 @@ const BiizzedProfile = () => {
     } catch (err) {
       toast.error(err?.data?.message || err?.message || "Failed to delete");
     }
-    setMenuOpenId(null);
+    setActiveMenuId(null);
   };
 
   // ====== REQUEST FEATURED ======
@@ -167,7 +169,7 @@ const BiizzedProfile = () => {
     } catch (err) {
       toast.error(err?.data?.message || err?.message || "Failed to request featured");
     }
-    setMenuOpenId(null);
+    setActiveMenuId(null);
   };
 
   // ====== EDIT NAVIGATION ======
@@ -178,7 +180,7 @@ const BiizzedProfile = () => {
       video: `/edit-video/${id}`,
     };
     navigate(routes[type]);
-    setMenuOpenId(null);
+    setActiveMenuId(null);
   };
 
   // ====== LOGOUT ======
@@ -201,6 +203,9 @@ const BiizzedProfile = () => {
   // ====== EDIT PROFILE ======
   const openEditModal = () => {
     setEditName(profile?.name || "");
+    setEditUsername(profile?.username || "");
+    setEditPhone(profile?.phone || "");
+    setEditBio(profile?.bio || "");
     setEditProfilePic(null);
     setEditPreview("");
     setShowEditModal(true);
@@ -227,12 +232,25 @@ const BiizzedProfile = () => {
       toast.error("Name is required");
       return;
     }
+    if (!editUsername.trim()) {
+      toast.error("Username is required");
+      return;
+    }
+    if (!editPhone.trim()) {
+      toast.error("Phone number is required");
+      return;
+    }
+
     try {
       const formData = new FormData();
       formData.append("name", editName.trim());
+      formData.append("username", editUsername.trim());
+      formData.append("phone", editPhone.trim());
+      formData.append("bio", editBio.trim() || "");
       if (editProfilePic) formData.append("profile", editProfilePic);
+      
       await updateProfile(formData).unwrap();
-      toast.success("Profile updated");
+      toast.success("Profile updated successfully");
       setShowEditModal(false);
       refetchProfile();
       if (editPreview) URL.revokeObjectURL(editPreview);
@@ -273,14 +291,30 @@ const BiizzedProfile = () => {
     }
   };
 
+  // ====== MENU HANDLER – Position ABOVE the button, anchored to right edge ======
+  const handleMenuOpen = (e, type, id) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const menuWidth = 170;
+    // Position above the button (8px gap), align right edge of menu with right edge of button
+    setMenuPosition({
+      top: rect.top - 8,  // 8px above the button (menu will extend upward via transform)
+      left: rect.right - menuWidth,
+    });
+    setActiveMenuId(`${type}-${id}`);
+  };
+
   if (!userInfo) {
     return (
-      <div className="min-h-screen bg-gray-100">
+      <div className="min-h-screen bg-gray-50">
         <BiizzedArticlesNavbar />
         <div className="flex flex-col items-center justify-center h-[60vh]">
-          <FaUser className="text-5xl text-gray-300 mb-4" />
+          <div className="w-20 h-20 bg-[#1B3766]/10 rounded-full flex items-center justify-center mb-4">
+            <FaUser className="text-3xl text-[#1B3766]" />
+          </div>
           <p className="text-gray-500 mb-4">Login to view your profile</p>
-          <Link to="/login" className="px-6 py-2.5 bg-[#1B3766] text-white rounded-xl text-sm font-medium">
+          <Link to="/login" className="px-6 py-2.5 bg-[#1B3766] text-white rounded-xl text-sm font-medium hover:bg-[#142952] transition-colors shadow-sm">
             Login
           </Link>
         </div>
@@ -291,10 +325,10 @@ const BiizzedProfile = () => {
 
   if (profileLoading) {
     return (
-      <div className="min-h-screen bg-gray-100">
+      <div className="min-h-screen bg-gray-50">
         <BiizzedArticlesNavbar />
         <div className="flex justify-center items-center h-64">
-          <FaSpinner className="animate-spin text-2xl text-[#1B3766]" />
+          <FaSpinner className="animate-spin text-3xl text-[#1B3766]" />
         </div>
         <BiizzedBottomBar />
       </div>
@@ -303,7 +337,7 @@ const BiizzedProfile = () => {
 
   const totalPosts = filteredArticles.length + filteredMagazines.length + myVideos.length;
 
-  // ----- CORRECTED Contributor status helpers (data is nested inside contribData.data) -----
+  // Contributor status helpers
   const contribApplicationData = contribData?.data?.contributor_application;
   const isContributorApproved = contribData?.data?.biizzed_contributor === true || contribData?.biizzed_contributor === true;
   const contributorAppStatus = contribApplicationData?.status;
@@ -317,7 +351,7 @@ const BiizzedProfile = () => {
     if (status === "published" && !item.isFeatured && !item.featuredRequest) return null;
 
     return (
-      <div className="flex flex-wrap gap-1 mt-1">
+      <div className="flex flex-wrap gap-1 mt-1.5">
         {status === "coming_soon" && (
           <span className="inline-flex items-center gap-1 text-[10px] text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full font-medium">
             <FaClock className="text-[8px]" /> Coming Soon
@@ -342,7 +376,7 @@ const BiizzedProfile = () => {
     );
   };
 
-  // ====== FIXED MENU RENDERER ======
+  // Menu Dropdown Component
   const MenuDropdown = ({ type, item }) => {
     const isFeatured = item.isFeatured === true;
     const isFeaturedRequested = item.featuredRequest === true;
@@ -350,11 +384,10 @@ const BiizzedProfile = () => {
     const status = getItemStatus(item);
 
     return (
-      <div className="bg-white rounded-xl shadow-lg border border-gray-200 py-1 z-[100] min-w-[160px]">
-        <div className="px-3 py-1.5 text-[10px] text-gray-400 border-b border-gray-100 mb-1">
-          Status: <span className="font-medium capitalize">{status}</span>
+      <div className="menu-dropdown bg-white rounded-xl shadow-lg border border-gray-100 py-1 min-w-[170px] overflow-hidden">
+        <div className="px-3 py-2 text-[10px] text-gray-400 border-b border-gray-100 bg-gray-50/50">
+          Status: <span className="font-medium text-gray-600 capitalize">{status}</span>
         </div>
-
         {showFeaturedRequest && status !== "draft" && (
           <button
             onClick={(e) => {
@@ -362,203 +395,155 @@ const BiizzedProfile = () => {
               handleRequestFeatured(type, item._id);
             }}
             disabled={isFeaturedRequested || isFeatured}
-            className={`flex items-center gap-2 px-3 py-2 text-xs w-full text-left transition-colors ${
+            className={`flex items-center gap-2.5 px-3 py-2.5 text-xs w-full text-left transition-colors ${
               isFeaturedRequested || isFeatured
-                ? "text-gray-400 cursor-not-allowed"
-                : "text-[#1B3766] hover:bg-gray-50"
+                ? "text-gray-400 cursor-not-allowed bg-gray-50"
+                : "text-[#1B3766] hover:bg-[#1B3766]/5"
             }`}
           >
-            <FaStar className="text-[10px]" />
+            <FaStar className="text-[11px]" />
             {isFeatured ? "Already Featured" : isFeaturedRequested ? "Request Pending" : "Request Featured"}
           </button>
         )}
-
         <button
           onClick={(e) => {
             e.preventDefault();
             handleEdit(type, item._id);
           }}
-          className="flex items-center gap-2 px-3 py-2 text-xs text-gray-600 hover:bg-gray-50 w-full text-left transition-colors"
+          className="flex items-center gap-2.5 px-3 py-2.5 text-xs text-gray-600 hover:bg-gray-50 w-full text-left transition-colors"
         >
-          <FaEdit className="text-[10px]" /> Edit
+          <FaEdit className="text-[11px]" /> Edit
         </button>
-
         {status === "coming_soon" && (
           <button
             onClick={(e) => {
               e.preventDefault();
               navigate(`/edit-${type}/${item._id}?publish=true`);
             }}
-            className="flex items-center gap-2 px-3 py-2 text-xs text-green-600 hover:bg-green-50 w-full text-left transition-colors"
+            className="flex items-center gap-2.5 px-3 py-2.5 text-xs text-green-600 hover:bg-green-50 w-full text-left transition-colors"
           >
-            <FaCheck className="text-[10px]" /> Publish Now
+            <FaCheck className="text-[11px]" /> Publish Now
           </button>
         )}
-
         <button
           onClick={(e) => {
             e.preventDefault();
             handleDelete(type, item._id);
           }}
-          className="flex items-center gap-2 px-3 py-2 text-xs text-red-500 hover:bg-red-50 w-full text-left transition-colors"
+          className="flex items-center gap-2.5 px-3 py-2.5 text-xs text-red-500 hover:bg-red-50 w-full text-left transition-colors border-t border-gray-100 mt-1"
         >
-          <FaTrashAlt className="text-[10px]" /> Delete
+          <FaTrashAlt className="text-[11px]" /> Delete
         </button>
       </div>
     );
   };
 
-  // ====== FIXED CONTENT CARD ======
-  const ContentCard = ({ item, type }) => {
-    const status = getItemStatus(item);
-    const imageUrl = type === "magazine"
-      ? (item.coverImage || "/placeholder-article.jpg")
-      : (item.featuredImage || item.images?.[0] || "/placeholder-article.jpg");
-    const linkTo = type === "magazine"
-      ? `/${item.slug}`
-      : `/articles/${item.slug}`;
-    const isMenuOpen = menuOpenId === `${type}-${item._id}`;
-
-    return (
-      <div key={item._id} className={`relative bg-white rounded-xl shadow-sm border transition-all hover:shadow-md ${
-        status === "draft" ? "border-gray-200 opacity-75" :
-        status === "coming_soon" ? "border-orange-200" : "border-gray-100"
-      }`}>
-        <Link to={linkTo} className="flex gap-3 p-4">
-          <img
-            src={imageUrl}
-            alt=""
-            className={`w-24 h-24 rounded-lg object-cover flex-shrink-0 ${
-              status === "draft" ? "grayscale-[30%]" : ""
-            }`}
-          />
-          <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-bold text-gray-900 line-clamp-2">{item.title}</h3>
-            <p className="text-xs text-gray-500 mt-1">
-              {item.category} {type !== "magazine" && `• ${item.readTime || "5 min"}`}
-            </p>
-
-            <StatusBadge item={item} />
-
-            <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
-              <span><FaHeart className="inline mr-1" />{item.likes?.length || 0}</span>
-              <span><FaEye className="inline mr-1" />{item.views || 0}</span>
-              {status === "coming_soon" && (
-                <span className="text-orange-400">Not yet published</span>
-              )}
-              {status === "draft" && (
-                <span className="text-gray-400">Only you can see this</span>
-              )}
-            </div>
-          </div>
-        </Link>
-
-        {/* Menu button */}
-        <div className="absolute top-2 right-2 z-10">
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              const newId = isMenuOpen ? null : `${type}-${item._id}`;
-              setMenuOpenId(newId);
-            }}
-            className="p-1.5 bg-white/90 backdrop-blur rounded-full shadow-sm border border-gray-100 hover:bg-gray-50 transition-colors"
-          >
-            <FaEllipsisV className="text-gray-500 text-xs" />
-          </button>
-        </div>
-
-        {/* Fixed dropdown */}
-        {isMenuOpen && (
-          <div className="fixed inset-0 z-[90]" onClick={() => setMenuOpenId(null)}>
-            <div
-              className="absolute z-[100]"
-              style={{
-                top: menuPosition.top,
-                left: menuPosition.left,
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <MenuDropdown type={type} item={item} />
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // Calculate menu position when opening
-  const handleMenuOpen = (e, type, id) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    setMenuPosition({
-      top: rect.bottom + window.scrollY + 4,
-      left: rect.left + window.scrollX - 140,
-    });
-    setMenuOpenId(`${type}-${id}`);
-  };
+  const totalContentCount = filteredArticles.length + filteredMagazines.length + myVideos.length;
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-50">
       <BiizzedArticlesNavbar />
 
-      <div className="max-w-3xl mx-auto px-4 py-6">
-        {/* Profile Header */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-4">
-          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
-            {/* Avatar with contributor badge */}
-            <div className="relative">
-              {profile?.profile ? (
-                <img src={profile.profile} alt={profile.name} className="w-20 h-20 rounded-full object-cover border-4 border-white shadow" />
-              ) : (
-                <div className="w-20 h-20 rounded-full bg-[#1B3766] text-white flex items-center justify-center text-2xl font-bold">
-                  {(profile?.name || "U")[0].toUpperCase()}
-                </div>
-              )}
-              {/* Contributor badge on avatar */}
-              {isContributorApproved && (
-                <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white flex items-center justify-center shadow">
-                  <FaCheckCircle className="text-white text-xs" />
-                </div>
-              )}
-            </div>
-
-            <div className="flex-1 text-center sm:text-left">
-              <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
-                <h1 className="text-xl font-bold text-gray-900">{profile?.name || "User"}</h1>
+      <div className="max-w-4xl mx-auto px-4 py-6 pb-24">
+        {/* Profile Header Card */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+          {/* Cover/Header Area */}
+          <div className="h-24 bg-gradient-to-r from-[#1B3766]/10 to-[#1B3766]/5"></div>
+          
+          {/* Profile Info Section */}
+          <div className="px-6 pb-6 relative">
+            {/* Avatar with badge */}
+            <div className="relative -mt-12 mb-4">
+              <div className="relative inline-block">
+                {profile?.profile ? (
+                  <img 
+                    src={profile.profile} 
+                    alt={profile.name} 
+                    className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md"
+                  />
+                ) : (
+                  <div className="w-24 h-24 rounded-full bg-[#1B3766] text-white flex items-center justify-center text-3xl font-bold border-4 border-white shadow-md">
+                    {(profile?.name || "U")[0].toUpperCase()}
+                  </div>
+                )}
                 {isContributorApproved && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-                    <FaCheckCircle className="text-[10px]" /> Contributor
-                  </span>
+                  <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-green-500 rounded-full border-2 border-white flex items-center justify-center shadow-sm">
+                    <FaCheckCircle className="text-white text-xs" />
+                  </div>
                 )}
               </div>
-              <p className="text-sm text-gray-500">@{profile?.username || "user"}</p>
-              {profile?.bio && <p className="text-sm text-gray-600 mt-1">{profile.bio}</p>}
+            </div>
 
-              <div className="flex items-center justify-center sm:justify-start gap-6 mt-3">
-                <button onClick={() => navigate("/followers")} className="text-center hover:opacity-80 transition-opacity">
-                  <p className="text-lg font-bold text-gray-900">{profile?.followersCount || 0}</p>
-                  <p className="text-xs text-gray-500">Followers</p>
-                </button>
-                <button onClick={() => navigate("/followers?tab=following")} className="text-center hover:opacity-80 transition-opacity">
-                  <p className="text-lg font-bold text-gray-900">{profile?.followingCount || 0}</p>
-                  <p className="text-xs text-gray-500">Following</p>
-                </button>
-                <div className="text-center">
-                  <p className="text-lg font-bold text-gray-900">{totalPosts}</p>
-                  <p className="text-xs text-gray-500">Posts</p>
+            {/* Name and Username */}
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <h1 className="text-2xl font-bold text-gray-900">{profile?.name || "User"}</h1>
+                  {isContributorApproved && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                      <FaCheckCircle className="text-[10px]" /> Contributor
+                    </span>
+                  )}
                 </div>
+                <p className="text-sm text-gray-500">@{profile?.username || "user"}</p>
+                {profile?.bio && (
+                  <p className="text-sm text-gray-600 mt-2 max-w-lg">{profile.bio}</p>
+                )}
               </div>
 
-              {/* Contributor application status / CTA */}
-              <div className="mt-3">
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-2">
+                <button 
+                  onClick={openEditModal} 
+                  className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 flex items-center gap-2 transition-all"
+                >
+                  <FaUserEdit className="text-xs" /> Edit Profile
+                </button>
+                <Link 
+                  to="/settings" 
+                  className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 flex items-center gap-2 transition-all"
+                >
+                  <FaCog className="text-xs" /> Settings
+                </Link>
+                <button 
+                  onClick={handleLogout} 
+                  className="px-4 py-2 border border-red-200 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 hover:border-red-300 flex items-center gap-2 transition-all"
+                >
+                  <FaSignOutAlt className="text-xs" /> Logout
+                </button>
+              </div>
+            </div>
+
+            {/* Stats Row - Renamed Followers to Subscribers */}
+            <div className="flex items-center gap-8 mt-5 pt-4 border-t border-gray-100">
+              <button onClick={() => navigate("/subscribers")} className="text-center hover:opacity-80 transition-opacity group">
+                <p className="text-xl font-bold text-gray-900 group-hover:text-[#1B3766] transition-colors">{profile?.followersCount || 0}</p>
+                <p className="text-xs text-gray-500 flex items-center gap-1 justify-center">
+                  <FaUsers className="text-[10px]" /> Subscribers
+                </p>
+              </button>
+              <button onClick={() => navigate("/subscribers?tab=following")} className="text-center hover:opacity-80 transition-opacity group">
+                <p className="text-xl font-bold text-gray-900 group-hover:text-[#1B3766] transition-colors">{profile?.followingCount || 0}</p>
+                <p className="text-xs text-gray-500">Following</p>
+              </button>
+              <div className="text-center">
+                <p className="text-xl font-bold text-gray-900">{totalContentCount}</p>
+                <p className="text-xs text-gray-500">Posts</p>
+              </div>
+            </div>
+
+            {/* Contributor Status & Digest Toggle */}
+            <div className="flex flex-wrap items-center gap-3 mt-5 pt-4 border-t border-gray-100">
+              {/* Contributor section */}
+              <div className="flex-1">
                 {contribLoading ? (
                   <span className="text-xs text-gray-400 inline-flex items-center gap-1">
-                    <FaSpinner className="animate-spin" /> Loading contributor info...
+                    <FaSpinner className="animate-spin" /> Loading...
                   </span>
                 ) : hasNotApplied ? (
                   <button
                     onClick={() => navigate('/contributor/apply')}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#1B3766] text-white rounded-xl text-sm font-medium hover:bg-[#142952] transition-colors"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#1B3766] text-white rounded-xl text-sm font-medium hover:bg-[#142952] transition-colors shadow-sm"
                   >
                     <FaPlus className="text-xs" /> Apply to Contribute
                   </button>
@@ -572,65 +557,68 @@ const BiizzedProfile = () => {
                   </span>
                 ) : null}
               </div>
-            </div>
 
-            <div className="flex flex-col items-center sm:items-end gap-2">
-              <div className="flex items-center gap-2">
-                <button onClick={openEditModal} className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors">
-                  <FaEdit className="text-xs" /> Edit Profile
-                </button>
-                <Link to="/settings" className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors">
-                  <FaCog className="text-xs" /> Settings
-                </Link>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleDigestToggle}
-                  disabled={isSubscribing || isUnsubscribing || subStatusLoading}
-                  className={`px-4 py-2 border rounded-xl text-sm font-medium flex items-center gap-2 transition-colors ${
-                    digestSubscribed ? "bg-[#1B3766]/10 border-[#1B3766]/30 text-[#1B3766]" : "border-gray-200 text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  {subStatusLoading ? <FaSpinner className="animate-spin text-xs" /> : digestSubscribed ? <FaCheckCircle className="text-xs" /> : <FaEnvelope className="text-xs" />}
-                  {isSubscribing || isUnsubscribing ? "Updating..." : digestSubscribed ? "Weekly Digest On" : "Weekly Digest Off"}
-                </button>
-                <button onClick={handleLogout} className="px-4 py-2 border border-red-200 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors">
-                  <FaSignOutAlt className="text-xs" /> Logout
-                </button>
-              </div>
+              {/* Digest Toggle */}
+              <button
+                onClick={handleDigestToggle}
+                disabled={isSubscribing || isUnsubscribing || subStatusLoading}
+                className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all ${
+                  digestSubscribed 
+                    ? "bg-[#1B3766] text-white shadow-sm" 
+                    : "border border-gray-200 text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                {subStatusLoading ? (
+                  <FaSpinner className="animate-spin text-xs" />
+                ) : digestSubscribed ? (
+                  <FaCheckCircle className="text-xs" />
+                ) : (
+                  <FaEnvelope className="text-xs" />
+                )}
+                {isSubscribing || isUnsubscribing ? "Updating..." : digestSubscribed ? "Weekly Digest On" : "Weekly Digest Off"}
+              </button>
             </div>
           </div>
         </div>
 
         {/* Content Tabs */}
-        <div className="flex items-center gap-1 bg-white rounded-xl p-1 border border-gray-200 mb-4 overflow-x-auto">
-          {[
-            { id: "articles", label: "Articles", icon: FaNewspaper, count: filteredArticles.length },
-            { id: "magazines", label: "Magazines", icon: FaBookOpen, count: filteredMagazines.length },
-            { id: "videos", label: "Videos", icon: FaVideo, count: myVideos.length },
-            { id: "liked", label: "Liked", icon: FaHeart, count: likedArticles.length },
-            { id: "saved", label: "Saved", icon: FaBookmark, count: bookmarkedArticles.length + bookmarkedMagazines.length },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                activeTab === tab.id ? "bg-[#1B3766] text-white" : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              <tab.icon className="text-xs" /> {tab.label}
-              <span className="text-xs opacity-75">({tab.count})</span>
-            </button>
-          ))}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-1 mb-5">
+          <div className="flex overflow-x-auto hide-scrollbar">
+            {[
+              { id: "articles", label: "Articles", icon: FaNewspaper, count: filteredArticles.length },
+              { id: "magazines", label: "Magazines", icon: FaBookOpen, count: filteredMagazines.length },
+              { id: "videos", label: "Videos", icon: FaVideo, count: myVideos.length },
+              { id: "liked", label: "Liked", icon: FaHeart, count: likedArticles.length },
+              { id: "saved", label: "Saved", icon: FaBookmark, count: bookmarkedArticles.length + bookmarkedMagazines.length },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
+                  activeTab === tab.id 
+                    ? "bg-[#1B3766] text-white shadow-sm" 
+                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <tab.icon className="text-xs" /> 
+                {tab.label}
+                <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                  activeTab === tab.id ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"
+                }`}>
+                  {tab.count}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Drafts Toggle for Articles/Magazines */}
         {(activeTab === "articles" || activeTab === "magazines") && (
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-4">
             <button
               onClick={() => setShowDrafts(!showDrafts)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                showDrafts ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-600"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                showDrafts ? "bg-[#1B3766] text-white" : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
               }`}
             >
               <FaFilter className="text-[10px]" />
@@ -650,19 +638,51 @@ const BiizzedProfile = () => {
           articlesLoading ? (
             <div className="flex justify-center py-12"><FaSpinner className="animate-spin text-2xl text-[#1B3766]" /></div>
           ) : filteredArticles.length === 0 ? (
-            <div className="text-center py-12 bg-white rounded-2xl">
-              <FaNewspaper className="text-4xl text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500 mb-3">
-                {showDrafts ? "No articles yet" : "No published articles yet"}
-              </p>
-              <Link to="/create-article" className="inline-flex items-center gap-1 px-4 py-2 bg-[#1B3766] text-white rounded-lg text-sm hover:bg-[#142952] transition-colors">
-                <FaPlus className="text-xs" /> Write Article
+            <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
+              <div className="w-16 h-16 bg-[#1B3766]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FaNewspaper className="text-2xl text-[#1B3766]" />
+              </div>
+              <p className="text-gray-500 mb-4">{showDrafts ? "No articles yet" : "No published articles yet"}</p>
+              <Link to="/create-article" className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1B3766] text-white rounded-xl text-sm font-medium hover:bg-[#142952] transition-colors shadow-sm">
+                <FaPlus className="text-xs" /> Write Your First Article
               </Link>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {filteredArticles.map((article) => (
-                <ContentCard key={article._id} item={article} type="article" />
+                <div key={article._id} className="relative bg-white rounded-xl shadow-sm border border-gray-100 transition-all hover:shadow-md hover:border-gray-200">
+                  <Link to={`/articles/${article.slug}`} className="flex gap-4 p-4">
+                    <img
+                      src={article.featuredImage || article.images?.[0] || "/placeholder-article.jpg"}
+                      alt=""
+                      className="w-28 h-28 rounded-xl object-cover flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base font-bold text-gray-900 line-clamp-2 mb-1">{article.title}</h3>
+                      <p className="text-xs text-gray-500">{article.category} • {article.readTime || "5 min"} read</p>
+                      <StatusBadge item={article} />
+                      <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
+                        <span><FaHeart className="inline mr-1 text-[10px]" />{article.likes?.length || 0}</span>
+                        <span><FaEye className="inline mr-1 text-[10px]" />{article.views || 0}</span>
+                      </div>
+                    </div>
+                  </Link>
+                  <div className="absolute top-3 right-3 z-10">
+                    <button
+                      className="menu-button p-2 bg-white rounded-full shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors"
+                      onClick={(e) => handleMenuOpen(e, "article", article._id)}
+                    >
+                      <FaEllipsisV className="text-gray-400 text-xs" />
+                    </button>
+                    {activeMenuId === `article-${article._id}` && (
+                      <div
+                        className="absolute right-0 bottom-full mb-2 z-50"
+                      >
+                        <MenuDropdown type="article" item={article} />
+                      </div>
+                    )}
+                  </div>
+                </div>
               ))}
             </div>
           )
@@ -673,19 +693,51 @@ const BiizzedProfile = () => {
           magazinesLoading ? (
             <div className="flex justify-center py-12"><FaSpinner className="animate-spin text-2xl text-[#1B3766]" /></div>
           ) : filteredMagazines.length === 0 ? (
-            <div className="text-center py-12 bg-white rounded-2xl">
-              <FaBookOpen className="text-4xl text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500 mb-3">
-                {showDrafts ? "No magazines yet" : "No published magazines yet"}
-              </p>
-              <Link to="/create-magazine" className="inline-flex items-center gap-1 px-4 py-2 bg-[#1B3766] text-white rounded-lg text-sm hover:bg-[#142952] transition-colors">
-                <FaPlus className="text-xs" /> Create Magazine
+            <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
+              <div className="w-16 h-16 bg-[#1B3766]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FaBookOpen className="text-2xl text-[#1B3766]" />
+              </div>
+              <p className="text-gray-500 mb-4">{showDrafts ? "No magazines yet" : "No published magazines yet"}</p>
+              <Link to="/create-magazine" className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1B3766] text-white rounded-xl text-sm font-medium hover:bg-[#142952] transition-colors shadow-sm">
+                <FaPlus className="text-xs" /> Create Your First Magazine
               </Link>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {filteredMagazines.map((magazine) => (
-                <ContentCard key={magazine._id} item={magazine} type="magazine" />
+                <div key={magazine._id} className="relative bg-white rounded-xl shadow-sm border border-gray-100 transition-all hover:shadow-md hover:border-gray-200">
+                  <Link to={`/${magazine.slug}`} className="flex gap-4 p-4">
+                    <img
+                      src={magazine.coverImage || "/placeholder-article.jpg"}
+                      alt=""
+                      className="w-28 h-28 rounded-xl object-cover flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base font-bold text-gray-900 line-clamp-2 mb-1">{magazine.title}</h3>
+                      <p className="text-xs text-gray-500">{magazine.category}</p>
+                      <StatusBadge item={magazine} />
+                      <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
+                        <span><FaHeart className="inline mr-1 text-[10px]" />{magazine.likes?.length || 0}</span>
+                        <span><FaEye className="inline mr-1 text-[10px]" />{magazine.views || 0}</span>
+                      </div>
+                    </div>
+                  </Link>
+                  <div className="absolute top-3 right-3 z-10">
+                    <button
+                      className="menu-button p-2 bg-white rounded-full shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors"
+                      onClick={(e) => handleMenuOpen(e, "magazine", magazine._id)}
+                    >
+                      <FaEllipsisV className="text-gray-400 text-xs" />
+                    </button>
+                    {activeMenuId === `magazine-${magazine._id}` && (
+                      <div
+                        className="absolute right-0 bottom-full mb-2 z-50"
+                      >
+                        <MenuDropdown type="magazine" item={magazine} />
+                      </div>
+                    )}
+                  </div>
+                </div>
               ))}
             </div>
           )
@@ -696,94 +748,69 @@ const BiizzedProfile = () => {
           videosLoading ? (
             <div className="flex justify-center py-12"><FaSpinner className="animate-spin text-2xl text-[#1B3766]" /></div>
           ) : myVideos.length === 0 ? (
-            <div className="text-center py-12 bg-white rounded-2xl">
-              <FaVideo className="text-4xl text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500 mb-3">No videos yet</p>
-              <Link to="/create-video" className="inline-flex items-center gap-1 px-4 py-2 bg-[#1B3766] text-white rounded-lg text-sm hover:bg-[#142952] transition-colors">
-                <FaPlus className="text-xs" /> Upload Video
+            <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
+              <div className="w-16 h-16 bg-[#1B3766]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FaVideo className="text-2xl text-[#1B3766]" />
+              </div>
+              <p className="text-gray-500 mb-4">No videos yet</p>
+              <Link to="/create-video" className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1B3766] text-white rounded-xl text-sm font-medium hover:bg-[#142952] transition-colors shadow-sm">
+                <FaPlus className="text-xs" /> Upload Your First Video
               </Link>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {myVideos.map((video) => (
-                <div key={video._id} className="relative bg-white rounded-xl shadow-sm border border-gray-100 transition-all hover:shadow-md">
-                  <Link to={`/videos/${video._id}`} className="flex gap-3 p-4">
-                    <div className="relative w-32 h-20 rounded-lg overflow-hidden bg-black flex-shrink-0">
+                <div key={video._id} className="relative bg-white rounded-xl shadow-sm border border-gray-100 transition-all hover:shadow-md hover:border-gray-200">
+                  <Link to={`/videos/${video._id}`} className="flex gap-4 p-4">
+                    <div className="relative w-32 h-20 rounded-xl overflow-hidden bg-gray-900 flex-shrink-0">
                       {video.thumbnail ? (
                         <img src={video.thumbnail} alt="" className="w-full h-full object-cover" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <FaVideo className="text-2xl text-gray-600" />
+                        <div className="w-full h-full flex items-center justify-center bg-gray-800">
+                          <FaVideo className="text-2xl text-gray-500" />
                         </div>
                       )}
-                      <div className="absolute bottom-1 right-1 px-1 py-0.5 bg-black/80 text-white text-[10px] rounded">
+                      <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/70 text-white text-[10px] rounded">
                         {video.duration ? `${Math.floor(video.duration / 60)}:${String(Math.floor(video.duration % 60)).padStart(2, "0")}` : "0:00"}
                       </div>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-bold text-gray-900 line-clamp-2">{video.title}</h3>
-                      <p className="text-xs text-gray-500 mt-1">{video.category || "General"}</p>
-                      <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
-                        <span><FaHeart className="inline mr-1" />{video.likes?.length || 0}</span>
-                        <span>{video.views || 0} views</span>
+                      <h3 className="text-base font-bold text-gray-900 line-clamp-2 mb-1">{video.title}</h3>
+                      <p className="text-xs text-gray-500">{video.category || "General"}</p>
+                      <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
+                        <span><FaHeart className="inline mr-1 text-[10px]" />{video.likes?.length || 0}</span>
+                        <span><FaEye className="inline mr-1 text-[10px]" />{video.views || 0} views</span>
                       </div>
                     </div>
                   </Link>
-                  {/* Video menu button */}
-                  <div className="absolute top-2 right-2 z-10">
+                  <div className="absolute top-3 right-3 z-10">
                     <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        const isOpen = menuOpenId === `video-${video._id}`;
-                        if (!isOpen) {
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          setMenuPosition({
-                            top: rect.bottom + window.scrollY + 4,
-                            left: rect.left + window.scrollX - 140,
-                          });
-                        }
-                        setMenuOpenId(isOpen ? null : `video-${video._id}`);
-                      }}
-                      className="p-1.5 bg-white/90 backdrop-blur rounded-full shadow-sm border border-gray-100 hover:bg-gray-50 transition-colors"
+                      className="menu-button p-2 bg-white rounded-full shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors"
+                      onClick={(e) => handleMenuOpen(e, "video", video._id)}
                     >
-                      <FaEllipsisV className="text-gray-500 text-xs" />
+                      <FaEllipsisV className="text-gray-400 text-xs" />
                     </button>
-                  </div>
-                  {/* Video dropdown */}
-                  {menuOpenId === `video-${video._id}` && (
-                    <div className="fixed inset-0 z-[90]" onClick={() => setMenuOpenId(null)}>
+                    {activeMenuId === `video-${video._id}` && (
                       <div
-                        className="absolute z-[100]"
-                        style={{
-                          top: menuPosition.top,
-                          left: menuPosition.left,
-                        }}
-                        onClick={(e) => e.stopPropagation()}
+                        className="absolute right-0 bottom-full mb-2 z-50"
                       >
-                        <div className="bg-white rounded-xl shadow-lg border border-gray-200 py-1 z-[100] min-w-[160px]">
+                        <div className="menu-dropdown bg-white rounded-xl shadow-lg border border-gray-100 py-1 min-w-[170px] overflow-hidden">
                           <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              handleEdit("video", video._id);
-                            }}
-                            className="flex items-center gap-2 px-3 py-2 text-xs text-gray-600 hover:bg-gray-50 w-full text-left transition-colors"
+                            onClick={() => handleEdit("video", video._id)}
+                            className="flex items-center gap-2.5 px-3 py-2.5 text-xs text-gray-600 hover:bg-gray-50 w-full text-left transition-colors"
                           >
-                            <FaEdit className="text-[10px]" /> Edit
+                            <FaEdit className="text-[11px]" /> Edit
                           </button>
                           <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              handleDelete("video", video._id);
-                            }}
-                            className="flex items-center gap-2 px-3 py-2 text-xs text-red-500 hover:bg-red-50 w-full text-left transition-colors"
+                            onClick={() => handleDelete("video", video._id)}
+                            className="flex items-center gap-2.5 px-3 py-2.5 text-xs text-red-500 hover:bg-red-50 w-full text-left transition-colors border-t border-gray-100 mt-1"
                           >
-                            <FaTrashAlt className="text-[10px]" /> Delete
+                            <FaTrashAlt className="text-[11px]" /> Delete
                           </button>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -793,18 +820,21 @@ const BiizzedProfile = () => {
         {/* LIKED ARTICLES */}
         {activeTab === "liked" && (
           likedArticles.length === 0 ? (
-            <div className="text-center py-12 bg-white rounded-2xl">
-              <FaHeart className="text-4xl text-gray-300 mx-auto mb-3" />
+            <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
+              <div className="w-16 h-16 bg-[#1B3766]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FaHeart className="text-2xl text-[#1B3766]" />
+              </div>
               <p className="text-gray-500">No liked posts yet</p>
+              <p className="text-xs text-gray-400 mt-1">Articles you like will appear here</p>
             </div>
           ) : (
             <div className="space-y-3">
               {likedArticles.map((article) => (
-                <Link key={article._id} to={`/articles/${article.slug}`} className="flex gap-3 bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                  <img src={article.featuredImage || article.images?.[0] || "/placeholder-article.jpg"} alt="" className="w-20 h-20 rounded-lg object-cover flex-shrink-0" />
+                <Link key={article._id} to={`/articles/${article.slug}`} className="flex gap-4 bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-all">
+                  <img src={article.featuredImage || article.images?.[0] || "/placeholder-article.jpg"} alt="" className="w-20 h-20 rounded-xl object-cover flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-bold text-gray-900 line-clamp-2">{article.title}</h3>
-                    <p className="text-xs text-gray-500 mt-1">{article.category} • {article.readTime || "5 min"}</p>
+                    <p className="text-xs text-gray-500 mt-1">{article.category} • {article.readTime || "5 min"} read</p>
                   </div>
                 </Link>
               ))}
@@ -812,18 +842,21 @@ const BiizzedProfile = () => {
           )
         )}
 
-        {/* SAVED (Articles + Magazines) */}
+        {/* SAVED CONTENT */}
         {activeTab === "saved" && (
           bookmarkedArticles.length === 0 && bookmarkedMagazines.length === 0 ? (
-            <div className="text-center py-12 bg-white rounded-2xl">
-              <FaBookmark className="text-4xl text-gray-300 mx-auto mb-3" />
+            <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
+              <div className="w-16 h-16 bg-[#1B3766]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FaBookmark className="text-2xl text-[#1B3766]" />
+              </div>
               <p className="text-gray-500">No saved posts yet</p>
+              <p className="text-xs text-gray-400 mt-1">Bookmark articles and magazines to read later</p>
             </div>
           ) : (
             <div className="space-y-3">
               {bookmarkedArticles.map((article) => (
-                <Link key={article._id} to={`/articles/${article.slug}`} className="flex gap-3 bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                  <img src={article.featuredImage || article.images?.[0] || "/placeholder-article.jpg"} alt="" className="w-20 h-20 rounded-lg object-cover flex-shrink-0" />
+                <Link key={article._id} to={`/articles/${article.slug}`} className="flex gap-4 bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-all">
+                  <img src={article.featuredImage || article.images?.[0] || "/placeholder-article.jpg"} alt="" className="w-20 h-20 rounded-xl object-cover flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-bold text-gray-900 line-clamp-2">{article.title}</h3>
                     <p className="text-xs text-gray-500 mt-1">{article.category}</p>
@@ -831,8 +864,8 @@ const BiizzedProfile = () => {
                 </Link>
               ))}
               {bookmarkedMagazines.map((magazine) => (
-                <Link key={magazine._id} to={`/${magazine.slug}`} className="flex gap-3 bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                  <img src={magazine.coverImage || "/placeholder-article.jpg"} alt="" className="w-16 h-20 rounded-lg object-cover flex-shrink-0" />
+                <Link key={magazine._id} to={`/${magazine.slug}`} className="flex gap-4 bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-all">
+                  <img src={magazine.coverImage || "/placeholder-article.jpg"} alt="" className="w-20 h-24 rounded-xl object-cover flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-bold text-gray-900 line-clamp-2">{magazine.title}</h3>
                     <p className="text-xs text-gray-500 mt-1">{magazine.category}</p>
@@ -846,53 +879,124 @@ const BiizzedProfile = () => {
 
       {/* Edit Profile Modal */}
       {showEditModal && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeEditModal} />
-          <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 animate-slideUp">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold text-gray-900">Edit Profile</h3>
-              <button onClick={closeEditModal} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 transition-colors">
-                <FaTimes className="text-sm" />
-              </button>
-            </div>
-            <div className="flex flex-col items-center mb-6">
-              <div className="relative">
-                {editPreview ? (
-                  <img src={editPreview} alt="Preview" className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg" />
-                ) : profile?.profile ? (
-                  <img src={profile.profile} alt={profile.name} className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg" />
-                ) : (
-                  <div className="w-24 h-24 rounded-full bg-[#1B3766] text-white flex items-center justify-center text-3xl font-bold border-4 border-white shadow-lg">
-                    {(profile?.name || "U")[0].toUpperCase()}
-                  </div>
-                )}
-                <label className="absolute bottom-0 right-0 w-8 h-8 bg-[#1B3766] text-white rounded-full flex items-center justify-center cursor-pointer hover:bg-[#142952] transition-colors shadow">
-                  <FaCamera className="text-xs" />
-                  <input type="file" accept="image/*" onChange={handlePicChange} className="hidden" />
-                </label>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={closeEditModal} />
+          <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden animate-slideUp">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-[#1B3766] to-[#142952] px-6 py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FaUserEdit className="text-white/80 text-lg" />
+                  <h3 className="text-lg font-bold text-white">Edit Profile</h3>
+                </div>
+                <button 
+                  onClick={closeEditModal} 
+                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/80 hover:text-white transition-colors"
+                >
+                  <FaTimes className="text-sm" />
+                </button>
               </div>
-              <p className="text-xs text-gray-400 mt-2">Click the camera to change photo</p>
+              <p className="text-white/60 text-xs mt-1">Update your personal information</p>
             </div>
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
-              <input
-                type="text"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                placeholder="Your name"
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766] transition-all"
-              />
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-5">
+              {/* Profile Picture */}
+              <div className="flex flex-col items-center">
+                <div className="relative group">
+                  <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-[#1B3766]/20 shadow-lg">
+                    {editPreview ? (
+                      <img src={editPreview} alt="Preview" className="w-full h-full object-cover" />
+                    ) : profile?.profile ? (
+                      <img src={profile.profile} alt={profile.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-[#1B3766] text-white flex items-center justify-center text-3xl font-bold">
+                        {(profile?.name || "U")[0].toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <label className="absolute bottom-0 right-0 w-8 h-8 bg-[#1B3766] text-white rounded-full flex items-center justify-center cursor-pointer hover:bg-[#142952] transition-colors shadow-md group-hover:scale-105 transition-transform">
+                    <FaCamera className="text-xs" />
+                    <input type="file" accept="image/*" onChange={handlePicChange} className="hidden" />
+                  </label>
+                </div>
+                <p className="text-xs text-gray-400 mt-2">Click the camera to change photo</p>
+              </div>
+
+              {/* Form Fields */}
+              <div className="space-y-4">
+                {/* Name Field */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Full Name *</label>
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    placeholder="Your full name"
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]/20 focus:border-[#1B3766] transition-all"
+                  />
+                </div>
+
+                {/* Username Field */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Username *</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">@</span>
+                    <input
+                      type="text"
+                      value={editUsername}
+                      onChange={(e) => setEditUsername(e.target.value)}
+                      placeholder="username"
+                      className="w-full pl-7 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]/20 focus:border-[#1B3766] transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Phone Field */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Phone Number *</label>
+                  <input
+                    type="tel"
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(e.target.value)}
+                    placeholder="Your phone number"
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]/20 focus:border-[#1B3766] transition-all"
+                  />
+                </div>
+
+                {/* Bio Field */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Bio</label>
+                  <textarea
+                    value={editBio}
+                    onChange={(e) => setEditBio(e.target.value)}
+                    placeholder="Tell us about yourself..."
+                    rows="3"
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]/20 focus:border-[#1B3766] transition-all resize-none"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">{editBio.length}/160 characters</p>
+                </div>
+              </div>
             </div>
-            <div className="flex gap-3">
-              <button onClick={closeEditModal} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-600 font-medium text-sm hover:bg-gray-50 transition-colors">
+
+            {/* Modal Footer */}
+            <div className="flex gap-3 p-6 pt-0">
+              <button 
+                onClick={closeEditModal} 
+                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-600 font-medium text-sm hover:bg-gray-50 transition-colors"
+              >
                 Cancel
               </button>
               <button
                 onClick={handleSaveProfile}
                 disabled={isUpdating}
-                className="flex-1 py-2.5 bg-[#1B3766] text-white rounded-xl font-medium text-sm hover:bg-[#142952] disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
+                className="flex-1 py-2.5 bg-[#1B3766] text-white rounded-xl font-medium text-sm hover:bg-[#142952] disabled:opacity-50 flex items-center justify-center gap-2 transition-colors shadow-sm"
               >
-                {isUpdating ? <><FaSpinner className="animate-spin text-xs" /> Saving...</> : <><FaCheck className="text-xs" /> Save Changes</>}
+                {isUpdating ? (
+                  <><FaSpinner className="animate-spin text-xs" /> Saving...</>
+                ) : (
+                  <><FaCheck className="text-xs" /> Save Changes</>
+                )}
               </button>
             </div>
           </div>
@@ -900,9 +1004,15 @@ const BiizzedProfile = () => {
       )}
 
       <BiizzedBottomBar />
+      
       <style>{`
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-slideUp { animation: slideUp 0.28s ease-out; }
+        @keyframes slideUp { 
+          from { opacity: 0; transform: translateY(20px) scale(0.98); } 
+          to { opacity: 1; transform: translateY(0) scale(1); } 
+        }
+        .animate-slideUp { animation: slideUp 0.3s ease-out; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
     </div>
   );

@@ -104,7 +104,26 @@ export const userApiSlice = apiSlice.injectEndpoints({
       providesTags: (result, error, id) => [{ type: 'UserProfile', id }],
     }),
 
-    // Update Profile (name & picture)
+    // Get user profile by username (public) - NEW
+    getProfileByUsername: builder.query({
+      query: (username) => ({
+        url: `${USERS_URL}/profile/username/${username}`,
+      }),
+      providesTags: (result, error, username) => [{ type: 'UserProfile', username }],
+    }),
+
+    // Get user posts (articles, magazines, videos) - NEW
+    getUserPosts: builder.query({
+      query: ({ id, type, page = 1, limit = 20 }) => ({
+        url: `${USERS_URL}/profile/${id}/posts`,
+        params: { type, page, limit },
+      }),
+      providesTags: (result, error, { id, type }) => [
+        { type: 'UserPosts', id: `${id}-${type}` },
+      ],
+    }),
+
+    // Update Profile (name, username, phone, bio & picture)
     updateProfile: builder.mutation({
       query: (data) => ({
         url: `${USERS_URL}/profile`,
@@ -180,14 +199,16 @@ export const {
   useVerifyEmailMutation,
   useResendOTPMutation,
   useLoginMutation,
-  useForgotPasswordMutation,   // <-- new
-  useResetPasswordMutation,    // <-- new
+  useForgotPasswordMutation,
+  useResetPasswordMutation,
   useLogoutMutation,
   useDeleteAccountMutation,
 
   // Profile
   useGetProfileInfoQuery,
   useGetProfileByIdQuery,
+  useGetProfileByUsernameQuery,  // NEW
+  useGetUserPostsQuery,           // NEW
   useUpdateProfileMutation,
 
   // Social/Follow

@@ -56,6 +56,10 @@ const userSchema = mongoose.Schema(
       required: true,
       unique: true,
     },
+    bio: {
+      type: String,
+      default: "",
+    },
     email: {
       type: String,
       required: true,
@@ -350,6 +354,19 @@ userSchema.methods.getCartItemCount = function () {
   if (!this.cart || this.cart.length === 0) return 0;
   return this.cart.reduce((count, item) => count + (item.quantity || 0), 0);
 };
+
+// Add these pre-save hooks to your userSchema in userModel.js:
+
+// Auto-update followersCount before saving
+userSchema.pre('save', function(next) {
+  if (this.isModified('followers')) {
+    this.followersCount = this.followers.length;
+  }
+  if (this.isModified('following')) {
+    this.followingCount = this.following.length;
+  }
+  next();
+});
 
 const User = mongoose.model("User", userSchema);
 

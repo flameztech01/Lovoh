@@ -96,6 +96,7 @@ const createArticle = asyncHandler(async (req, res) => {
 });
 
 // ==================== GET ALL ARTICLES (public) ====================
+// ==================== GET ALL ARTICLES (public) ====================
 const getArticles = asyncHandler(async (req, res) => {
   const {
     category,
@@ -123,7 +124,9 @@ const getArticles = asyncHandler(async (req, res) => {
   }
 
   try {
+    // FIX: Populate authorId to get username
     const articles = await Article.find(query)
+      .populate('authorId', 'name username profile') // Add this line!
       .sort(sort)
       .limit(limit * 1)
       .skip((page - 1) * limit)
@@ -132,7 +135,12 @@ const getArticles = asyncHandler(async (req, res) => {
     const articlesWithCounts = articles.map(article => ({
       ...article,
       _id: article._id ? article._id.toString() : article._id,
-      authorId: article.authorId ? article.authorId.toString() : null,
+      authorId: article.authorId ? {
+        _id: article.authorId._id.toString(),
+        name: article.authorId.name,
+        username: article.authorId.username,  // Now this will be available!
+        profile: article.authorId.profile,
+      } : null,
       createdBy: article.createdBy ? article.createdBy.toString() : null,
       authorType: article.authorType || 'user',
       author: article.author || 'Unknown',

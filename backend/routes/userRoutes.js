@@ -8,11 +8,13 @@ import {
   deleteAccount,
   getProfileInfo,
   getProfileById,
+  getProfileByUsername,
   followUser,
   unfollowUser,
   getFollowers,
   getFollowing,
   getUserSuggestions,
+  getUserPosts,
   // New imports
   registerUser,
   verifyEmail,
@@ -51,31 +53,44 @@ cloudinary.api
   .then(() => console.log("✅ Cloudinary connected successfully"))
   .catch((err) => console.error("❌ Cloudinary not connected:", err.message));
 
-// ----- Public routes -----
-router.post('/auth/google', googleAuth);
-router.post('/contact', postMessage);
-router.get('/profile/:id', getProfileById);
-router.get('/followers/:id', getFollowers);
-router.get('/following/:id', getFollowing);
-// Public routes for password reset
-router.post('/forgot-password', forgotPassword);
-router.post('/reset-password', resetPassword);
+// ==================== PUBLIC ROUTES ====================
 
-// ----- New authentication routes (public) -----
+// Auth routes
+router.post('/auth/google', googleAuth);
 router.post('/register', registerUser);           // sign up with email/password
 router.post('/verify-email', verifyEmail);        // verify OTP
 router.post('/resend-otp', resendOTP);            // resend OTP
 router.post('/login', loginUser);                 // email/password login
 
-// ----- Protected routes -----
+// Password reset routes
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
+
+// Contact route
+router.post('/contact', postMessage);
+
+// Public profile routes
+router.get('/profile/:id', getProfileById);                    // Get profile by ID
+router.get('/profile/username/:username', getProfileByUsername); // Get profile by username (NEW)
+router.get('/profile/:id/posts', getUserPosts);                // Get user posts (NEW)
+
+// Followers/Following routes (public view)
+router.get('/followers/:id', getFollowers);
+router.get('/following/:id', getFollowing);
+
+// ==================== PROTECTED ROUTES ====================
+
+// Profile routes
 router.get('/profile', protect, getProfileInfo);
 router.put('/profile', protect, upload.single('profile'), updateProfile);
-router.post('/logout', logout);
 router.delete('/profile', protect, deleteAccount);
 
 // Follow/Unfollow routes
 router.post('/follow/:id', protect, followUser);
 router.post('/unfollow/:id', protect, unfollowUser);
 router.get('/suggestions', protect, getUserSuggestions);
+
+// Logout route
+router.post('/logout', logout);
 
 export default router;

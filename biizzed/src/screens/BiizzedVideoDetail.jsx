@@ -1,4 +1,4 @@
-// screens/BiizzedVideoDetail.jsx – TikTok-style fullscreen scroll mode
+// screens/BiizzedVideoDetail.jsx – TikTok-style fullscreen scroll mode (Mobile Only)
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -8,7 +8,7 @@ import {
   FaLink, FaPlus, FaCheck, FaClock,
   FaYoutube, FaPlay, FaExternalLinkAlt, FaVolumeMute, FaVolumeUp,
   FaCheckCircle, FaUserCircle, FaAd, FaExpand, FaCompress,
-  FaChevronDown, FaChevronUp, FaTimes,
+  FaChevronDown, FaChevronUp, FaTimes, FaMobileAlt, FaHandPaper,
 } from 'react-icons/fa';
 import {
   useGetVideoByIdQuery,
@@ -32,13 +32,36 @@ import { toast } from 'react-toastify';
 // ====== CONFIG ======
 const WEBSITE_URL = 'https://biizzed.lovohcreate.com';
 
+// ====== UTILS ======
+const extractId = (v) => {
+  if (v === null || v === undefined) return '';
+  if (typeof v === 'string') return v;
+  if (typeof v === 'object') {
+    if (v._id) return v._id.toString();
+    if (v.toString) return v.toString();
+  }
+  return String(v);
+};
+
 const BiizzedVideoDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { userInfo } = useSelector((state) => state.auth);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Check if mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // ==================== TIKTOK MODE STATE ====================
   const [isTikTokMode, setIsTikTokMode] = useState(false);
+  const [showSwipeHint, setShowSwipeHint] = useState(true);
   const [tikTokVideos, setTikTokVideos] = useState([]);
   const [currentTikTokIndex, setCurrentTikTokIndex] = useState(0);
   const [showCommentsDrawer, setShowCommentsDrawer] = useState(false);
@@ -140,12 +163,21 @@ const BiizzedVideoDetail = () => {
   // ==================== TIKTOK MODE SETUP ====================
   useEffect(() => {
     if (video && relatedVideos.length > 0) {
-      // Build feed: current video first, then related videos
       const feed = [video, ...relatedVideos];
       setTikTokVideos(feed);
       setCurrentTikTokIndex(0);
     }
   }, [video, relatedData]);
+
+  // Auto-hide swipe hint after 3 seconds
+  useEffect(() => {
+    if (isTikTokMode && showSwipeHint) {
+      const timer = setTimeout(() => {
+        setShowSwipeHint(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isTikTokMode, showSwipeHint]);
 
   // Intersection Observer for TikTok scroll snap
   useEffect(() => {
@@ -158,7 +190,6 @@ const BiizzedVideoDetail = () => {
             const idx = Number(entry.target.dataset.index);
             setCurrentTikTokIndex(idx);
             setActiveCommentVideoId(tikTokVideos[idx]?._id);
-            // Reset ad for new video
             setShowAd(!!preRollAd);
             setAdCompleted(false);
             setAdCanSkip(false);
@@ -177,7 +208,7 @@ const BiizzedVideoDetail = () => {
     return () => observer.disconnect();
   }, [isTikTokMode, tikTokVideos, preRollAd]);
 
-  // Pause/play videos based on visibility in TikTok mode
+  // Pause/play videos based on visibility
   useEffect(() => {
     if (!isTikTokMode) return;
 
@@ -197,7 +228,6 @@ const BiizzedVideoDetail = () => {
           videoEl.currentTime = 0;
         }
         if (iframeEl) {
-          // Reset iframe by re-setting src to stop audio
           const src = iframeEl.src;
           iframeEl.src = '';
           setTimeout(() => { iframeEl.src = src; }, 50);
@@ -206,7 +236,6 @@ const BiizzedVideoDetail = () => {
     });
   }, [isTikTokMode, currentTikTokIndex, showAd]);
 
-  // Handle scroll to specific video in TikTok mode
   const scrollToVideo = useCallback((index) => {
     const el = videoItemRefs.current[index];
     if (el && tikTokScrollRef.current) {
@@ -287,6 +316,11 @@ const BiizzedVideoDetail = () => {
   const isAdmin = video?.authorType === 'admin';
   const isOwn = isOwnVideo();
   const following = localFollowing;
+  
+  // Get username for routing
+  const getAuthorUsername = (v) => {
+    return v?.user?.username || v?.authorUsername || extractId(v?.user?._id || v?.user);
+  };
 
   // ==================== ACTIONS ====================
   const handleLike = async (videoId) => {
@@ -368,11 +402,6 @@ const BiizzedVideoDetail = () => {
     }
   };
 
-  const handleBookmark = (targetVideo) => {
-    // Placeholder - integrate with your bookmark API
-    toast.info('Bookmark feature coming soon!');
-  };
-
   const getRelatedThumbnail = (v) => {
     if (v.videoType === 'youtube') return v.youtubeThumbnail || v.thumbnail;
     return v.thumbnail;
@@ -394,11 +423,16 @@ const BiizzedVideoDetail = () => {
   const renderTikTokVideoItem = (v, index) => {
     const isCurrentYouTube = v.videoType === 'youtube';
     const isCurrentAdmin = v.authorType === 'admin';
-    const isCurrentPortrait = v.videoUrl && !isCurrentYouTube; // Simplified check
     const isCurrentLiked = v.likes?.includes(userInfo?._id);
     const currentAuthorId = v?.user?._id?.toString() || v?.user?.toString();
+    const currentAuthorUsername = v?.user?.username || v?.authorUsername || currentAuthorId;
     const currentAuthorName = v?.authorName || 'Creator';
+    const currentAuthorProfile = v?.authorProfile || v?.user?.profile;
     const currentIsOwn = userInfo?._id?.toString() === currentAuthorId;
+    const currentIsFollowing = profileData?.following?.some(f => {
+      const fid = typeof f === 'object' ? f._id : f;
+      return fid?.toString() === currentAuthorId;
+    });
 
     return (
       <div
@@ -453,7 +487,7 @@ const BiizzedVideoDetail = () => {
           )}
         </div>
 
-        {/* Gradient Overlay for text readability */}
+        {/* Gradient Overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 pointer-events-none" />
 
         {/* YouTube Badge */}
@@ -477,12 +511,12 @@ const BiizzedVideoDetail = () => {
           </h3>
           
           <Link 
-            to={`/user/${currentAuthorId}`}
+            to={`/user/${currentAuthorUsername}`}
             onClick={(e) => e.stopPropagation()}
             className="flex items-center gap-2 mb-3"
           >
-            {v.authorProfile ? (
-              <img src={v.authorProfile} alt="" className="w-8 h-8 rounded-full object-cover border border-white/30" />
+            {currentAuthorProfile ? (
+              <img src={currentAuthorProfile} alt="" className="w-8 h-8 rounded-full object-cover border border-white/30" />
             ) : (
               <div className="w-8 h-8 rounded-full bg-red-500 text-white flex items-center justify-center text-sm font-bold">
                 {currentAuthorName[0]?.toUpperCase()}
@@ -528,17 +562,17 @@ const BiizzedVideoDetail = () => {
         <div className="absolute right-2 bottom-24 flex flex-col items-center gap-5 z-20">
           {/* Avatar with Follow */}
           <div className="relative mb-2">
-            {v.authorProfile ? (
+            {currentAuthorProfile ? (
               <img 
-                src={v.authorProfile} 
+                src={currentAuthorProfile} 
                 alt="" 
                 className="w-12 h-12 rounded-full object-cover border-2 border-white/30"
-                onClick={(e) => { e.stopPropagation(); navigate(`/user/${currentAuthorId}`); }}
+                onClick={(e) => { e.stopPropagation(); navigate(`/user/${currentAuthorUsername}`); }}
               />
             ) : (
               <div 
                 className="w-12 h-12 rounded-full bg-red-500 text-white flex items-center justify-center text-lg font-bold border-2 border-white/30"
-                onClick={(e) => { e.stopPropagation(); navigate(`/user/${currentAuthorId}`); }}
+                onClick={(e) => { e.stopPropagation(); navigate(`/user/${currentAuthorUsername}`); }}
               >
                 {currentAuthorName[0]?.toUpperCase()}
               </div>
@@ -548,7 +582,7 @@ const BiizzedVideoDetail = () => {
                 onClick={(e) => handleFollowToggle(e, v)}
                 className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-6 h-6 bg-[#1B3766] rounded-full flex items-center justify-center border-2 border-black"
               >
-                {following ? <FaCheck className="text-white text-[10px]" /> : <FaPlus className="text-white text-[10px]" />}
+                {currentIsFollowing ? <FaCheck className="text-white text-[10px]" /> : <FaPlus className="text-white text-[10px]" />}
               </button>
             )}
           </div>
@@ -579,17 +613,6 @@ const BiizzedVideoDetail = () => {
             <span className="text-white text-xs font-medium drop-shadow">{v.comments?.length || 0}</span>
           </button>
 
-          {/* Bookmark/Save */}
-          <button 
-            onClick={(e) => { e.stopPropagation(); handleBookmark(v); }}
-            className="flex flex-col items-center gap-1 group"
-          >
-            <div className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center group-active:scale-90 transition-transform">
-              <FaRegBookmark className="text-white text-xl" />
-            </div>
-            <span className="text-white text-xs font-medium drop-shadow">Save</span>
-          </button>
-
           {/* Share */}
           <button 
             onClick={(e) => { e.stopPropagation(); handleShare(v); }}
@@ -604,20 +627,20 @@ const BiizzedVideoDetail = () => {
 
         {/* Scroll Indicators */}
         {index > 0 && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 animate-bounce">
-            <FaChevronUp className="text-white/50 text-lg" />
+          <div className="absolute top-8 left-1/2 -translate-x-1/2 z-10">
+            <FaChevronUp className="text-white/40 text-lg" />
           </div>
         )}
         {index < tikTokVideos.length - 1 && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 animate-bounce">
-            <FaChevronDown className="text-white/50 text-lg" />
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10">
+            <FaChevronDown className="text-white/40 text-lg" />
           </div>
         )}
       </div>
     );
   };
 
-  // ==================== COMMENTS DRAWER FOR TIKTOK MODE ====================
+  // ==================== COMMENTS DRAWER ====================
   const renderCommentsDrawer = () => {
     if (!showCommentsDrawer) return null;
     
@@ -629,20 +652,16 @@ const BiizzedVideoDetail = () => {
         className="fixed inset-0 z-[100] flex items-end"
         onClick={() => setShowCommentsDrawer(false)}
       >
-        {/* Backdrop */}
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
         
-        {/* Drawer */}
         <div 
           className="relative w-full bg-white rounded-t-3xl max-h-[70vh] flex flex-col animate-slide-up"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Handle */}
           <div className="flex justify-center pt-3 pb-1">
             <div className="w-10 h-1 bg-gray-300 rounded-full" />
           </div>
 
-          {/* Header */}
           <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
             <h3 className="text-lg font-bold text-gray-900">
               Comments ({activeVideo.comments?.length || 0})
@@ -655,11 +674,11 @@ const BiizzedVideoDetail = () => {
             </button>
           </div>
 
-          {/* Comments List */}
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
             {activeVideo.comments?.length > 0 ? (
               activeVideo.comments.map((comment) => {
                 const isCommentLiked = comment.likes?.includes(userInfo?._id);
+                const commentUsername = comment.user?.username || comment.userName;
                 return (
                   <div key={comment._id} className="flex gap-3">
                     {comment.userProfile ? (
@@ -671,29 +690,19 @@ const BiizzedVideoDetail = () => {
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="bg-gray-50 rounded-xl px-4 py-2.5">
-                        <p className="text-sm font-semibold text-gray-900">{comment.userName || 'User'}</p>
+                        <Link to={`/user/${commentUsername || comment.user}`} className="text-sm font-semibold text-gray-900 hover:underline">
+                          {comment.userName || 'User'}
+                        </Link>
                         <p className="text-sm text-gray-700 mt-0.5">{comment.text}</p>
                       </div>
                       <div className="flex items-center gap-4 mt-1 text-xs text-gray-500">
                         <span>{formatRelativeDate(comment.createdAt)}</span>
-                        <button 
-                          onClick={() => handleLikeComment(comment._id, activeVideo._id)} 
-                          className="hover:text-[#1B3766]"
-                        >
+                        <button onClick={() => handleLikeComment(comment._id, activeVideo._id)} className="hover:text-[#1B3766]">
                           {isCommentLiked ? 'Liked' : 'Like'}
                         </button>
                         {comment.likes?.length > 0 && <span>{comment.likes.length}</span>}
-                        <button 
-                          onClick={() => { setReplyTo(comment._id); setCommentText(''); }} 
-                          className="hover:text-[#1B3766]"
-                        >
-                          <FaReply className="inline text-[10px]" /> Reply
-                        </button>
                         {(userInfo?._id === comment.user || userInfo?.role === 'admin') && (
-                          <button 
-                            onClick={() => handleDeleteComment(comment._id, activeVideo._id)} 
-                            className="text-red-500"
-                          >
+                          <button onClick={() => handleDeleteComment(comment._id, activeVideo._id)} className="text-red-500">
                             <FaTrashAlt className="text-[10px]" />
                           </button>
                         )}
@@ -710,18 +719,8 @@ const BiizzedVideoDetail = () => {
             )}
           </div>
 
-          {/* Comment Input */}
           {userInfo ? (
-            <form 
-              onSubmit={(e) => handleAddComment(e, activeVideo._id)} 
-              className="px-5 py-4 border-t border-gray-100 bg-white"
-            >
-              {replyTo && (
-                <div className="flex items-center gap-2 mb-2 text-xs text-gray-500">
-                  <FaReply /> Replying{' '}
-                  <button type="button" onClick={() => setReplyTo(null)} className="text-red-500">Cancel</button>
-                </div>
-              )}
+            <form onSubmit={(e) => handleAddComment(e, activeVideo._id)} className="px-5 py-4 border-t border-gray-100 bg-white">
               <div className="flex gap-3">
                 {userInfo?.profile ? (
                   <img src={userInfo.profile} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
@@ -751,11 +750,31 @@ const BiizzedVideoDetail = () => {
             </form>
           ) : (
             <div className="px-5 py-4 border-t border-gray-100 text-center">
-              <Link to="/login" className="text-sm text-[#1B3766] font-medium hover:underline">
-                Login to comment
-              </Link>
+              <Link to="/login" className="text-sm text-[#1B3766] font-medium hover:underline">Login to comment</Link>
             </div>
           )}
+        </div>
+      </div>
+    );
+  };
+
+  // ==================== SWIPE HINT COMPONENT ====================
+  const SwipeHint = () => {
+    if (!showSwipeHint || !isTikTokMode) return null;
+    
+    return (
+      <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-black/80 backdrop-blur-md animate-fade-out" style={{ animationDelay: '2.5s', animationFillMode: 'forwards' }}>
+        <div className="bg-white/10 rounded-2xl p-8 text-center backdrop-blur-sm">
+          <div className="animate-bounce mb-4">
+            <FaHandPaper className="text-white text-5xl mx-auto" />
+          </div>
+          <p className="text-white text-lg font-semibold mb-2">Tap & Swipe Up</p>
+          <p className="text-white/70 text-sm">Scroll through videos like TikTok</p>
+          <div className="flex justify-center gap-2 mt-6">
+            <div className="w-2 h-2 rounded-full bg-white/30"></div>
+            <div className="w-2 h-2 rounded-full bg-white/50"></div>
+            <div className="w-2 h-2 rounded-full bg-white/30"></div>
+          </div>
         </div>
       </div>
     );
@@ -788,11 +807,12 @@ const BiizzedVideoDetail = () => {
   }
 
   const authorId = video?.user?._id?.toString() || video?.user?.toString();
+  const authorUsername = video?.user?.username || video?.authorUsername || authorId;
   const authorName = video?.authorName || 'Creator';
-  const authorProfile = video?.authorProfile;
+  const authorProfile = video?.authorProfile || video?.user?.profile;
 
-  // ==================== TIKTOK MODE RENDER ====================
-  if (isTikTokMode) {
+  // ==================== TIKTOK MODE RENDER (Mobile Only) ====================
+  if (isTikTokMode && isMobile) {
     return (
       <div className="fixed inset-0 z-[90] bg-black overflow-hidden">
         <Helmet>
@@ -807,10 +827,8 @@ const BiizzedVideoDetail = () => {
           <FaCompress className="text-lg" />
         </button>
 
-        {/* Video Counter */}
-        <div className="absolute top-4 right-4 z-[95] bg-black/50 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-xs font-medium">
-          {currentTikTokIndex + 1} / {tikTokVideos.length}
-        </div>
+        {/* Swipe Hint */}
+        <SwipeHint />
 
         {/* Scrollable Feed */}
         <div 
@@ -829,7 +847,6 @@ const BiizzedVideoDetail = () => {
         {/* Comments Drawer */}
         {renderCommentsDrawer()}
 
-        {/* Hide scrollbar */}
         <style>{`
           .snap-y::-webkit-scrollbar { display: none; }
           @keyframes slide-up {
@@ -839,12 +856,19 @@ const BiizzedVideoDetail = () => {
           .animate-slide-up {
             animation: slide-up 0.3s ease-out;
           }
+          @keyframes fade-out {
+            from { opacity: 1; visibility: visible; }
+            to { opacity: 0; visibility: hidden; }
+          }
+          .animate-fade-out {
+            animation: fade-out 0.3s ease-in forwards;
+          }
         `}</style>
       </div>
     );
   }
 
-  // ==================== DESKTOP MODE RENDER (Original UI) ====================
+  // ==================== DESKTOP MODE RENDER ====================
   return (
     <div className="min-h-screen bg-gray-100">
       <Helmet>
@@ -853,7 +877,6 @@ const BiizzedVideoDetail = () => {
         <meta property="og:title" content={video.title} />
         <meta property="og:image" content={isYouTube ? video.youtubeThumbnail : video.thumbnail} />
         <meta property="og:type" content="video" />
-        <meta name="twitter:card" content="player" />
       </Helmet>
 
       <BiizzedArticlesNavbar />
@@ -864,15 +887,21 @@ const BiizzedVideoDetail = () => {
           {/* Main Content */}
           <main className="flex-1 max-w-[900px] mx-auto">
 
-            {/* TikTok Mode Toggle */}
-            <div className="flex justify-end mb-3">
-              <button
-                onClick={() => setIsTikTokMode(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-[#1B3766] text-white rounded-full text-sm font-medium hover:bg-[#142952] transition-colors shadow-md"
-              >
-                <FaExpand className="text-xs" /> Fullscreen Feed
-              </button>
-            </div>
+            {/* TikTok Mode Toggle - Mobile Only */}
+            {isMobile && (
+              <div className="flex justify-end mb-3">
+                <button
+                  onClick={() => setIsTikTokMode(true)}
+                  className="group relative overflow-hidden px-4 py-2 bg-gradient-to-r from-[#1B3766] to-[#142952] text-white rounded-full text-sm font-medium hover:shadow-lg transition-all duration-300"
+                >
+                  <span className="relative z-10 flex items-center gap-2">
+                    <FaHandPaper className="text-sm animate-bounce" />
+                    Tap to Scroll
+                  </span>
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#1B3766] to-[#1B3766]/80 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+                </button>
+              </div>
+            )}
 
             {/* Video Player with Pre‑roll Ad */}
             <div className={`bg-black rounded-2xl overflow-hidden mb-4 ${getVideoContainerClass()}`}>
@@ -935,7 +964,7 @@ const BiizzedVideoDetail = () => {
                   </div>
                 )}
 
-                {/* MAIN VIDEO (hidden when ad is active) */}
+                {/* MAIN VIDEO */}
                 <div style={{ display: showAd && !adCompleted ? 'none' : 'block' }} className="w-full h-full">
                   {isYouTube ? (
                     !isYouTubePlaying ? (
@@ -952,10 +981,6 @@ const BiizzedVideoDetail = () => {
                           <div className="w-20 h-20 bg-red-600 rounded-full flex items-center justify-center shadow-2xl group-hover:scale-110 transition-transform">
                             <FaPlay className="text-white text-3xl ml-1.5" />
                           </div>
-                        </div>
-                        <div className="absolute bottom-4 right-4 bg-black/80 text-white px-3 py-1.5 rounded-lg text-sm flex items-center gap-2">
-                          <FaYoutube className="text-red-500" />
-                          <span>Watch on YouTube</span>
                         </div>
                       </div>
                     ) : (
@@ -1000,11 +1025,6 @@ const BiizzedVideoDetail = () => {
                     <FaCheckCircle className="text-blue-600" /> Admin
                   </div>
                 )}
-                {isPortrait && !isYouTube && (
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-purple-50 text-purple-700 rounded-full text-xs font-medium">
-                    <FaPlay className="text-purple-600 text-[10px]" /> Shorts / Reel
-                  </div>
-                )}
               </div>
 
               <h1 className="text-xl font-bold text-gray-900 mb-3">{video.title}</h1>
@@ -1015,34 +1035,21 @@ const BiizzedVideoDetail = () => {
                   <span>{formatViews(video.views)}</span>
                   <span>•</span>
                   <span>{formatDate(video.createdAt)}</span>
-                  {isYouTube && video.youtubeUrl && (
-                    <>
-                      <span>•</span>
-                      <a
-                        href={video.youtubeUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-red-600 hover:text-red-700 flex items-center gap-1"
-                      >
-                        <FaExternalLinkAlt className="text-[10px]" /> Watch on YouTube
-                      </a>
-                    </>
-                  )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => handleLike()} className="flex items-center gap-1.5 px-4 py-2 bg-gray-100 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors">
+                  <button onClick={() => handleLike()} className="flex items-center gap-1.5 px-4 py-2 bg-gray-100 rounded-full text-sm font-medium hover:bg-gray-200">
                     {isLiked ? <FaHeart className="text-red-500" /> : <FaRegHeart />}
                     {video.likes?.length || 0}
                   </button>
-                  <button onClick={() => handleShare()} className="flex items-center gap-1.5 px-4 py-2 bg-gray-100 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors">
+                  <button onClick={() => handleShare()} className="flex items-center gap-1.5 px-4 py-2 bg-gray-100 rounded-full text-sm font-medium hover:bg-gray-200">
                     <FaShare /> Share
                   </button>
                 </div>
               </div>
 
-              {/* Creator Info */}
+              {/* Creator Info - Using username route */}
               <div className="flex items-center justify-between mt-4">
-                <Link to={`/user/${authorId}`} className="flex items-center gap-3">
+                <Link to={`/user/${authorUsername}`} className="flex items-center gap-3">
                   {authorProfile ? (
                     <img src={authorProfile} alt="" className="w-12 h-12 rounded-full object-cover" />
                   ) : (
@@ -1058,32 +1065,20 @@ const BiizzedVideoDetail = () => {
                           <FaCheckCircle className="text-[8px]" /> Admin
                         </span>
                       )}
-                      {isYouTube && (
-                        <FaYoutube className="text-red-600 text-xs" title="YouTube Creator" />
-                      )}
                     </div>
-                    <p className="text-xs text-gray-500">Creator</p>
+                    <p className="text-xs text-gray-500">@{authorUsername}</p>
                   </div>
                 </Link>
 
-                {/* Follow Button */}
                 {userInfo && !isOwn && !isAdmin && (
                   <button
                     onClick={handleFollowToggle}
                     className={`flex items-center gap-1 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                      following
-                        ? 'bg-[#1B3766] text-white hover:bg-red-600'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      following ? 'bg-[#1B3766] text-white hover:bg-red-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
                     {following ? <><FaCheck className="text-xs" /> Following</> : <><FaPlus className="text-xs" /> Follow</>}
                   </button>
-                )}
-
-                {isAdmin && !isOwn && userInfo && (
-                  <div className="flex items-center gap-1 px-4 py-2 bg-gray-100 rounded-full text-sm text-gray-500">
-                    <FaUserCircle className="text-sm" /> Platform Admin
-                  </div>
                 )}
               </div>
 
@@ -1093,17 +1088,7 @@ const BiizzedVideoDetail = () => {
                   {video.description ? (
                     <p className="text-sm text-gray-700 whitespace-pre-wrap">{video.description}</p>
                   ) : isYouTube && (
-                    <p className="text-sm text-gray-500 italic">
-                      This is a YouTube video shared on Biizzed.
-                      <a
-                        href={video.youtubeUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-red-600 hover:underline ml-1"
-                      >
-                        Watch on YouTube
-                      </a>
-                    </p>
+                    <p className="text-sm text-gray-500 italic">This is a YouTube video shared on Biizzed.</p>
                   )}
                   {isYouTube && video.youtubeUrl && (
                     <a
@@ -1136,12 +1121,6 @@ const BiizzedVideoDetail = () => {
 
               {userInfo ? (
                 <form onSubmit={(e) => handleAddComment(e)} className="mb-6">
-                  {replyTo && (
-                    <div className="flex items-center gap-2 mb-2 text-xs text-gray-500">
-                      <FaReply /> Replying{' '}
-                      <button type="button" onClick={() => setReplyTo(null)} className="text-red-500">Cancel</button>
-                    </div>
-                  )}
                   <div className="flex gap-3">
                     {userInfo?.profile ? (
                       <img src={userInfo.profile} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
@@ -1178,6 +1157,7 @@ const BiizzedVideoDetail = () => {
               <div className="space-y-4">
                 {video.comments?.map((comment) => {
                   const isCommentLiked = comment.likes?.includes(userInfo?._id);
+                  const commentUsername = comment.user?.username || comment.userName;
                   return (
                     <div key={comment._id} className="flex gap-3">
                       {comment.userProfile ? (
@@ -1189,7 +1169,9 @@ const BiizzedVideoDetail = () => {
                       )}
                       <div className="flex-1 min-w-0">
                         <div className="bg-gray-50 rounded-xl px-4 py-2.5">
-                          <p className="text-sm font-semibold text-gray-900">{comment.userName || 'User'}</p>
+                          <Link to={`/user/${commentUsername || comment.user}`} className="text-sm font-semibold text-gray-900 hover:underline">
+                            {comment.userName || 'User'}
+                          </Link>
                           <p className="text-sm text-gray-700 mt-0.5">{comment.text}</p>
                         </div>
                         <div className="flex items-center gap-4 mt-1 text-xs text-gray-500">
@@ -1198,9 +1180,6 @@ const BiizzedVideoDetail = () => {
                             {isCommentLiked ? 'Liked' : 'Like'}
                           </button>
                           {comment.likes?.length > 0 && <span>{comment.likes.length}</span>}
-                          <button onClick={() => { setReplyTo(comment._id); setCommentText(''); }} className="hover:text-[#1B3766]">
-                            <FaReply className="inline text-[10px]" /> Reply
-                          </button>
                           {(userInfo?._id === comment.user || userInfo?.role === 'admin') && (
                             <button onClick={() => handleDeleteComment(comment._id)} className="text-red-500">
                               <FaTrashAlt className="text-[10px]" />
@@ -1222,49 +1201,26 @@ const BiizzedVideoDetail = () => {
                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Related Videos</h3>
                 <div className="space-y-3">
                   {relatedVideos.slice(0, 4).map((v) => {
-                    const isRelatedYouTube = v.videoType === 'youtube';
-                    const isRelatedAdmin = v.authorType === 'admin';
+                    const relatedUsername = v?.user?.username || v?.authorUsername;
                     return (
                       <Link key={v._id} to={`/videos/${v._id}`} className="flex gap-3 group">
                         <div className="relative w-40 h-24 rounded-lg overflow-hidden bg-black flex-shrink-0">
                           {getRelatedThumbnail(v) ? (
-                            <img
-                              src={getRelatedThumbnail(v)}
-                              alt=""
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                if (isRelatedYouTube && v.youtubeId) e.target.src = `https://img.youtube.com/vi/${v.youtubeId}/hqdefault.jpg`;
-                              }}
-                            />
+                            <img src={getRelatedThumbnail(v)} alt="" className="w-full h-full object-cover" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center bg-gray-800">
-                              {isRelatedYouTube ? <FaYoutube className="text-gray-600 text-2xl" /> : <FaPlay className="text-gray-600" />}
+                              {v.videoType === 'youtube' ? <FaYoutube className="text-gray-600 text-2xl" /> : <FaPlay className="text-gray-600" />}
                             </div>
                           )}
-                          {isRelatedYouTube ? (
+                          {v.videoType === 'youtube' && (
                             <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-red-600/90 text-white text-[10px] rounded flex items-center gap-0.5">
                               <FaYoutube className="text-[8px]" /> YT
-                            </div>
-                          ) : v.duration ? (
-                            <div className="absolute bottom-1 right-1 px-1 py-0.5 bg-black/80 text-white text-[10px] rounded">
-                              {formatDuration(v.duration)}
-                            </div>
-                          ) : null}
-                          {isRelatedAdmin && (
-                            <div className="absolute top-1 left-1 px-1 py-0.5 bg-blue-500/90 text-white text-[8px] rounded flex items-center gap-0.5">
-                              <FaCheckCircle className="text-[6px]" /> Admin
                             </div>
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-gray-900 line-clamp-2 group-hover:text-[#1B3766]">
-                            {v.title}
-                          </p>
-                          <p className="text-[10px] text-gray-500 mt-1 flex items-center gap-1">
-                            {v.authorName || 'Creator'}
-                            {isRelatedYouTube && <FaYoutube className="text-red-600 text-[8px]" />}
-                            {isRelatedAdmin && <FaCheckCircle className="text-blue-500 text-[8px]" />}
-                          </p>
+                          <p className="text-xs font-medium text-gray-900 line-clamp-2 group-hover:text-[#1B3766]">{v.title}</p>
+                          <p className="text-[10px] text-gray-500 mt-1">@{relatedUsername || 'creator'}</p>
                           <p className="text-[10px] text-gray-400">{formatViews(v.views)}</p>
                         </div>
                       </Link>
