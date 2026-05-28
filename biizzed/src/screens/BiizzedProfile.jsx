@@ -4,9 +4,8 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   FaUser, FaNewspaper, FaBookOpen, FaVideo, FaHeart, FaBookmark,
   FaSpinner, FaEdit, FaTrashAlt, FaPlus, FaEllipsisV, FaSignOutAlt,
-  FaCamera, FaTimes, FaCheck, FaCog, FaEnvelope, FaCheckCircle,
-  FaStar, FaClock, FaEye, FaEyeSlash, FaFilter, FaUserEdit,
-  FaUsers, FaShareAlt,
+  FaCamera, FaTimes, FaCheck, FaCog, FaEnvelope, FaStar, FaClock,
+  FaEye, FaEyeSlash, FaFilter, FaUserEdit, FaUsers, FaShareAlt,
 } from "react-icons/fa";
 import {
   useGetProfileInfoQuery, useUpdateProfileMutation, useLogoutMutation,
@@ -29,6 +28,25 @@ import BiizzedBottomBar from "../components/BiizzedBottomBar";
 import { useSelector, useDispatch } from "react-redux";
 import { toast } from "react-toastify";
 import { clearAllAuth } from "../slices/authslice";
+
+// ====== VERIFICATION BADGE COMPONENT ======
+const VerificationBadge = ({ className = "" }) => (
+  <svg
+    className={`inline-block ${className}`}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <circle cx="12" cy="12" r="11" fill="#1B3766" stroke="#1B3766" strokeWidth="1" />
+    <path
+      d="M7.5 12L10.5 15L16.5 9"
+      stroke="white"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
 
 const BiizzedProfile = () => {
   const navigate = useNavigate();
@@ -320,7 +338,7 @@ const BiizzedProfile = () => {
     }
   };
 
-  // ====== MENU HANDLER – Position ABOVE the button, anchored to right edge ======
+  // ====== MENU HANDLER ======
   const handleMenuOpen = (e, type, id) => {
     e.preventDefault();
     e.stopPropagation();
@@ -482,7 +500,7 @@ const BiizzedProfile = () => {
               <div className="w-8" />
               <div className="flex items-center gap-1">
                 <h2 className="text-base font-bold text-gray-900">{profile?.username || "user"}</h2>
-                {isContributorApproved && <FaCheckCircle className="text-[#1B3766] text-sm" />}
+                {isContributorApproved && <VerificationBadge className="w-4 h-4" />}
               </div>
               <div className="flex items-center gap-3">
                 <button onClick={() => navigate('/settings')} className="text-gray-900 text-lg p-1">
@@ -512,11 +530,20 @@ const BiizzedProfile = () => {
               </button>
             </div>
 
+            {/* Mobile: Name + Username directly under avatar, centered */}
+            <div className="lg:hidden flex flex-col items-center mb-4">
+              <div className="flex items-center gap-2 mb-0.5">
+                <h2 className="text-lg font-bold text-gray-900">{profile?.name || "User"}</h2>
+                {isContributorApproved && <VerificationBadge className="w-5 h-5" />}
+              </div>
+              <p className="text-sm text-gray-500">@{profile?.username || "user"}</p>
+            </div>
+
             {/* Desktop: Name & Username below avatar */}
             <div className="hidden lg:block">
               <div className="flex items-center gap-2 mb-1">
                 <h2 className="text-xl font-bold text-gray-900">{profile?.name || "User"}</h2>
-                {isContributorApproved && <FaCheckCircle className="text-[#1B3766] text-sm" />}
+                {isContributorApproved && <VerificationBadge className="w-5 h-5" />}
               </div>
               <p className="text-sm text-gray-500 mb-1">@{profile?.username || "user"}</p>
               {profile?.bio && (
@@ -527,9 +554,6 @@ const BiizzedProfile = () => {
 
           {/* Right: Stats, Buttons, Bio */}
           <div className="flex-1 w-full">
-            {/* Mobile: Handle */}
-            <p className="text-sm text-gray-900 font-semibold mb-4 lg:hidden">@{profile?.username || "user"}</p>
-
             {/* Stats */}
             <div className="flex items-center justify-center gap-8 mb-4 w-full max-w-xs mx-auto lg:mx-0 lg:max-w-md lg:justify-start lg:gap-10">
               <button onClick={() => navigate("/subscribers")} className="flex flex-col items-center min-w-[60px] lg:items-start">
@@ -610,7 +634,7 @@ const BiizzedProfile = () => {
                 {subStatusLoading ? (
                   <FaSpinner className="animate-spin text-[10px]" />
                 ) : digestSubscribed ? (
-                  <FaCheckCircle className="text-[10px]" />
+                  <FaCheck className="text-[10px]" />
                 ) : (
                   <FaEnvelope className="text-[10px]" />
                 )}

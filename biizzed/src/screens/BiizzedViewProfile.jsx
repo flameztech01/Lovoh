@@ -439,6 +439,15 @@ const BiizzedViewProfile = () => {
               )}
             </div>
 
+            {/* Mobile: Name + Username directly under avatar, centered */}
+            <div className="lg:hidden flex flex-col items-center mb-4">
+              <div className="flex items-center gap-2 mb-0.5">
+                <h2 className="text-lg font-bold text-gray-900">{user?.name || "User"}</h2>
+                {user?.biizzed_contributor && <FaCheckCircle className="text-[#1B3766] text-sm" />}
+              </div>
+              <p className="text-sm text-gray-500">@{user?.username || "user"}</p>
+            </div>
+
             {/* Desktop: Name & Username below avatar */}
             <div className="hidden lg:block">
               <div className="flex items-center gap-2 mb-1">
@@ -454,9 +463,6 @@ const BiizzedViewProfile = () => {
 
           {/* Right: Stats, Buttons, Bio */}
           <div className="flex-1 w-full">
-            {/* Mobile: Handle */}
-            <p className="text-sm text-gray-900 font-semibold mb-4 lg:hidden">@{user?.username || "user"}</p>
-
             {/* Stats */}
             <div className="flex items-center justify-center gap-8 mb-4 w-full max-w-xs mx-auto lg:mx-0 lg:max-w-md lg:justify-start lg:gap-10">
               <div className="flex flex-col items-center min-w-[60px] lg:items-start">
