@@ -622,7 +622,31 @@ const BiizzedProfile = () => {
 
         {/* Content Tabs */}
         <div className="border-t border-gray-100 mt-2 lg:mt-4">
-          <div className="flex overflow-x-auto hide-scrollbar lg:justify-center">
+          {/* Mobile: Icons only, no scroll, evenly spaced */}
+          <div className="flex justify-between items-center lg:hidden">
+            {[
+              { id: "articles", icon: FaNewspaper },
+              { id: "magazines", icon: FaBookOpen },
+              { id: "videos", icon: FaVideo },
+              { id: "liked", icon: FaHeart },
+              { id: "saved", icon: FaBookmark },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex-1 flex flex-col items-center py-3 border-b-2 transition-all ${
+                  activeTab === tab.id
+                    ? "border-[#1B3766] text-[#1B3766]"
+                    : "border-transparent text-gray-400 hover:text-gray-600"
+                }`}
+              >
+                <tab.icon className="text-xl" />
+              </button>
+            ))}
+          </div>
+
+          {/* Desktop: Horizontal tabs with text + count */}
+          <div className="hidden lg:flex lg:justify-center">
             {[
               { id: "articles", label: "Articles", icon: FaNewspaper, count: filteredArticles.length },
               { id: "magazines", label: "Magazines", icon: FaBookOpen, count: filteredMagazines.length },
@@ -633,15 +657,15 @@ const BiizzedProfile = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex flex-col items-center gap-0.5 px-4 py-3 min-w-[72px] border-b-2 transition-all lg:flex-row lg:gap-2 lg:px-6 lg:py-3 ${
+                className={`flex items-center gap-2 px-6 py-3 border-b-2 transition-all ${
                   activeTab === tab.id
                     ? "border-[#1B3766] text-[#1B3766]"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
                 }`}
               >
-                <tab.icon className="text-lg mb-0.5 lg:mb-0 lg:text-base" />
-                <span className="text-[11px] font-medium lg:text-sm">{tab.label}</span>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full lg:text-xs ${
+                <tab.icon className="text-base" />
+                <span className="text-sm font-medium">{tab.label}</span>
+                <span className={`text-xs px-1.5 py-0.5 rounded-full ${
                   activeTab === tab.id ? "bg-[#1B3766]/10 text-[#1B3766]" : "bg-gray-100 text-gray-500"
                 }`}>
                   {tab.count}
