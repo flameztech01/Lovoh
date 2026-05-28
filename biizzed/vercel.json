@@ -1,4 +1,20 @@
 {
-  "source": "/(.*)",
-  "destination": "/index.html"
+  "rewrites": [
+    {
+      "src": "/articles/(.*)",
+      "dest": "/api/og"
+    },
+    {
+      "src": "/videos/(.*)",
+      "dest": "/api/og"
+    },
+    {
+      "src": "/user/(.*)",
+      "dest": "/api/og"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
 }
