@@ -18,6 +18,7 @@ import {
   sendWalletSetupConfirmation,
   sendSettlementNotification,
   sendTicketToAttendee,
+  sendEventReminder
 } from '../utils/eventEmailService.js';
 
 // Paystack config
@@ -1343,6 +1344,222 @@ const handleSettlementSuccess = async (data) => {
   }
 };
 
+
+// Add this function after your existing functions
+const sendReminder = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  
+  const event = await findEvent(id);
+  if (!event || event.isDisabled) {
+    res.status(404);
+    throw new Error('Event not found');
+  }
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const registrationDeadline = event.registrationDeadline ? new Date(event.registrationDeadline) : new Date(event.date);
+  registrationDeadline.setHours(0, 0, 0, 0);
+  
+  const eventDate = new Date(event.date);
+  eventDate.setHours(0, 0, 0, 0);
+  
+  const daysUntilDeadline = Math.ceil((registrationDeadline - today) / (1000 * 60 * 60 * 24));
+  const daysUntilEvent = Math.ceil((eventDate - today) / (1000 * 60 * 60 * 24));
+  
+  let reminderType = null;
+  let daysRemaining = null;
+  
+  // Check registration deadline reminders first
+  if (daysUntilDeadline === 1 && registrationDeadline <= eventDate) {
+    reminderType = 'registration_tomorrow';
+    daysRemaining = 1;
+  } else if (daysUntilDeadline === 0 && registrationDeadline <= eventDate) {
+    reminderType = 'registration_today';
+    daysRemaining = 0;
+  } 
+  // Then check event reminders
+  else if (daysUntilEvent === 3) {
+    reminderType = '3_days';
+    daysRemaining = 3;
+  } else if (daysUntilEvent === 2) {
+    reminderType = '2_days';
+    daysRemaining = 2;
+  } else if (daysUntilEvent === 1) {
+    reminderType = '1_day';
+    daysRemaining = 1;
+  } else if (daysUntilEvent === 0) {
+    reminderType = 'event_today';
+    daysRemaining = 0;
+  }
+  
+  // If no reminder needed today
+  if (!reminderType) {
+    let message = '';
+    if (daysUntilEvent < 0) {
+      message = 'Event has already passed';
+    } else if (daysUntilDeadline > 1 && daysUntilEvent > 3) {
+      message = `No reminders to send today. Next reminder will be ${daysUntilDeadline === 1 ? 'tomorrow (registration deadline)' : daysUntilEvent === 3 ? 'in 3 days (event)' : 'closer to event'}`;
+    } else {
+      message = 'No reminders scheduled for today';
+    }
+    return res.json({ 
+      message,
+      daysUntilDeadline,
+      daysUntilEvent,
+      registrationDeadline: registrationDeadline.toISOString().split('T')[0],
+      eventDate: eventDate.toISOString().split('T')[0]
+    });
+  }
+  
+  // Get all confirmed registrations for this event
+  const registrations = await EventRegistration.find({
+    event: event._id,
+    status: 'confirmed'
+  });
+  
+  if (registrations.length === 0) {
+    return res.json({ 
+      message: 'No confirmed registrations to send reminders to', 
+      sentCount: 0,
+      reminderType,
+      daysRemaining
+    });
+  }
+  
+  let sentCount = 0;
+  const failedEmails = [];
+  
+  for (const registration of registrations) {
+    try {
+      await sendEventReminder(
+        registration.email,
+        registration.name,
+        event,
+        daysRemaining,
+        reminderType,
+        registration
+      );
+      sentCount++;
+    } catch (error) {
+      console.error(`Failed to send reminder to ${registration.email}:`, error);
+      failedEmails.push(registration.email);
+    }
+  }
+  
+  res.json({
+    success: true,
+    message: `${reminderType === 'registration_today' || reminderType === 'registration_tomorrow' 
+      ? 'Registration deadline reminder' 
+      : 'Event reminder'} sent to ${sentCount} registrant${sentCount !== 1 ? 's' : ''}`,
+    sentCount,
+    failedCount: failedEmails.length,
+    failedEmails: failedEmails.length > 0 ? failedEmails : undefined,
+    reminderType,
+    daysRemaining,
+    daysUntilEvent,
+    daysUntilDeadline
+  });
+});
+
+// Optional: Add a function to send reminders for ALL events that need them (for cron jobs)
+const sendAllReminders = asyncHandler(async (req, res) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const events = await Event.find({ 
+    isDisabled: { $ne: true },
+    status: { $ne: 'passed' }
+  });
+  
+  let totalSent = 0;
+  const results = [];
+  
+  for (const event of events) {
+    const registrationDeadline = event.registrationDeadline ? new Date(event.registrationDeadline) : new Date(event.date);
+    registrationDeadline.setHours(0, 0, 0, 0);
+    
+    const eventDate = new Date(event.date);
+    eventDate.setHours(0, 0, 0, 0);
+    
+    const daysUntilDeadline = Math.ceil((registrationDeadline - today) / (1000 * 60 * 60 * 24));
+    const daysUntilEvent = Math.ceil((eventDate - today) / (1000 * 60 * 60 * 24));
+    
+    let reminderType = null;
+    
+    // Registration deadline reminders
+    if (daysUntilDeadline === 1 && registrationDeadline <= eventDate) {
+      reminderType = 'registration_tomorrow';
+    } else if (daysUntilDeadline === 0 && registrationDeadline <= eventDate) {
+      reminderType = 'registration_today';
+    } 
+    // Event day reminders
+    else if (daysUntilEvent === 3) {
+      reminderType = '3_days';
+    } else if (daysUntilEvent === 2) {
+      reminderType = '2_days';
+    } else if (daysUntilEvent === 1) {
+      reminderType = '1_day';
+    } else if (daysUntilEvent === 0) {
+      reminderType = 'event_today';
+    }
+    
+    if (reminderType) {
+      const registrations = await EventRegistration.find({
+        event: event._id,
+        status: 'confirmed'
+      });
+      
+      if (registrations.length === 0) {
+        results.push({
+          eventId: event._id,
+          eventTitle: event.title,
+          reminderType,
+          sentCount: 0,
+          message: 'No confirmed registrations'
+        });
+        continue;
+      }
+      
+      let eventSent = 0;
+      for (const registration of registrations) {
+        try {
+          await sendEventReminder(
+            registration.email,
+            registration.name,
+            event,
+            reminderType === 'registration_today' || reminderType === 'registration_tomorrow' ? daysUntilDeadline : daysUntilEvent,
+            reminderType,
+            registration
+          );
+          eventSent++;
+          totalSent++;
+        } catch (error) {
+          console.error(`Failed to send reminder for event ${event.title} to ${registration.email}:`, error);
+        }
+      }
+      
+      results.push({
+        eventId: event._id,
+        eventTitle: event.title,
+        reminderType,
+        daysUntilDeadline: reminderType.includes('registration') ? daysUntilDeadline : null,
+        daysUntilEvent: reminderType.includes('registration') ? null : daysUntilEvent,
+        sentCount: eventSent,
+        totalRegistrations: registrations.length
+      });
+    }
+  }
+  
+  res.json({
+    success: true,
+    message: `Sent reminders for ${results.length} events`,
+    totalSent,
+    results,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // --------------------- EXPORT ---------------------
 
 export {
@@ -1369,4 +1586,6 @@ export {
   getAdminDashboard,
   getEventFilters,
   handlePaystackWebhook,
+  sendReminder,
+  sendAllReminders,
 };

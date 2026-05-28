@@ -21,8 +21,10 @@ import {
   checkInAttendee,
   verifyTicket,
   handlePaystackWebhook,
-  getEventCustomForm,          // ← new
-  updateEventCustomForm,       // ← new
+  getEventCustomForm,
+  updateEventCustomForm,
+  sendReminder,           // ← ADD THIS IMPORT
+  sendAllReminders,       // ← ADD THIS IMPORT
 } from '../controllers/eventController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { protectAdmin } from '../middleware/adminAuthMiddleware.js';
@@ -132,6 +134,12 @@ router.post('/wallet/withdraw', protect, withdrawEarnings);
 // ==================== ADMIN ROUTES ====================
 router.get('/admin/dashboard', protectAdmin, getAdminDashboard);
 router.put('/admin/:id/toggle-status', protectAdmin, toggleEventStatus);
+
+// ==================== REMINDER ROUTES ====================
+// Send reminder for specific event (event creator or admin)
+router.post('/:id/send-reminder', protectBoth, sendReminder);  // ← ADD THIS ROUTE
+// Send all reminders for all events (admin only - can be called by cron job)
+router.post('/send-all-reminders', sendAllReminders);  // ← ADD THIS ROUTE
 
 // ==================== CUSTOM FORM ROUTES ====================
 // Public: fetch the custom form for an event (used during registration)

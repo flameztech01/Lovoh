@@ -366,3 +366,89 @@ export const sendSettlementNotification = async (email, name, totalAmount, trans
   `;
   await sendEmail(email, subject, html);
 };
+
+// Add/update this in your eventEmailService.js
+
+export const sendEventReminder = async (email, name, event, daysRemaining, reminderType, registration = null) => {
+  let subject = '';
+  let reminderText = '';
+  
+  // ONLY EVENT REMINDERS - NO REGISTRATION REMINDERS
+  if (reminderType === '3_days') {
+    subject = `⏰ Only 3 Days Left! ${event.title}`;
+    reminderText = 'Your event is just 3 days away! Get ready!';
+  } else if (reminderType === '2_days') {
+    subject = `🎉 ${event.title} is in 2 Days!`;
+    reminderText = 'Get ready! Your event is happening in 2 days.';
+  } else if (reminderType === '1_day') {
+    subject = `🚀 Tomorrow! ${event.title}`;
+    reminderText = 'Your event is TOMORROW! Here\'s everything you need to know.';
+  } else if (reminderType === 'event_today') {
+    subject = `🎯 TODAY is the Day! ${event.title}`;
+    reminderText = 'Your event is TODAY! Get ready and don\'t be late!';
+  } else {
+    subject = `📅 Reminder: ${event.title} is in ${daysRemaining} days`;
+    reminderText = `Your event is coming up in ${daysRemaining} days! Don't miss it!`;
+  }
+  
+  const isVirtual = event?.isVirtual;
+  const meetingLink = event?.meetingLink;
+  const venue = event?.venue || event?.location;
+  
+  const locationBlock = isVirtual
+    ? `
+      <p style="margin:5px 0"><strong>🌐 Online Event</strong></p>
+      ${meetingLink ? `<p style="margin:5px 0"><strong>🔗 Meeting Link:</strong> <a href="${meetingLink}" style="color:#1B3766">${meetingLink}</a></p>` : ''}
+    `
+    : (venue ? `<p style="margin:5px 0"><strong>📍 Venue:</strong> ${venue}</p>` : '');
+  
+  const ticketInfo = registration ? `
+    <div style="background:#1B3766;border-radius:8px;padding:15px;margin:20px 0;text-align:center">
+      <p style="color:#79FFFF;font-size:11px;margin:0">YOUR TICKET ID</p>
+      <p style="color:#fff;font-size:18px;font-weight:bold;margin:5px 0;letter-spacing:2px">${registration.ticketId || 'N/A'}</p>
+      ${registration.seatNumber ? `<p style="color:#79FFFF;font-size:13px;margin:5px 0">Seat: #${registration.seatNumber}</p>` : ''}
+    </div>
+  ` : '';
+  
+  const html = `
+    <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,0.1)">
+      <div style="background:linear-gradient(135deg,#1B3766,#254899);padding:30px;text-align:center">
+        <h1 style="color:#fff;margin:0">Event Reminder ⏰</h1>
+        <p style="color:#79FFFF;margin:10px 0 0;font-size:16px">${reminderText}</p>
+      </div>
+      <div style="padding:30px">
+        <p style="font-size:16px;color:#333">Hi ${name},</p>
+        <p style="font-size:16px;color:#333;line-height:1.6">
+          This is a reminder for <strong>${event.title}</strong>.
+        </p>
+        
+        <div style="background:#f8f9fa;border-radius:8px;padding:20px;margin:20px 0">
+          <p style="margin:5px 0;font-size:14px;font-weight:bold;color:#1B3766">Event Details:</p>
+          <p style="margin:5px 0"><strong>📅 Date:</strong> ${new Date(event.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+          <p style="margin:5px 0"><strong>⏰ Time:</strong> ${event.time || 'TBD'}</p>
+          ${locationBlock}
+          ${event.description ? `<p style="margin:10px 0 0;color:#666">${event.description.substring(0, 200)}${event.description.length > 200 ? '...' : ''}</p>` : ''}
+        </div>
+        
+        ${ticketInfo}
+        
+        <div style="background:#fef3c7;border-left:4px solid #f59e0b;padding:15px;margin:20px 0;border-radius:8px">
+          <p style="margin:0;font-size:14px;color:#92400e">
+            <strong>💡 Quick Tips:</strong><br>
+            • Arrive at least 15 minutes early<br>
+            • Have your ticket ready (digital or printed)<br>
+            • Bring a valid ID for verification
+          </p>
+        </div>
+        
+        <a href="${process.env.FRONTEND_URL}/events/${event.slug || event._id}" style="display:inline-block;background:#1B3766;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:10px">View Event Details</a>
+      </div>
+      <div style="background:#f1f5f9;padding:20px;text-align:center;font-size:12px;color:#999">
+        <p style="margin:0">Need help? Contact us at eventroom@lovohcreate.com</p>
+        <p style="margin:5px 0 0">© ${new Date().getFullYear()} Lovoh Create. All rights reserved.</p>
+      </div>
+    </div>
+  `;
+  
+  await sendEmail(email, subject, html);
+};

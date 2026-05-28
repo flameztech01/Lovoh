@@ -23,7 +23,7 @@ import sellerRoutes from "./routes/sellerRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
 import subscribeRoutes from "./routes/subscribeRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
-
+import './cronJobs.js'; // Import cron jobs
 
 dotenv.config();
 
@@ -50,9 +50,6 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
-
-
-
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -111,20 +108,6 @@ app.get('/api/fix-admin-types', async (req, res) => {
     }))
   });
 });
-
-// if(process.env.NODE_ENV === 'production') {
-//     const __dirname = path.resolve();
-    
-//     // Serve static files
-//     app.use(express.static(path.join(__dirname, '../frontend/dist')));
-    
-//     // Simple catch-all - NO * symbol
-//     app.use((req, res) => {
-//         res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
-//     });
-// } else {
-//     app.get('/', (req, res) => res.send('Server is Ready'));
-// }
 
 // Middleware
 app.use(notFound);

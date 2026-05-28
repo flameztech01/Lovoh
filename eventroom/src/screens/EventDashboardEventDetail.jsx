@@ -9,10 +9,12 @@ import {
   FaTrashAlt, FaChartBar, FaCopy, FaChair, FaUser,
   FaMapPin, FaGlobe, FaLink, FaLayerGroup, FaStar,
   FaSearchPlus, FaTimes, FaDownload, FaChevronLeft, FaChevronRight,
+  FaBell, FaEnvelope,
 } from 'react-icons/fa';
 import { 
   useGetEventByIdQuery, 
   useDeleteEventMutation,
+  useSendReminderMutation,
 } from '../slices/eventApiSlice';
 import { toast } from 'react-toastify';
 import EventDashboardSidebar from '../components/EventDashboardSidebar';
@@ -37,13 +39,15 @@ const EventDashboardEventDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const { data: event, isLoading } = useGetEventByIdQuery(id);
+  const { data: event, isLoading, refetch } = useGetEventByIdQuery(id);
   const [deleteEvent, { isLoading: isDeleting }] = useDeleteEventMutation();
+  const [sendReminder, { isLoading: isSendingReminder }] = useSendReminderMutation();
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [copied, setCopied] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showReminderToast, setShowReminderToast] = useState(false);
 
   const formatDate = (date) => {
     if (!date) return 'TBD';
@@ -197,6 +201,19 @@ const EventDashboardEventDetail = () => {
     }
   };
 
+  // Handle send reminder
+  const handleSendReminder = async () => {
+    try {
+      const res = await sendReminder(id).unwrap();
+      toast.success(res.message || 'Reminders sent successfully!');
+      setShowReminderToast(true);
+      setTimeout(() => setShowReminderToast(false), 5000);
+      refetch();
+    } catch (error) {
+      toast.error(error?.data?.message || 'Failed to send reminders');
+    }
+  };
+
   const getPublicLink = () => `${window.location.origin}/${id}`;
 
   // Lightbox navigation callbacks
@@ -229,6 +246,9 @@ const EventDashboardEventDetail = () => {
   const totalRevenue = getTotalRevenue();
   const priceRange = getPriceRange();
   const hasImages = event?.images?.length > 0;
+  
+  // Check if event is upcoming (can send reminders)
+  const isUpcoming = event && new Date(event.date) > new Date() && !event.isDisabled;
 
   if (isLoading) return (
     <EventDashboardSidebar>
@@ -255,7 +275,7 @@ const EventDashboardEventDetail = () => {
 
   return (
     <EventDashboardSidebar>
-      {/* Header (unchanged) */}
+      {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <button onClick={() => navigate('/dashboard/events')} className="flex items-center gap-2 text-gray-600 hover:text-[#1B3766] transition-colors text-sm group">
           <FaArrowLeft className="text-xs group-hover:-translate-x-1 transition-transform" /> Back to My Events
@@ -266,6 +286,23 @@ const EventDashboardEventDetail = () => {
           <button onClick={() => setShowDeleteModal(true)} className="flex items-center gap-1.5 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all text-sm"><FaTrashAlt className="text-xs" /> Delete</button>
         </div>
       </div>
+
+      {/* Desktop Send Reminder Button - visible above mobile breakpoint */}
+      {isUpcoming && totalTickets > 0 && (
+        <div className="hidden md:flex justify-end mb-4">
+          <button 
+            onClick={handleSendReminder}
+            disabled={isSendingReminder}
+            className="flex items-center gap-2 px-5 py-2.5 bg-[#1B3766] text-white rounded-xl hover:bg-[#142952] transition-all shadow-md disabled:opacity-50"
+          >
+            {isSendingReminder ? (
+              <><FaSpinner className="animate-spin" /> Sending...</>
+            ) : (
+              <><FaBell /> Send Reminder to {totalTickets} Registrant{totalTickets !== 1 ? 's' : ''}</>
+            )}
+          </button>
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         {/* Images – now clickable to open lightbox */}
@@ -502,6 +539,33 @@ const EventDashboardEventDetail = () => {
           )}
         </div>
       </div>
+
+      {/* ==================== FLOATING ACTION BUTTON (Mobile) ==================== */}
+      {isUpcoming && totalTickets > 0 && (
+        <button
+          onClick={handleSendReminder}
+          disabled={isSendingReminder}
+          className="md:hidden fixed bottom-20 right-4 z-40 w-14 h-14 bg-[#1B3766] text-white rounded-full shadow-lg flex items-center justify-center hover:bg-[#142952] transition-all active:scale-95 disabled:opacity-50"
+          aria-label="Send reminder"
+        >
+          {isSendingReminder ? (
+            <FaSpinner className="w-6 h-6 animate-spin" />
+          ) : (
+            <FaBell className="w-6 h-6" />
+          )}
+        </button>
+      )}
+
+      {/* Success Toast Notification for Mobile */}
+      {showReminderToast && (
+        <div className="fixed bottom-32 left-4 right-4 md:hidden z-50 bg-green-600 text-white rounded-xl p-3 shadow-lg flex items-center gap-3 animate-slide-up">
+          <FaCheckCircle className="w-5 h-5 flex-shrink-0" />
+          <p className="text-sm flex-1">Reminders sent to {totalTickets} registrant{totalTickets !== 1 ? 's' : ''}!</p>
+          <button onClick={() => setShowReminderToast(false)} className="text-white/80">
+            <FaTimes />
+          </button>
+        </div>
+      )}
 
       {/* ==================== LIGHTBOX MODAL ==================== */}
       {lightboxOpen && hasImages && (

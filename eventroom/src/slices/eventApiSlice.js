@@ -130,6 +130,17 @@ export const eventApiSlice = apiSlice.injectEndpoints({
       invalidatesTags: ['Event'],
     }),
 
+    // ==================== REMINDERS ====================
+
+    // Send reminder for specific event (creator or admin)
+    sendReminder: builder.mutation({
+      query: (id) => ({
+        url: `${EVENTS_URL}/${id}/send-reminder`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['Event'],
+    }),
+
     // ==================== WALLET ====================
 
     // Set up payment wallet
@@ -189,7 +200,7 @@ export const {
   useVerifyPaymentQuery,
   useVerifyTicketQuery,
   useGetEventFiltersQuery,
-  useGetEventCustomFormQuery,           // new
+  useGetEventCustomFormQuery,
   useGetMyEventsQuery,
   useCreateEventMutation,
   useUpdateEventMutation,
@@ -197,7 +208,8 @@ export const {
   useGetEventRegistrationsQuery,
   useGetMyRegistrationsQuery,
   useCheckInAttendeeMutation,
-  useUpdateEventCustomFormMutation,     // new
+  useUpdateEventCustomFormMutation,
+  useSendReminderMutation,  // NEW: Add this
   useSetupWalletMutation,
   useGetWalletInfoQuery,
   useWithdrawFromWalletMutation,
