@@ -6,7 +6,7 @@ import {
   FaSpinner, FaEdit, FaTrashAlt, FaPlus, FaEllipsisV, FaSignOutAlt,
   FaCamera, FaTimes, FaCheck, FaCog, FaEnvelope, FaCheckCircle,
   FaStar, FaClock, FaEye, FaEyeSlash, FaFilter, FaUserEdit,
-  FaUsers,
+  FaUsers, FaShareAlt,
 } from "react-icons/fa";
 import {
   useGetProfileInfoQuery, useUpdateProfileMutation, useLogoutMutation,
@@ -291,15 +291,43 @@ const BiizzedProfile = () => {
     }
   };
 
+  // ====== SHARE PROFILE ======
+  const handleShareProfile = async () => {
+    const shareUrl = `${window.location.origin}/profile/${profile?.username || userInfo?._id}`;
+    const shareData = {
+      title: `${profile?.name || profile?.username || 'Biizzed Profile'} on Biizzed`,
+      text: `Check out ${profile?.name || profile?.username || 'this profile'} on Biizzed!`,
+      url: shareUrl,
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          toast.error('Could not share profile');
+        }
+      }
+    } else if (navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success('Profile link copied to clipboard!');
+      } catch {
+        toast.error('Failed to copy link');
+      }
+    } else {
+      toast.info(shareUrl);
+    }
+  };
+
   // ====== MENU HANDLER – Position ABOVE the button, anchored to right edge ======
   const handleMenuOpen = (e, type, id) => {
     e.preventDefault();
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
     const menuWidth = 170;
-    // Position above the button (8px gap), align right edge of menu with right edge of button
     setMenuPosition({
-      top: rect.top - 8,  // 8px above the button (menu will extend upward via transform)
+      top: rect.top - 8,
       left: rect.right - menuWidth,
     });
     setActiveMenuId(`${type}-${id}`);
@@ -307,7 +335,7 @@ const BiizzedProfile = () => {
 
   if (!userInfo) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-white">
         <BiizzedArticlesNavbar />
         <div className="flex flex-col items-center justify-center h-[60vh]">
           <div className="w-20 h-20 bg-[#1B3766]/10 rounded-full flex items-center justify-center mb-4">
@@ -325,7 +353,7 @@ const BiizzedProfile = () => {
 
   if (profileLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-white">
         <BiizzedArticlesNavbar />
         <div className="flex justify-center items-center h-64">
           <FaSpinner className="animate-spin text-3xl text-[#1B3766]" />
@@ -441,139 +469,150 @@ const BiizzedProfile = () => {
   const totalContentCount = filteredArticles.length + filteredMagazines.length + myVideos.length;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <BiizzedArticlesNavbar />
 
-      <div className="max-w-4xl mx-auto px-4 py-6 pb-24">
-        {/* Profile Header Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
-          {/* Cover/Header Area */}
-          <div className="h-24 bg-gradient-to-r from-[#1B3766]/10 to-[#1B3766]/5"></div>
-          
-          {/* Profile Info Section */}
-          <div className="px-6 pb-6 relative">
-            {/* Avatar with badge */}
-            <div className="relative -mt-12 mb-4">
-              <div className="relative inline-block">
-                {profile?.profile ? (
-                  <img 
-                    src={profile.profile} 
-                    alt={profile.name} 
-                    className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md"
-                  />
-                ) : (
-                  <div className="w-24 h-24 rounded-full bg-[#1B3766] text-white flex items-center justify-center text-3xl font-bold border-4 border-white shadow-md">
-                    {(profile?.name || "U")[0].toUpperCase()}
-                  </div>
-                )}
-                {isContributorApproved && (
-                  <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-green-500 rounded-full border-2 border-white flex items-center justify-center shadow-sm">
-                    <FaCheckCircle className="text-white text-xs" />
-                  </div>
-                )}
+      <div className="max-w-5xl mx-auto px-4 pt-4 pb-24 lg:px-8">
+        {/* Desktop: Two-column layout for profile header */}
+        <div className="lg:flex lg:items-start lg:gap-10 lg:mb-8">
+          {/* Left: Avatar & Actions */}
+          <div className="flex flex-col items-center text-center lg:items-start lg:text-left lg:flex-shrink-0">
+            {/* Mobile Top bar only */}
+            <div className="w-full flex items-center justify-between mb-4 lg:hidden">
+              <div className="w-8" />
+              <div className="flex items-center gap-1">
+                <h2 className="text-base font-bold text-gray-900">{profile?.username || "user"}</h2>
+                {isContributorApproved && <FaCheckCircle className="text-[#1B3766] text-sm" />}
+              </div>
+              <div className="flex items-center gap-3">
+                <button onClick={() => navigate('/settings')} className="text-gray-900 text-lg p-1">
+                  <FaCog />
+                </button>
               </div>
             </div>
 
-            {/* Name and Username */}
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <h1 className="text-2xl font-bold text-gray-900">{profile?.name || "User"}</h1>
-                  {isContributorApproved && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-                      <FaCheckCircle className="text-[10px]" /> Contributor
-                    </span>
-                  )}
+            {/* Avatar */}
+            <div className="relative mb-3 lg:mb-4">
+              {profile?.profile ? (
+                <img
+                  src={profile.profile}
+                  alt={profile.name}
+                  className="w-24 h-24 rounded-full object-cover border border-gray-200 lg:w-36 lg:h-36"
+                />
+              ) : (
+                <div className="w-24 h-24 rounded-full bg-[#1B3766] text-white flex items-center justify-center text-2xl font-bold border border-gray-200 lg:w-36 lg:h-36 lg:text-4xl">
+                  {(profile?.name || "U")[0].toUpperCase()}
                 </div>
-                <p className="text-sm text-gray-500">@{profile?.username || "user"}</p>
-                {profile?.bio && (
-                  <p className="text-sm text-gray-600 mt-2 max-w-lg">{profile.bio}</p>
-                )}
-              </div>
+              )}
+              <button
+                onClick={openEditModal}
+                className="absolute bottom-0 right-0 w-7 h-7 bg-[#1B3766] text-white rounded-full flex items-center justify-center border-2 border-white shadow-sm lg:w-9 lg:h-9"
+              >
+                <FaPlus className="text-xs lg:text-sm" />
+              </button>
+            </div>
 
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-2">
-                <button 
-                  onClick={openEditModal} 
-                  className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 flex items-center gap-2 transition-all"
-                >
-                  <FaUserEdit className="text-xs" /> Edit Profile
-                </button>
-                <Link 
-                  to="/settings" 
-                  className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 flex items-center gap-2 transition-all"
-                >
-                  <FaCog className="text-xs" /> Settings
-                </Link>
-                <button 
-                  onClick={handleLogout} 
-                  className="px-4 py-2 border border-red-200 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 hover:border-red-300 flex items-center gap-2 transition-all"
-                >
-                  <FaSignOutAlt className="text-xs" /> Logout
-                </button>
+            {/* Desktop: Name & Username below avatar */}
+            <div className="hidden lg:block">
+              <div className="flex items-center gap-2 mb-1">
+                <h2 className="text-xl font-bold text-gray-900">{profile?.name || "User"}</h2>
+                {isContributorApproved && <FaCheckCircle className="text-[#1B3766] text-sm" />}
+              </div>
+              <p className="text-sm text-gray-500 mb-1">@{profile?.username || "user"}</p>
+              {profile?.bio && (
+                <p className="text-sm text-gray-700 mb-3 max-w-xs">{profile.bio}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Right: Stats, Buttons, Bio */}
+          <div className="flex-1 w-full">
+            {/* Mobile: Handle */}
+            <p className="text-sm text-gray-900 font-semibold mb-4 lg:hidden">@{profile?.username || "user"}</p>
+
+            {/* Stats */}
+            <div className="flex items-center justify-center gap-8 mb-4 w-full max-w-xs mx-auto lg:mx-0 lg:max-w-md lg:justify-start lg:gap-10">
+              <button onClick={() => navigate("/subscribers")} className="flex flex-col items-center min-w-[60px] lg:items-start">
+                <span className="text-lg font-bold text-gray-900 lg:text-xl">{profile?.followingCount || 0}</span>
+                <span className="text-xs text-gray-500">Following</span>
+              </button>
+              <div className="w-px h-8 bg-gray-200" />
+              <button onClick={() => navigate("/subscribers?tab=following")} className="flex flex-col items-center min-w-[60px] lg:items-start">
+                <span className="text-lg font-bold text-gray-900 lg:text-xl">{profile?.followersCount || 0}</span>
+                <span className="text-xs text-gray-500">Subscribers</span>
+              </button>
+              <div className="w-px h-8 bg-gray-200" />
+              <div className="flex flex-col items-center min-w-[60px] lg:items-start">
+                <span className="text-lg font-bold text-gray-900 lg:text-xl">{totalContentCount}</span>
+                <span className="text-xs text-gray-500">Posts</span>
               </div>
             </div>
 
-            {/* Stats Row - Renamed Followers to Subscribers */}
-            <div className="flex items-center gap-8 mt-5 pt-4 border-t border-gray-100">
-              <button onClick={() => navigate("/subscribers")} className="text-center hover:opacity-80 transition-opacity group">
-                <p className="text-xl font-bold text-gray-900 group-hover:text-[#1B3766] transition-colors">{profile?.followersCount || 0}</p>
-                <p className="text-xs text-gray-500 flex items-center gap-1 justify-center">
-                  <FaUsers className="text-[10px]" /> Subscribers
-                </p>
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2 w-full max-w-sm mx-auto mb-3 lg:mx-0 lg:max-w-md">
+              <button
+                onClick={openEditModal}
+                className="flex-1 py-2 bg-gray-100 rounded-lg text-sm font-semibold text-gray-900 hover:bg-gray-200 transition-colors"
+              >
+                Edit profile
               </button>
-              <button onClick={() => navigate("/subscribers?tab=following")} className="text-center hover:opacity-80 transition-opacity group">
-                <p className="text-xl font-bold text-gray-900 group-hover:text-[#1B3766] transition-colors">{profile?.followingCount || 0}</p>
-                <p className="text-xs text-gray-500">Following</p>
+              <button
+                onClick={handleShareProfile}
+                className="flex-1 py-2 bg-gray-100 rounded-lg text-sm font-semibold text-gray-900 hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
+              >
+                <FaShareAlt className="text-xs" /> Share profile
               </button>
-              <div className="text-center">
-                <p className="text-xl font-bold text-gray-900">{totalContentCount}</p>
-                <p className="text-xs text-gray-500">Posts</p>
-              </div>
+              <button
+                onClick={() => navigate("/subscribers")}
+                className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-gray-900 hover:bg-gray-200 transition-colors lg:hidden"
+              >
+                <FaUsers className="text-sm" />
+              </button>
             </div>
 
-            {/* Contributor Status & Digest Toggle */}
-            <div className="flex flex-wrap items-center gap-3 mt-5 pt-4 border-t border-gray-100">
-              {/* Contributor section */}
-              <div className="flex-1">
-                {contribLoading ? (
-                  <span className="text-xs text-gray-400 inline-flex items-center gap-1">
-                    <FaSpinner className="animate-spin" /> Loading...
-                  </span>
-                ) : hasNotApplied ? (
-                  <button
-                    onClick={() => navigate('/contributor/apply')}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#1B3766] text-white rounded-xl text-sm font-medium hover:bg-[#142952] transition-colors shadow-sm"
-                  >
-                    <FaPlus className="text-xs" /> Apply to Contribute
-                  </button>
-                ) : isContributorPending ? (
-                  <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">
-                    <FaClock className="text-[10px]" /> Pending Approval
-                  </span>
-                ) : isContributorRejected ? (
-                  <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-red-100 text-red-700 rounded-full text-xs font-medium">
-                    <FaTimes className="text-[10px]" /> Application Rejected
-                  </span>
-                ) : null}
-              </div>
+            {/* Mobile Bio */}
+            {profile?.bio && (
+              <p className="text-sm text-gray-700 mb-3 max-w-sm mx-auto text-center lg:hidden">{profile.bio}</p>
+            )}
 
-              {/* Digest Toggle */}
+            {/* Contributor & Digest */}
+            <div className="flex flex-wrap items-center justify-center gap-2 mb-2 lg:justify-start">
+              {contribLoading ? (
+                <span className="text-xs text-gray-400 inline-flex items-center gap-1">
+                  <FaSpinner className="animate-spin" /> Loading...
+                </span>
+              ) : hasNotApplied ? (
+                <button
+                  onClick={() => navigate('/contributor/apply')}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#1B3766] text-white rounded-full text-xs font-medium"
+                >
+                  <FaPlus className="text-[10px]" /> Apply to Contribute
+                </button>
+              ) : isContributorPending ? (
+                <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">
+                  <FaClock className="text-[10px]" /> Pending Approval
+                </span>
+              ) : isContributorRejected ? (
+                <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-100 text-red-700 rounded-full text-xs font-medium">
+                  <FaTimes className="text-[10px]" /> Application Rejected
+                </span>
+              ) : null}
+
               <button
                 onClick={handleDigestToggle}
                 disabled={isSubscribing || isUnsubscribing || subStatusLoading}
-                className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all ${
-                  digestSubscribed 
-                    ? "bg-[#1B3766] text-white shadow-sm" 
-                    : "border border-gray-200 text-gray-700 hover:bg-gray-50"
+                className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1 transition-all ${
+                  digestSubscribed
+                    ? "bg-[#1B3766] text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
                 {subStatusLoading ? (
-                  <FaSpinner className="animate-spin text-xs" />
+                  <FaSpinner className="animate-spin text-[10px]" />
                 ) : digestSubscribed ? (
-                  <FaCheckCircle className="text-xs" />
+                  <FaCheckCircle className="text-[10px]" />
                 ) : (
-                  <FaEnvelope className="text-xs" />
+                  <FaEnvelope className="text-[10px]" />
                 )}
                 {isSubscribing || isUnsubscribing ? "Updating..." : digestSubscribed ? "Weekly Digest On" : "Weekly Digest Off"}
               </button>
@@ -582,8 +621,8 @@ const BiizzedProfile = () => {
         </div>
 
         {/* Content Tabs */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-1 mb-5">
-          <div className="flex overflow-x-auto hide-scrollbar">
+        <div className="border-t border-gray-100 mt-2 lg:mt-4">
+          <div className="flex overflow-x-auto hide-scrollbar lg:justify-center">
             {[
               { id: "articles", label: "Articles", icon: FaNewspaper, count: filteredArticles.length },
               { id: "magazines", label: "Magazines", icon: FaBookOpen, count: filteredMagazines.length },
@@ -594,16 +633,16 @@ const BiizzedProfile = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
-                  activeTab === tab.id 
-                    ? "bg-[#1B3766] text-white shadow-sm" 
-                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                className={`flex flex-col items-center gap-0.5 px-4 py-3 min-w-[72px] border-b-2 transition-all lg:flex-row lg:gap-2 lg:px-6 lg:py-3 ${
+                  activeTab === tab.id
+                    ? "border-[#1B3766] text-[#1B3766]"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
                 }`}
               >
-                <tab.icon className="text-xs" /> 
-                {tab.label}
-                <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                  activeTab === tab.id ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"
+                <tab.icon className="text-lg mb-0.5 lg:mb-0 lg:text-base" />
+                <span className="text-[11px] font-medium lg:text-sm">{tab.label}</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full lg:text-xs ${
+                  activeTab === tab.id ? "bg-[#1B3766]/10 text-[#1B3766]" : "bg-gray-100 text-gray-500"
                 }`}>
                   {tab.count}
                 </span>
@@ -614,11 +653,11 @@ const BiizzedProfile = () => {
 
         {/* Drafts Toggle for Articles/Magazines */}
         {(activeTab === "articles" || activeTab === "magazines") && (
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4 px-1 mt-3 lg:max-w-3xl lg:mx-auto">
             <button
               onClick={() => setShowDrafts(!showDrafts)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                showDrafts ? "bg-[#1B3766] text-white" : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
+                showDrafts ? "bg-[#1B3766] text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
               <FaFilter className="text-[10px]" />
@@ -633,24 +672,25 @@ const BiizzedProfile = () => {
           </div>
         )}
 
-        {/* MY ARTICLES */}
-        {activeTab === "articles" && (
-          articlesLoading ? (
-            <div className="flex justify-center py-12"><FaSpinner className="animate-spin text-2xl text-[#1B3766]" /></div>
-          ) : filteredArticles.length === 0 ? (
-            <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
-              <div className="w-16 h-16 bg-[#1B3766]/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <FaNewspaper className="text-2xl text-[#1B3766]" />
+        {/* Content Grid - Desktop responsive */}
+        <div className="lg:grid lg:grid-cols-2 lg:gap-4">
+          {/* MY ARTICLES */}
+          {activeTab === "articles" && (
+            articlesLoading ? (
+              <div className="flex justify-center py-12 lg:col-span-2"><FaSpinner className="animate-spin text-2xl text-[#1B3766]" /></div>
+            ) : filteredArticles.length === 0 ? (
+              <div className="text-center py-16 lg:col-span-2">
+                <div className="w-16 h-16 bg-[#1B3766]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <FaNewspaper className="text-2xl text-[#1B3766]" />
+                </div>
+                <p className="text-gray-500 mb-4">{showDrafts ? "No articles yet" : "No published articles yet"}</p>
+                <Link to="/create-article" className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1B3766] text-white rounded-xl text-sm font-medium hover:bg-[#142952] transition-colors shadow-sm">
+                  <FaPlus className="text-xs" /> Write Your First Article
+                </Link>
               </div>
-              <p className="text-gray-500 mb-4">{showDrafts ? "No articles yet" : "No published articles yet"}</p>
-              <Link to="/create-article" className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1B3766] text-white rounded-xl text-sm font-medium hover:bg-[#142952] transition-colors shadow-sm">
-                <FaPlus className="text-xs" /> Write Your First Article
-              </Link>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredArticles.map((article) => (
-                <div key={article._id} className="relative bg-white rounded-xl shadow-sm border border-gray-100 transition-all hover:shadow-md hover:border-gray-200">
+            ) : (
+              filteredArticles.map((article) => (
+                <div key={article._id} className="relative bg-white rounded-xl border border-gray-100 transition-all hover:shadow-sm mb-3 lg:mb-0">
                   <Link to={`/articles/${article.slug}`} className="flex gap-4 p-4">
                     <img
                       src={article.featuredImage || article.images?.[0] || "/placeholder-article.jpg"}
@@ -675,37 +715,33 @@ const BiizzedProfile = () => {
                       <FaEllipsisV className="text-gray-400 text-xs" />
                     </button>
                     {activeMenuId === `article-${article._id}` && (
-                      <div
-                        className="absolute right-0 bottom-full mb-2 z-50"
-                      >
+                      <div className="absolute right-0 bottom-full mb-2 z-50">
                         <MenuDropdown type="article" item={article} />
                       </div>
                     )}
                   </div>
                 </div>
-              ))}
-            </div>
-          )
-        )}
+              ))
+            )
+          )}
 
-        {/* MY MAGAZINES */}
-        {activeTab === "magazines" && (
-          magazinesLoading ? (
-            <div className="flex justify-center py-12"><FaSpinner className="animate-spin text-2xl text-[#1B3766]" /></div>
-          ) : filteredMagazines.length === 0 ? (
-            <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
-              <div className="w-16 h-16 bg-[#1B3766]/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <FaBookOpen className="text-2xl text-[#1B3766]" />
+          {/* MY MAGAZINES */}
+          {activeTab === "magazines" && (
+            magazinesLoading ? (
+              <div className="flex justify-center py-12 lg:col-span-2"><FaSpinner className="animate-spin text-2xl text-[#1B3766]" /></div>
+            ) : filteredMagazines.length === 0 ? (
+              <div className="text-center py-16 lg:col-span-2">
+                <div className="w-16 h-16 bg-[#1B3766]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <FaBookOpen className="text-2xl text-[#1B3766]" />
+                </div>
+                <p className="text-gray-500 mb-4">{showDrafts ? "No magazines yet" : "No published magazines yet"}</p>
+                <Link to="/create-magazine" className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1B3766] text-white rounded-xl text-sm font-medium hover:bg-[#142952] transition-colors shadow-sm">
+                  <FaPlus className="text-xs" /> Create Your First Magazine
+                </Link>
               </div>
-              <p className="text-gray-500 mb-4">{showDrafts ? "No magazines yet" : "No published magazines yet"}</p>
-              <Link to="/create-magazine" className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1B3766] text-white rounded-xl text-sm font-medium hover:bg-[#142952] transition-colors shadow-sm">
-                <FaPlus className="text-xs" /> Create Your First Magazine
-              </Link>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredMagazines.map((magazine) => (
-                <div key={magazine._id} className="relative bg-white rounded-xl shadow-sm border border-gray-100 transition-all hover:shadow-md hover:border-gray-200">
+            ) : (
+              filteredMagazines.map((magazine) => (
+                <div key={magazine._id} className="relative bg-white rounded-xl border border-gray-100 transition-all hover:shadow-sm mb-3 lg:mb-0">
                   <Link to={`/${magazine.slug}`} className="flex gap-4 p-4">
                     <img
                       src={magazine.coverImage || "/placeholder-article.jpg"}
@@ -730,37 +766,33 @@ const BiizzedProfile = () => {
                       <FaEllipsisV className="text-gray-400 text-xs" />
                     </button>
                     {activeMenuId === `magazine-${magazine._id}` && (
-                      <div
-                        className="absolute right-0 bottom-full mb-2 z-50"
-                      >
+                      <div className="absolute right-0 bottom-full mb-2 z-50">
                         <MenuDropdown type="magazine" item={magazine} />
                       </div>
                     )}
                   </div>
                 </div>
-              ))}
-            </div>
-          )
-        )}
+              ))
+            )
+          )}
 
-        {/* MY VIDEOS */}
-        {activeTab === "videos" && (
-          videosLoading ? (
-            <div className="flex justify-center py-12"><FaSpinner className="animate-spin text-2xl text-[#1B3766]" /></div>
-          ) : myVideos.length === 0 ? (
-            <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
-              <div className="w-16 h-16 bg-[#1B3766]/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <FaVideo className="text-2xl text-[#1B3766]" />
+          {/* MY VIDEOS */}
+          {activeTab === "videos" && (
+            videosLoading ? (
+              <div className="flex justify-center py-12 lg:col-span-2"><FaSpinner className="animate-spin text-2xl text-[#1B3766]" /></div>
+            ) : myVideos.length === 0 ? (
+              <div className="text-center py-16 lg:col-span-2">
+                <div className="w-16 h-16 bg-[#1B3766]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <FaVideo className="text-2xl text-[#1B3766]" />
+                </div>
+                <p className="text-gray-500 mb-4">No videos yet</p>
+                <Link to="/create-video" className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1B3766] text-white rounded-xl text-sm font-medium hover:bg-[#142952] transition-colors shadow-sm">
+                  <FaPlus className="text-xs" /> Upload Your First Video
+                </Link>
               </div>
-              <p className="text-gray-500 mb-4">No videos yet</p>
-              <Link to="/create-video" className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1B3766] text-white rounded-xl text-sm font-medium hover:bg-[#142952] transition-colors shadow-sm">
-                <FaPlus className="text-xs" /> Upload Your First Video
-              </Link>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {myVideos.map((video) => (
-                <div key={video._id} className="relative bg-white rounded-xl shadow-sm border border-gray-100 transition-all hover:shadow-md hover:border-gray-200">
+            ) : (
+              myVideos.map((video) => (
+                <div key={video._id} className="relative bg-white rounded-xl border border-gray-100 transition-all hover:shadow-sm mb-3 lg:mb-0">
                   <Link to={`/videos/${video._id}`} className="flex gap-4 p-4">
                     <div className="relative w-32 h-20 rounded-xl overflow-hidden bg-gray-900 flex-shrink-0">
                       {video.thumbnail ? (
@@ -791,9 +823,7 @@ const BiizzedProfile = () => {
                       <FaEllipsisV className="text-gray-400 text-xs" />
                     </button>
                     {activeMenuId === `video-${video._id}` && (
-                      <div
-                        className="absolute right-0 bottom-full mb-2 z-50"
-                      >
+                      <div className="absolute right-0 bottom-full mb-2 z-50">
                         <div className="menu-dropdown bg-white rounded-xl shadow-lg border border-gray-100 py-1 min-w-[170px] overflow-hidden">
                           <button
                             onClick={() => handleEdit("video", video._id)}
@@ -812,69 +842,67 @@ const BiizzedProfile = () => {
                     )}
                   </div>
                 </div>
-              ))}
-            </div>
-          )
-        )}
+              ))
+            )
+          )}
 
-        {/* LIKED ARTICLES */}
-        {activeTab === "liked" && (
-          likedArticles.length === 0 ? (
-            <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
-              <div className="w-16 h-16 bg-[#1B3766]/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <FaHeart className="text-2xl text-[#1B3766]" />
+          {/* LIKED ARTICLES */}
+          {activeTab === "liked" && (
+            likedArticles.length === 0 ? (
+              <div className="text-center py-16 lg:col-span-2">
+                <div className="w-16 h-16 bg-[#1B3766]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <FaHeart className="text-2xl text-[#1B3766]" />
+                </div>
+                <p className="text-gray-500">No liked posts yet</p>
+                <p className="text-xs text-gray-400 mt-1">Articles you like will appear here</p>
               </div>
-              <p className="text-gray-500">No liked posts yet</p>
-              <p className="text-xs text-gray-400 mt-1">Articles you like will appear here</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {likedArticles.map((article) => (
-                <Link key={article._id} to={`/articles/${article.slug}`} className="flex gap-4 bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-all">
+            ) : (
+              likedArticles.map((article) => (
+                <Link key={article._id} to={`/articles/${article.slug}`} className="flex gap-4 bg-white rounded-xl p-4 border border-gray-100 hover:shadow-sm transition-all mb-3 lg:mb-0">
                   <img src={article.featuredImage || article.images?.[0] || "/placeholder-article.jpg"} alt="" className="w-20 h-20 rounded-xl object-cover flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-bold text-gray-900 line-clamp-2">{article.title}</h3>
                     <p className="text-xs text-gray-500 mt-1">{article.category} • {article.readTime || "5 min"} read</p>
                   </div>
                 </Link>
-              ))}
-            </div>
-          )
-        )}
+              ))
+            )
+          )}
 
-        {/* SAVED CONTENT */}
-        {activeTab === "saved" && (
-          bookmarkedArticles.length === 0 && bookmarkedMagazines.length === 0 ? (
-            <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
-              <div className="w-16 h-16 bg-[#1B3766]/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <FaBookmark className="text-2xl text-[#1B3766]" />
+          {/* SAVED CONTENT */}
+          {activeTab === "saved" && (
+            bookmarkedArticles.length === 0 && bookmarkedMagazines.length === 0 ? (
+              <div className="text-center py-16 lg:col-span-2">
+                <div className="w-16 h-16 bg-[#1B3766]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <FaBookmark className="text-2xl text-[#1B3766]" />
+                </div>
+                <p className="text-gray-500">No saved posts yet</p>
+                <p className="text-xs text-gray-400 mt-1">Bookmark articles and magazines to read later</p>
               </div>
-              <p className="text-gray-500">No saved posts yet</p>
-              <p className="text-xs text-gray-400 mt-1">Bookmark articles and magazines to read later</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {bookmarkedArticles.map((article) => (
-                <Link key={article._id} to={`/articles/${article.slug}`} className="flex gap-4 bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-all">
-                  <img src={article.featuredImage || article.images?.[0] || "/placeholder-article.jpg"} alt="" className="w-20 h-20 rounded-xl object-cover flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-bold text-gray-900 line-clamp-2">{article.title}</h3>
-                    <p className="text-xs text-gray-500 mt-1">{article.category}</p>
-                  </div>
-                </Link>
-              ))}
-              {bookmarkedMagazines.map((magazine) => (
-                <Link key={magazine._id} to={`/${magazine.slug}`} className="flex gap-4 bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-all">
-                  <img src={magazine.coverImage || "/placeholder-article.jpg"} alt="" className="w-20 h-24 rounded-xl object-cover flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-bold text-gray-900 line-clamp-2">{magazine.title}</h3>
-                    <p className="text-xs text-gray-500 mt-1">{magazine.category}</p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )
-        )}
+            ) : (
+              <>
+                {bookmarkedArticles.map((article) => (
+                  <Link key={article._id} to={`/articles/${article.slug}`} className="flex gap-4 bg-white rounded-xl p-4 border border-gray-100 hover:shadow-sm transition-all mb-3 lg:mb-0">
+                    <img src={article.featuredImage || article.images?.[0] || "/placeholder-article.jpg"} alt="" className="w-20 h-20 rounded-xl object-cover flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-bold text-gray-900 line-clamp-2">{article.title}</h3>
+                      <p className="text-xs text-gray-500 mt-1">{article.category}</p>
+                    </div>
+                  </Link>
+                ))}
+                {bookmarkedMagazines.map((magazine) => (
+                  <Link key={magazine._id} to={`/${magazine.slug}`} className="flex gap-4 bg-white rounded-xl p-4 border border-gray-100 hover:shadow-sm transition-all mb-3 lg:mb-0">
+                    <img src={magazine.coverImage || "/placeholder-article.jpg"} alt="" className="w-20 h-24 rounded-xl object-cover flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-bold text-gray-900 line-clamp-2">{magazine.title}</h3>
+                      <p className="text-xs text-gray-500 mt-1">{magazine.category}</p>
+                    </div>
+                  </Link>
+                ))}
+              </>
+            )
+          )}
+        </div>
       </div>
 
       {/* Edit Profile Modal */}
