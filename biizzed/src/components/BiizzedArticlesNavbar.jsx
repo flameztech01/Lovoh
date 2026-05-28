@@ -1,4 +1,4 @@
-// components/BiizzedArticlesNavbar.jsx – Contributor-gated create button
+// components/BiizzedArticlesNavbar.jsx – Contributor-gated create button with new search
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
@@ -16,9 +16,12 @@ import {
   FaPlus,
   FaUserEdit,
   FaArrowRight,
+  FaSpinner,
 } from "react-icons/fa";
 import { useGetNotificationsQuery } from "../slices/notificationApiSlice";
 import { useGetContributorStatusQuery } from "../slices/contributorApiSlice";
+import { useLazyQuickSearchQuery } from "../slices/searchApiSlice";
+import { debounce } from "lodash";
 
 const BiizzedArticlesNavbar = () => {
   const navigate = useNavigate();
@@ -29,6 +32,8 @@ const BiizzedArticlesNavbar = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showContributorPrompt, setShowContributorPrompt] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchSuggestions, setSearchSuggestions] = useState([]);
+  const [isSearchingSuggestions, setIsSearchingSuggestions] = useState(false);
   const [activeTab, setActiveTab] = useState("feed");
 
   // Fetch unread notification count (only if logged in)
@@ -43,6 +48,30 @@ const BiizzedArticlesNavbar = () => {
     skip: !userInfo?._id,
   });
   const isContributor = contribData?.biizzed_contributor === true;
+
+  // Quick search hook
+  const [triggerQuickSearch] = useLazyQuickSearchQuery();
+
+  // Debounced search for suggestions
+  const debouncedSearch = React.useCallback(
+    debounce(async (term) => {
+      if (term.length >= 2) {
+        setIsSearchingSuggestions(true);
+        try {
+          const result = await triggerQuickSearch({ q: term, limit: 8 }).unwrap();
+          setSearchSuggestions(result.suggestions || []);
+        } catch (error) {
+          console.error("Search suggestions error:", error);
+          setSearchSuggestions([]);
+        } finally {
+          setIsSearchingSuggestions(false);
+        }
+      } else {
+        setSearchSuggestions([]);
+      }
+    }, 300),
+    [triggerQuickSearch]
+  );
 
   useEffect(() => {
     const handleScroll = () => {
@@ -60,13 +89,32 @@ const BiizzedArticlesNavbar = () => {
     else setActiveTab("feed");
   }, [location.pathname]);
 
+  useEffect(() => {
+    if (showSearch && searchTerm) {
+      debouncedSearch(searchTerm);
+    } else {
+      setSearchSuggestions([]);
+    }
+    return () => {
+      debouncedSearch.cancel();
+    };
+  }, [searchTerm, showSearch, debouncedSearch]);
+
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchTerm.trim()) {
       navigate(`/search?q=${encodeURIComponent(searchTerm.trim())}`);
+      setShowSearch(false);
+      setSearchTerm("");
+      setSearchSuggestions([]);
     }
+  };
+
+  const handleSuggestionClick = (suggestion) => {
     setShowSearch(false);
     setSearchTerm("");
+    setSearchSuggestions([]);
+    navigate(suggestion.url);
   };
 
   const handleTabChange = (tab) => {
@@ -130,6 +178,16 @@ const BiizzedArticlesNavbar = () => {
       color: "bg-red-500",
     },
   ];
+
+  const getSuggestionIcon = (type) => {
+    switch (type) {
+      case "article": return <FaNewspaper className="text-blue-500" />;
+      case "magazine": return <FaBookOpen className="text-purple-500" />;
+      case "video": return <FaVideo className="text-red-500" />;
+      case "user": return <FaUserCircle className="text-green-500" />;
+      default: return <FaSearch className="text-gray-400" />;
+    }
+  };
 
   return (
     <>
@@ -336,7 +394,7 @@ const BiizzedArticlesNavbar = () => {
         </div>
       )}
 
-      {/* Search Overlay */}
+      {/* Search Overlay with Suggestions */}
       {showSearch && (
         <div className="fixed inset-0 z-[60] flex items-start justify-center pt-16 px-4">
           <div
@@ -361,7 +419,7 @@ const BiizzedArticlesNavbar = () => {
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Search articles, magazines, videos..."
+                    placeholder="Search articles, magazines, videos, users..."
                     className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3766] focus:border-transparent text-sm"
                     autoFocus
                   />
@@ -373,6 +431,45 @@ const BiizzedArticlesNavbar = () => {
                   Search
                 </button>
               </form>
+
+              {/* Suggestions */}
+              {(searchSuggestions.length > 0 || isSearchingSuggestions) && (
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  <p className="text-xs text-gray-500 mb-2 font-medium uppercase tracking-wide">
+                    Suggestions
+                  </p>
+                  {isSearchingSuggestions ? (
+                    <div className="flex justify-center py-4">
+                      <FaSpinner className="animate-spin text-[#1B3766] text-sm" />
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {searchSuggestions.slice(0, 5).map((suggestion, idx) => (
+                        <button
+                          key={`${suggestion.type}-${suggestion.id}-${idx}`}
+                          onClick={() => handleSuggestionClick(suggestion)}
+                          className="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-50 rounded-lg transition-colors text-left"
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                            {suggestion.image ? (
+                              <img src={suggestion.image} alt="" className="w-full h-full rounded-lg object-cover" />
+                            ) : (
+                              getSuggestionIcon(suggestion.type)
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">{suggestion.title}</p>
+                            {suggestion.subtitle && (
+                              <p className="text-xs text-gray-500 truncate">{suggestion.subtitle}</p>
+                            )}
+                          </div>
+                          <span className="text-xs text-gray-400 capitalize">{suggestion.type}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="mt-4 pt-4 border-t border-gray-100">
                 <p className="text-xs text-gray-500 mb-2 font-medium uppercase tracking-wide">

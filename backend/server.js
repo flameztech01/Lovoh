@@ -23,6 +23,7 @@ import sellerRoutes from "./routes/sellerRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
 import subscribeRoutes from "./routes/subscribeRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
+import searchRoutes from "./routes/searchRoutes.js";
 import './cronJobs.js'; // Import cron jobs
 
 dotenv.config();
@@ -85,6 +86,7 @@ app.use("/api/seller", sellerRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/subscribe", subscribeRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/search", searchRoutes);
 
 app.get('/api/fix-admin-types', async (req, res) => {
   const Article = (await import('./models/articleModel.js')).default;
