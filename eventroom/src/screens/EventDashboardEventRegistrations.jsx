@@ -6,6 +6,7 @@ import {
   FaUser, FaUsers, FaDownload, FaSearch, FaTimes, FaEye,
   FaSync, FaBan, FaTicketAlt, FaChair, FaClipboardCheck,
   FaQrcode, FaUserFriends, FaDollarSign, FaFilter, FaLayerGroup,
+  FaEnvelope, // for bulk mail icon
 } from 'react-icons/fa';
 import {
   useGetEventByIdQuery,
@@ -93,23 +94,160 @@ const EventDashboardEventRegistrations = () => {
         }).format(p)
       : 'Free';
 
-  const filteredRegistrations = registrations.filter((reg) => {
-    if (!searchTerm) return true;
-    const s = searchTerm.toLowerCase();
-    return (
-      reg.name?.toLowerCase().includes(s) ||
-      reg.email?.toLowerCase().includes(s) ||
-      reg.ticketId?.toLowerCase().includes(s) ||
-      reg.seatNumber?.toLowerCase().includes(s) ||
-      reg.ticketType?.toLowerCase().includes(s) ||
-      reg.additionalAttendees?.some(
-        (a) =>
-          a.name?.toLowerCase().includes(s) ||
-          a.ticketId?.toLowerCase().includes(s) ||
-          a.seatNumber?.toLowerCase().includes(s)
-      )
+  // Helper to get custom value as string
+  const getCustomValue = (value) => {
+    if (Array.isArray(value)) return value.join('; ');
+    if (value === undefined || value === null) return '';
+    return String(value);
+  };
+
+  // Collect all custom form labels across all registrations for CSV header
+  const getAllCustomLabels = () => {
+    const labelsSet = new Set();
+    registrations.forEach((reg) => {
+      if (reg.customFormResponses && Array.isArray(reg.customFormResponses)) {
+        reg.customFormResponses.forEach((resp) => {
+          if (resp.label) labelsSet.add(resp.label);
+        });
+      }
+    });
+    return Array.from(labelsSet).sort();
+  };
+
+  const exportToCSV = () => {
+    const customLabels = getAllCustomLabels();
+    // Define base columns (all important fields)
+    const baseColumns = [
+      'Type', 'Name', 'Email', 'Phone', 'Ticket ID', 'Seat Number',
+      'Ticket Type', 'Quantity', 'Registration Date', 'Status',
+      'Amount (NGN)', 'Checked In', 'Check-in Time',
+      'Payment Reference', 'Paid Amount (NGN)'
+    ];
+    const headers = [...baseColumns, ...customLabels];
+    
+    const rows = [headers];
+
+    const formatCheckInTime = (reg, isAttendee = false, attendee = null) => {
+      if (isAttendee && attendee) {
+        return attendee.checkedInAt ? formatDate(attendee.checkedInAt) : '';
+      }
+      return reg.checkedInAt ? formatDate(reg.checkedInAt) : '';
+    };
+
+    filteredRegistrations.forEach((reg) => {
+      // Buyer row
+      const buyerRow = {};
+      baseColumns.forEach(col => buyerRow[col] = '');
+      customLabels.forEach(label => buyerRow[label] = '');
+      
+      buyerRow['Type'] = 'Buyer';
+      buyerRow['Name'] = reg.name || '';
+      buyerRow['Email'] = reg.email || '';
+      buyerRow['Phone'] = reg.phone || '';
+      buyerRow['Ticket ID'] = reg.ticketId || '';
+      buyerRow['Seat Number'] = reg.seatNumber || '';
+      buyerRow['Ticket Type'] = reg.ticketType || 'General';
+      buyerRow['Quantity'] = reg.quantity || 1;
+      buyerRow['Registration Date'] = formatDate(reg.createdAt);
+      buyerRow['Status'] = reg.status || '';
+      buyerRow['Amount (NGN)'] = reg.totalAmount || reg.price || 0;
+      buyerRow['Checked In'] = reg.ticketCheckedIn ? 'Yes' : 'No';
+      buyerRow['Check-in Time'] = formatCheckInTime(reg);
+      buyerRow['Payment Reference'] = reg.paymentReference || '';
+      buyerRow['Paid Amount (NGN)'] = reg.paidAmount || '';
+      
+      // Custom responses for buyer
+      if (reg.customFormResponses && Array.isArray(reg.customFormResponses)) {
+        reg.customFormResponses.forEach((resp) => {
+          if (resp.label && buyerRow.hasOwnProperty(resp.label)) {
+            buyerRow[resp.label] = getCustomValue(resp.value);
+          }
+        });
+      }
+      
+      rows.push(baseColumns.map(col => `"${String(buyerRow[col] || '').replace(/"/g, '""')}"`).concat(
+        customLabels.map(label => `"${String(buyerRow[label] || '').replace(/"/g, '""')}"`)
+      ));
+
+      // Additional attendees rows
+      if (reg.additionalAttendees && reg.additionalAttendees.length > 0) {
+        reg.additionalAttendees.forEach((att) => {
+          const guestRow = {};
+          baseColumns.forEach(col => guestRow[col] = '');
+          customLabels.forEach(label => guestRow[label] = '');
+          
+          guestRow['Type'] = 'Guest';
+          guestRow['Name'] = att.name || '';
+          guestRow['Email'] = att.email || '';
+          guestRow['Phone'] = att.phone || '';
+          guestRow['Ticket ID'] = att.ticketId || '';
+          guestRow['Seat Number'] = att.seatNumber || '';
+          guestRow['Ticket Type'] = reg.ticketType || 'General';
+          guestRow['Quantity'] = 1;
+          guestRow['Registration Date'] = '';
+          guestRow['Status'] = reg.status || '';
+          guestRow['Amount (NGN)'] = 0;
+          guestRow['Checked In'] = att.checkedIn ? 'Yes' : 'No';
+          guestRow['Check-in Time'] = formatCheckInTime(reg, true, att);
+          guestRow['Payment Reference'] = reg.paymentReference || '';
+          guestRow['Paid Amount (NGN)'] = '';
+          
+          // Custom responses for guests (same as buyer's custom responses, optional)
+          if (reg.customFormResponses && Array.isArray(reg.customFormResponses)) {
+            reg.customFormResponses.forEach((resp) => {
+              if (resp.label && guestRow.hasOwnProperty(resp.label)) {
+                guestRow[resp.label] = getCustomValue(resp.value);
+              }
+            });
+          }
+          
+          rows.push(baseColumns.map(col => `"${String(guestRow[col] || '').replace(/"/g, '""')}"`).concat(
+            customLabels.map(label => `"${String(guestRow[label] || '').replace(/"/g, '""')}"`)
+          ));
+        });
+      }
+    });
+
+    const csvContent = rows.map(row => row.join(',')).join('\n');
+    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `registrations_${event?.title?.replace(/\s+/g, '_') || 'export'}_${new Date().toISOString().slice(0,19)}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast.success(`Exported ${filteredRegistrations.length} registrations with all details!`);
+  };
+
+  // Bulk email: opens Gmail with all attendee emails (buyer + guests)
+  const bulkMail = () => {
+    const emailSet = new Set();
+    // Collect emails from all registrations (including filtered ones)
+    filteredRegistrations.forEach((reg) => {
+      if (reg.email && reg.email.trim()) emailSet.add(reg.email.trim());
+      if (reg.additionalAttendees && reg.additionalAttendees.length) {
+        reg.additionalAttendees.forEach((att) => {
+          if (att.email && att.email.trim()) emailSet.add(att.email.trim());
+        });
+      }
+    });
+    
+    const emails = Array.from(emailSet);
+    if (emails.length === 0) {
+      toast.error('No email addresses found to send mail.');
+      return;
+    }
+    
+    const subject = encodeURIComponent(`Follow-up: ${event?.title || 'Event'} Update`);
+    const body = encodeURIComponent(
+      `Dear Attendee,\n\nThank you for registering for "${event?.title}". We hope you had a great experience!\n\n` +
+      `We would love to hear your feedback. Please feel free to reply to this email with any questions or comments.\n\n` +
+      `Best regards,\n${event?.organizer || 'Event Team'}`
     );
-  });
+    // Gmail compose URL
+    const gmailComposeUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(emails.join(','))}&su=${subject}&body=${body}`;
+    window.open(gmailComposeUrl, '_blank');
+    toast.success(`Opening Gmail with ${emails.length} recipient(s).`);
+  };
 
   const refreshData = async () => {
     setIsRefreshing(true);
@@ -118,46 +256,25 @@ const EventDashboardEventRegistrations = () => {
     toast.success('Refreshed');
   };
 
-  const exportToCSV = () => {
-    const rows = [
-      ['Type', 'Name', 'Email', 'Ticket ID', 'Seat', 'Ticket Type', 'Registered', 'Status', 'Amount', 'Checked In'],
-    ];
-    filteredRegistrations.forEach((reg) => {
-      rows.push([
-        'Buyer',
-        reg.name,
-        reg.email,
-        reg.ticketId || '',
-        reg.seatNumber || '',
-        reg.ticketType || 'General',
-        formatDate(reg.createdAt),
-        reg.status,
-        formatPrice(reg.totalAmount || reg.price || 0),
-        reg.ticketCheckedIn ? 'Yes' : 'No',
-      ]);
-      reg.additionalAttendees?.forEach((att) => {
-        rows.push([
-          'Guest',
-          att.name || '',
-          att.email || '',
-          att.ticketId || '',
-          att.seatNumber || '',
-          reg.ticketType || 'General',
-          '',
-          '',
-          '',
-          att.checkedIn ? 'Yes' : 'No',
-        ]);
-      });
-    });
-    const csvContent = rows.map((row) => row.map((c) => `"${c}"`).join(',')).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `registrations_${event?.title?.replace(/\s+/g, '_') || 'export'}.csv`;
-    a.click();
-    toast.success('Exported!');
-  };
+  const filteredRegistrations = registrations.filter((reg) => {
+    if (!searchTerm) return true;
+    const s = searchTerm.toLowerCase();
+    return (
+      reg.name?.toLowerCase().includes(s) ||
+      reg.email?.toLowerCase().includes(s) ||
+      reg.phone?.toLowerCase().includes(s) ||
+      reg.ticketId?.toLowerCase().includes(s) ||
+      reg.seatNumber?.toLowerCase().includes(s) ||
+      reg.ticketType?.toLowerCase().includes(s) ||
+      reg.additionalAttendees?.some(
+        (a) =>
+          a.name?.toLowerCase().includes(s) ||
+          a.email?.toLowerCase().includes(s) ||
+          a.ticketId?.toLowerCase().includes(s) ||
+          a.seatNumber?.toLowerCase().includes(s)
+      )
+    );
+  });
 
   // Modal open helpers with animation triggers
   const openDetailsModal = (reg) => {
@@ -388,7 +505,7 @@ const EventDashboardEventRegistrations = () => {
                   {att.name || 'Guest'} {att.checkedIn ? '✅' : '⏳'}
                 </p>
                 <p className="text-[10px] text-gray-500">
-                  Ticket: {att.ticketId || '—'} • Seat: {att.seatNumber || '—'}
+                  Ticket: {att.ticketId || '—'} • Seat: {att.seatNumber || '—'} • Email: {att.email || '—'}
                 </p>
               </div>
             ))}
@@ -532,6 +649,12 @@ const EventDashboardEventRegistrations = () => {
               <FaSync className={isRefreshing ? 'animate-spin' : ''} /> Refresh
             </button>
             <button
+              onClick={bulkMail}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
+            >
+              <FaEnvelope /> Bulk Mail
+            </button>
+            <button
               onClick={exportToCSV}
               className="flex items-center gap-2 px-4 py-2 bg-[#1B3766] text-white rounded-lg hover:bg-[#142952] text-sm"
             >
@@ -612,8 +735,9 @@ const EventDashboardEventRegistrations = () => {
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
+                        <div className="flex items-center gap-3 text-xs text-gray-500 mt-1 flex-wrap">
                           <span>{reg.email}</span>
+                          {reg.phone && <span>📞 {reg.phone}</span>}
                           <span>•</span>
                           <span>{reg.ticketType || 'General'}</span>
                           <span>•</span>
@@ -677,8 +801,9 @@ const EventDashboardEventRegistrations = () => {
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-gray-900">{att.name || 'Guest'}</p>
-                              <div className="flex items-center gap-2 text-xs text-gray-500">
+                              <div className="flex items-center gap-2 text-xs text-gray-500 flex-wrap">
                                 {att.email && <span>{att.email}</span>}
+                                {att.phone && <span>📞 {att.phone}</span>}
                                 <span className="font-mono">{att.ticketId}</span>
                                 {att.seatNumber && (
                                   <span>
@@ -735,6 +860,7 @@ const EventDashboardEventRegistrations = () => {
                           )}
                         </p>
                         <p className="text-xs text-gray-500">{reg.email}</p>
+                        {reg.phone && <p className="text-xs text-gray-400">📞 {reg.phone}</p>}
                       </div>
                     </div>
                     <span
