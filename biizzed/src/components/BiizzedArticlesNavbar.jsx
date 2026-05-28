@@ -1,4 +1,4 @@
-// components/BiizzedArticlesNavbar.jsx – Contributor-gated create button with new search
+// components/BiizzedArticlesNavbar.jsx – Contributor-gated create button with proper status handling
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
@@ -17,6 +17,9 @@ import {
   FaUserEdit,
   FaArrowRight,
   FaSpinner,
+  FaClock,
+  FaCheckCircle,
+  FaTimesCircle,
 } from "react-icons/fa";
 import { useGetNotificationsQuery } from "../slices/notificationApiSlice";
 import { useGetContributorStatusQuery } from "../slices/contributorApiSlice";
@@ -44,10 +47,17 @@ const BiizzedArticlesNavbar = () => {
   const unreadCount = notifData?.unreadCount || 0;
 
   // Fetch contributor status (skip if not logged in)
-  const { data: contribData } = useGetContributorStatusQuery(undefined, {
+  const { data: contribData, isLoading: contribLoading } = useGetContributorStatusQuery(undefined, {
     skip: !userInfo?._id,
   });
-  const isContributor = contribData?.biizzed_contributor === true;
+
+  // Determine contributor status
+  const isContributor = contribData?.data?.biizzed_contributor === true;
+  const applicationStatus = contribData?.data?.contributor_application?.status || "not_applied";
+  const isPending = applicationStatus === "pending";
+  const isApproved = isContributor;
+  const isRejected = applicationStatus === "rejected";
+  const hasNotApplied = applicationStatus === "not_applied";
 
   // Quick search hook
   const [triggerQuickSearch] = useLazyQuickSearchQuery();
@@ -137,17 +147,33 @@ const BiizzedArticlesNavbar = () => {
     }
   };
 
-  // Open create modal only if contributor; otherwise show prompt
+  // Open create modal based on contributor status
   const handleCreateButtonClick = () => {
     if (!userInfo) {
       navigate("/login?redirect=/feed");
       return;
     }
-    if (contribData && !isContributor) {
-      setShowContributorPrompt(true);
-    } else {
-      setShowCreateModal(true);
+
+    // If still loading contributor status, show loading
+    if (contribLoading) {
+      toast.info("Checking contributor status...");
+      return;
     }
+
+    // If approved, show create modal
+    if (isApproved) {
+      setShowCreateModal(true);
+      return;
+    }
+
+    // If pending, show pending message
+    if (isPending) {
+      setShowContributorPrompt(true);
+      return;
+    }
+
+    // If not applied or rejected, show apply prompt
+    setShowContributorPrompt(true);
   };
 
   const handleCreateOption = (type) => {
@@ -189,6 +215,37 @@ const BiizzedArticlesNavbar = () => {
     }
   };
 
+  // Get contributor status message and icon
+  const getContributorStatusDisplay = () => {
+    if (isApproved) {
+      return {
+        icon: <FaCheckCircle className="text-green-500 text-xs" />,
+        text: "Contributor",
+        bgColor: "bg-green-50",
+        textColor: "text-green-700",
+      };
+    }
+    if (isPending) {
+      return {
+        icon: <FaClock className="text-yellow-500 text-xs" />,
+        text: "Pending Approval",
+        bgColor: "bg-yellow-50",
+        textColor: "text-yellow-700",
+      };
+    }
+    if (isRejected) {
+      return {
+        icon: <FaTimesCircle className="text-red-500 text-xs" />,
+        text: "Not Approved",
+        bgColor: "bg-red-50",
+        textColor: "text-red-700",
+      };
+    }
+    return null;
+  };
+
+  const statusDisplay = userInfo && !contribLoading ? getContributorStatusDisplay() : null;
+
   return (
     <>
       {/* Fixed Navbar */}
@@ -212,9 +269,13 @@ const BiizzedArticlesNavbar = () => {
               {/* Create Button - Always visible */}
               <button
                 onClick={handleCreateButtonClick}
-                className="w-9 h-9 rounded-full bg-[#1B3766] text-white flex items-center justify-center hover:bg-[#142952] transition-colors"
+                className="w-9 h-9 rounded-full bg-[#1B3766] text-white flex items-center justify-center hover:bg-[#142952] transition-colors relative group"
+                title={isPending ? "Application pending approval" : isRejected ? "Application rejected" : "Create content"}
               >
                 <FaPlus className="text-sm" />
+                {isPending && (
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full animate-pulse" />
+                )}
               </button>
               <button
                 onClick={() => setShowSearch(true)}
@@ -301,7 +362,7 @@ const BiizzedArticlesNavbar = () => {
 
       <div className="h-[105px]"></div>
 
-      {/* Contributor Prompt Modal */}
+      {/* Contributor Prompt Modal - Dynamic based on status */}
       {showContributorPrompt && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
           <div
@@ -310,42 +371,75 @@ const BiizzedArticlesNavbar = () => {
           />
           <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl p-6 animate-slideUp">
             <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-[#1B3766]/10 rounded-full flex items-center justify-center mx-auto mb-3">
-                <FaUserEdit className="text-[#1B3766] text-2xl" />
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 ${
+                isPending ? 'bg-yellow-100' : isRejected ? 'bg-red-100' : 'bg-[#1B3766]/10'
+              }`}>
+                {isPending ? (
+                  <FaClock className="text-yellow-600 text-2xl" />
+                ) : isRejected ? (
+                  <FaTimesCircle className="text-red-600 text-2xl" />
+                ) : (
+                  <FaUserEdit className="text-[#1B3766] text-2xl" />
+                )}
               </div>
-              <h3 className="text-xl font-bold text-gray-900">
-                Become a Contributor
-              </h3>
-              <p className="text-sm text-gray-500 mt-2">
-                You need to be an approved contributor to create articles,
-                magazines, and videos. Apply now to share your content with the
-                community.
-              </p>
+              
+              {isPending && (
+                <>
+                  <h3 className="text-xl font-bold text-gray-900">Application Pending</h3>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Your contributor application is currently being reviewed by our team.
+                    You'll be notified once a decision is made. Thank you for your patience!
+                  </p>
+                </>
+              )}
+              
+              {isRejected && (
+                <>
+                  <h3 className="text-xl font-bold text-gray-900">Application Not Approved</h3>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Unfortunately, your contributor application was not approved at this time.
+                    You can reapply after 30 days.
+                  </p>
+                </>
+              )}
+              
+              {hasNotApplied && (
+                <>
+                  <h3 className="text-xl font-bold text-gray-900">Become a Contributor</h3>
+                  <p className="text-sm text-gray-500 mt-2">
+                    You need to be an approved contributor to create articles,
+                    magazines, and videos. Apply now to share your content with the
+                    community.
+                  </p>
+                </>
+              )}
             </div>
 
             <div className="space-y-3">
-              <button
-                onClick={() => {
-                  setShowContributorPrompt(false);
-                  navigate("/contributor/apply");
-                }}
-                className="w-full py-3 bg-[#1B3766] text-white rounded-xl font-semibold hover:bg-[#142952] transition-colors flex items-center justify-center gap-2"
-              >
-                Apply to Contribute
-                <FaArrowRight className="text-sm" />
-              </button>
+              {(hasNotApplied || isRejected) && (
+                <button
+                  onClick={() => {
+                    setShowContributorPrompt(false);
+                    navigate("/contributor/apply");
+                  }}
+                  className="w-full py-3 bg-[#1B3766] text-white rounded-xl font-semibold hover:bg-[#142952] transition-colors flex items-center justify-center gap-2"
+                >
+                  {hasNotApplied ? "Apply to Contribute" : "Reapply"}
+                  <FaArrowRight className="text-sm" />
+                </button>
+              )}
               <button
                 onClick={() => setShowContributorPrompt(false)}
                 className="w-full py-2.5 border border-gray-200 rounded-xl text-gray-600 font-medium text-sm hover:bg-gray-50 transition-colors"
               >
-                Maybe Later
+                {isPending ? "I Understand" : "Maybe Later"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Create Modal (only for contributors) */}
+      {/* Create Modal (only for approved contributors) */}
       {showCreateModal && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
           <div
@@ -359,6 +453,12 @@ const BiizzedArticlesNavbar = () => {
               </div>
               <h3 className="text-lg font-bold text-gray-900">Create New</h3>
               <p className="text-sm text-gray-500">Choose what to publish</p>
+              {statusDisplay && (
+                <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium mt-2 ${statusDisplay.bgColor} ${statusDisplay.textColor}`}>
+                  {statusDisplay.icon}
+                  <span>{statusDisplay.text}</span>
+                </div>
+              )}
             </div>
 
             <div className="space-y-3">

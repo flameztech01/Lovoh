@@ -6,6 +6,7 @@ import {
   FaArrowLeft, FaSave, FaUpload, FaImage, FaTrashAlt,
   FaSpinner, FaTag, FaBookOpen, FaFilePdf, FaTimes,
   FaClock, FaInfoCircle, FaUserEdit, FaArrowRight, FaLock,
+  FaCheckCircle, FaTimesCircle,
 } from 'react-icons/fa';
 import { useCreateMagazineMutation } from '../slices/magApiSlice';
 import { useGetContributorStatusQuery } from '../slices/contributorApiSlice';
@@ -18,11 +19,18 @@ const BiizzedCreateMagazine = () => {
   const { userInfo } = useSelector((state) => state.auth);
   const [createMagazine, { isLoading }] = useCreateMagazineMutation();
 
-  // Contributor gating
+  // Fetch contributor status
   const { data: contribData, isLoading: contribLoading } = useGetContributorStatusQuery(undefined, {
     skip: !userInfo?._id,
   });
-  const isContributor = contribData?.biizzed_contributor === true;
+
+  // Determine contributor status
+  const isContributor = contribData?.data?.biizzed_contributor === true;
+  const applicationStatus = contribData?.data?.contributor_application?.status || "not_applied";
+  const isPending = applicationStatus === "pending";
+  const isApproved = isContributor;
+  const isRejected = applicationStatus === "rejected";
+  const hasNotApplied = applicationStatus === "not_applied";
 
   const [formData, setFormData] = useState({
     title: '', summary: '', author: '', category: '', tags: '',
@@ -102,43 +110,114 @@ const BiizzedCreateMagazine = () => {
     }
   };
 
-  // -- Not logged in --
+  // ==================== GATING: Not logged in ====================
   if (!userInfo) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-100">
         <BiizzedArticlesNavbar />
-        <div className="text-center bg-white rounded-2xl shadow-lg p-8 max-w-md mx-4">
-          <FaLock className="text-4xl text-gray-400 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Login Required</h2>
-          <p className="text-sm text-gray-500 mb-6">You need to log in to create magazines.</p>
-          <button
-            onClick={() => navigate('/login?redirect=/create-magazine')}
-            className="px-6 py-3 bg-[#1B3766] text-white rounded-xl font-semibold hover:bg-[#142952] transition-colors"
-          >
-            Login to Continue
-          </button>
+        <div className="flex items-center justify-center min-h-[calc(100vh-200px)] px-4">
+          <div className="text-center bg-white rounded-2xl shadow-lg p-8 max-w-md w-full">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FaLock className="text-3xl text-gray-400" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Login Required</h2>
+            <p className="text-sm text-gray-500 mb-6">You need to log in to create magazines.</p>
+            <button
+              onClick={() => navigate('/login?redirect=/create-magazine')}
+              className="w-full py-3 bg-[#1B3766] text-white rounded-xl font-semibold hover:bg-[#142952] transition-colors"
+            >
+              Login to Continue
+            </button>
+          </div>
         </div>
         <BiizzedBottomBar />
       </div>
     );
   }
 
-  // -- Loading contributor status --
+  // ==================== GATING: Loading contributor status ====================
   if (contribLoading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-100">
         <BiizzedArticlesNavbar />
-        <div className="text-center">
-          <FaSpinner className="animate-spin text-4xl text-[#1B3766] mx-auto" />
-          <p className="mt-4 text-gray-500">Checking contributor status...</p>
+        <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
+          <div className="text-center">
+            <FaSpinner className="animate-spin text-4xl text-[#1B3766] mx-auto mb-4" />
+            <p className="text-gray-500">Checking contributor status...</p>
+          </div>
         </div>
         <BiizzedBottomBar />
       </div>
     );
   }
 
-  // -- Not a contributor --
-  if (!isContributor) {
+  // ==================== GATING: Pending ====================
+  if (isPending) {
+    return (
+      <div className="min-h-screen bg-gray-100">
+        <BiizzedArticlesNavbar />
+        <div className="flex items-center justify-center min-h-[calc(100vh-200px)] px-4">
+          <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
+            <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FaClock className="text-yellow-600 text-2xl" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Application Pending</h2>
+            <p className="text-sm text-gray-500 mb-6">
+              Your contributor application is currently being reviewed by our team.
+              You'll be notified once a decision is made. Thank you for your patience!
+            </p>
+            <button
+              onClick={() => navigate('/profile')}
+              className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+            >
+              Back to Profile
+            </button>
+          </div>
+        </div>
+        <BiizzedBottomBar />
+      </div>
+    );
+  }
+
+  // ==================== GATING: Rejected ====================
+  if (isRejected) {
+    return (
+      <div className="min-h-screen bg-gray-100">
+        <BiizzedArticlesNavbar />
+        <div className="flex items-center justify-center min-h-[calc(100vh-200px)] px-4">
+          <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FaTimesCircle className="text-red-600 text-2xl" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Application Not Approved</h2>
+            <p className="text-sm text-gray-500 mb-6">
+              Unfortunately, your contributor application was not approved at this time.
+              You can reapply after 30 days.
+            </p>
+            <div className="space-y-3">
+              <button
+                onClick={() => navigate('/contributor/apply')}
+                className="w-full py-3 bg-[#1B3766] text-white rounded-xl font-semibold hover:bg-[#142952] transition-colors flex items-center justify-center gap-2"
+              >
+                Reapply
+                <FaArrowRight className="text-sm" />
+              </button>
+              <button
+                onClick={() => navigate('/profile')}
+                className="w-full py-3 border border-gray-200 text-gray-600 rounded-xl font-semibold hover:bg-gray-50 transition-colors"
+              >
+                Back to Profile
+              </button>
+            </div>
+          </div>
+        </div>
+        <BiizzedBottomBar />
+      </div>
+    );
+  }
+
+  // ==================== GATING: Not applied ====================
+  if (hasNotApplied) {
     return (
       <div className="min-h-screen bg-gray-100">
         <BiizzedArticlesNavbar />
@@ -149,7 +228,8 @@ const BiizzedCreateMagazine = () => {
             </div>
             <h2 className="text-xl font-bold text-gray-900 mb-2">Only Contributors Can Publish</h2>
             <p className="text-sm text-gray-500 mb-6">
-              You need to be an approved Biizzed contributor to create magazines. Apply now to share your publications with the community.
+              You need to be an approved Biizzed contributor to create magazines. 
+              Apply now to share your publications with the community.
             </p>
             <button
               onClick={() => navigate('/contributor/apply')}
@@ -165,19 +245,25 @@ const BiizzedCreateMagazine = () => {
     );
   }
 
-  // -- Contributor: show magazine creation form --
+  // ==================== CONTRIBUTOR: Show magazine creation form ====================
   return (
     <div className="min-h-screen bg-gray-100">
       <BiizzedArticlesNavbar />
-      <div className="max-w-2xl mx-auto px-4 py-6">
+      <div className="max-w-2xl mx-auto px-4 py-6 pb-24">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-600 hover:text-[#1B3766] text-sm">
-            <FaArrowLeft /> Back
+          <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-600 hover:text-[#1B3766] text-sm group">
+            <FaArrowLeft className="group-hover:-translate-x-0.5 transition-transform" /> Back
           </button>
-          <button onClick={handleSubmit} disabled={isLoading} className="flex items-center gap-2 px-5 py-2.5 bg-[#1B3766] text-white rounded-xl font-medium text-sm hover:bg-[#142952] disabled:opacity-50">
-            {isLoading ? <><FaSpinner className="animate-spin" /> Saving...</> : <><FaSave /> {formData.comingSoon ? 'Save as Coming Soon' : 'Publish Magazine'}</>}
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Status Badge */}
+            <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium">
+              <FaCheckCircle className="text-[10px]" /> Contributor
+            </div>
+            <button onClick={handleSubmit} disabled={isLoading} className="flex items-center gap-2 px-5 py-2.5 bg-[#1B3766] text-white rounded-xl font-medium text-sm hover:bg-[#142952] disabled:opacity-50 transition-colors">
+              {isLoading ? <><FaSpinner className="animate-spin" /> Saving...</> : <><FaSave /> {formData.comingSoon ? 'Save as Coming Soon' : 'Publish Magazine'}</>}
+            </button>
+          </div>
         </div>
 
         <form onSubmit={e => e.preventDefault()} className="space-y-4">
@@ -234,7 +320,7 @@ const BiizzedCreateMagazine = () => {
             <input
               type="text" name="title" value={formData.title} onChange={handleChange}
               placeholder="Magazine title..."
-              className="w-full text-xl font-bold border-0 outline-none placeholder:text-gray-400"
+              className="w-full text-xl font-bold border-0 outline-none placeholder:text-gray-400 focus:ring-0"
               required
             />
           </div>
@@ -245,7 +331,7 @@ const BiizzedCreateMagazine = () => {
               name="summary" value={formData.summary} onChange={handleChange}
               placeholder="Magazine summary / description..."
               rows={4}
-              className="w-full text-sm border-0 outline-none placeholder:text-gray-400 resize-none"
+              className="w-full text-sm border-0 outline-none placeholder:text-gray-400 resize-none focus:ring-0"
               required
             />
           </div>
@@ -279,7 +365,7 @@ const BiizzedCreateMagazine = () => {
                     <p className="text-xs text-gray-400">{(pdfFile.size / 1024 / 1024).toFixed(1)} MB</p>
                   </div>
                 </div>
-                <button onClick={removePdf} className="p-2 text-red-500 hover:bg-red-50 rounded-full"><FaTrashAlt className="text-sm" /></button>
+                <button onClick={removePdf} className="p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors"><FaTrashAlt className="text-sm" /></button>
               </div>
             )}
           </div>
@@ -288,11 +374,11 @@ const BiizzedCreateMagazine = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
               <label className="block text-xs font-semibold text-gray-500 mb-2">Author</label>
-              <input type="text" name="author" value={formData.author} onChange={handleChange} placeholder="Author name" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+              <input type="text" name="author" value={formData.author} onChange={handleChange} placeholder="Author name" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]" />
             </div>
             <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
               <label className="block text-xs font-semibold text-gray-500 mb-2"><FaTag className="inline mr-1" />Category <span className="text-red-500">*</span></label>
-              <select name="category" value={formData.category} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" required>
+              <select name="category" value={formData.category} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]" required>
                 <option value="">Select</option>
                 {categories.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
@@ -301,7 +387,7 @@ const BiizzedCreateMagazine = () => {
 
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
             <label className="block text-xs font-semibold text-gray-500 mb-2">Tags (comma separated)</label>
-            <input type="text" name="tags" value={formData.tags} onChange={handleChange} placeholder="business, report, analysis..." className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+            <input type="text" name="tags" value={formData.tags} onChange={handleChange} placeholder="business, report, analysis..." className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]" />
           </div>
 
           {/* Info note */}
@@ -310,7 +396,7 @@ const BiizzedCreateMagazine = () => {
             <p>Magazines saved as "Coming Soon" will be visible to visitors with a "Coming Soon" badge. You can upload the PDF later by editing the magazine.</p>
           </div>
 
-          <button onClick={handleSubmit} disabled={isLoading} className="w-full py-3 bg-[#1B3766] text-white rounded-xl font-medium hover:bg-[#142952] disabled:opacity-50 lg:hidden">
+          <button onClick={handleSubmit} disabled={isLoading} className="w-full py-3 bg-[#1B3766] text-white rounded-xl font-medium hover:bg-[#142952] disabled:opacity-50 transition-colors lg:hidden">
             {isLoading ? 'Saving...' : (formData.comingSoon ? 'Save as Coming Soon' : 'Publish Magazine')}
           </button>
         </form>

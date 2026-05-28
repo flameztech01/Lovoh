@@ -6,7 +6,7 @@ import {
   FaArrowLeft, FaSave, FaUpload, FaVideo, FaTrashAlt,
   FaSpinner, FaTag, FaPlay, FaTimes, FaCheckCircle,
   FaYoutube, FaLink, FaExternalLinkAlt, FaExchangeAlt,
-  FaUserEdit, FaArrowRight, FaLock,
+  FaUserEdit, FaArrowRight, FaLock, FaClock, FaTimesCircle,
 } from 'react-icons/fa';
 import { useUploadVideoMutation, usePostYoutubeVideoMutation } from '../slices/videoApiSlice';
 import { useGetContributorStatusQuery } from '../slices/contributorApiSlice';
@@ -18,11 +18,18 @@ const BiizzedCreateVideo = () => {
   const navigate = useNavigate();
   const { userInfo } = useSelector((state) => state.auth);
 
-  // ---------- Contributor gating ----------
+  // Fetch contributor status (skip if not logged in)
   const { data: contribData, isLoading: contribLoading } = useGetContributorStatusQuery(undefined, {
     skip: !userInfo?._id,
   });
-  const isContributor = contribData?.biizzed_contributor === true;
+
+  // Determine contributor status
+  const isContributor = contribData?.data?.biizzed_contributor === true;
+  const applicationStatus = contribData?.data?.contributor_application?.status || "not_applied";
+  const isPending = applicationStatus === "pending";
+  const isApproved = isContributor;
+  const isRejected = applicationStatus === "rejected";
+  const hasNotApplied = applicationStatus === "not_applied";
 
   const [uploadVideo, { isLoading: isUploading }] = useUploadVideoMutation();
   const [postYoutube, { isLoading: isPostingYoutube }] = usePostYoutubeVideoMutation();
@@ -195,18 +202,22 @@ const BiizzedCreateVideo = () => {
   // ==================== GATING: Not logged in ====================
   if (!userInfo) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-100">
         <BiizzedArticlesNavbar />
-        <div className="text-center bg-white rounded-2xl shadow-lg p-8 max-w-md mx-4">
-          <FaLock className="text-4xl text-gray-400 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Login Required</h2>
-          <p className="text-sm text-gray-500 mb-6">You need to log in to create videos.</p>
-          <button
-            onClick={() => navigate('/login?redirect=/create-video')}
-            className="px-6 py-3 bg-[#1B3766] text-white rounded-xl font-semibold hover:bg-[#142952] transition-colors"
-          >
-            Login to Continue
-          </button>
+        <div className="flex items-center justify-center min-h-[calc(100vh-200px)] px-4">
+          <div className="text-center bg-white rounded-2xl shadow-lg p-8 max-w-md w-full">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FaLock className="text-3xl text-gray-400" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Login Required</h2>
+            <p className="text-sm text-gray-500 mb-6">You need to log in to create videos.</p>
+            <button
+              onClick={() => navigate('/login?redirect=/create-video')}
+              className="w-full py-3 bg-[#1B3766] text-white rounded-xl font-semibold hover:bg-[#142952] transition-colors"
+            >
+              Login to Continue
+            </button>
+          </div>
         </div>
         <BiizzedBottomBar />
       </div>
@@ -216,19 +227,86 @@ const BiizzedCreateVideo = () => {
   // ==================== GATING: Loading contributor status ====================
   if (contribLoading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-100">
         <BiizzedArticlesNavbar />
-        <div className="text-center">
-          <FaSpinner className="animate-spin text-4xl text-[#1B3766] mx-auto" />
-          <p className="mt-4 text-gray-500">Checking contributor status...</p>
+        <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
+          <div className="text-center">
+            <FaSpinner className="animate-spin text-4xl text-[#1B3766] mx-auto mb-4" />
+            <p className="text-gray-500">Checking contributor status...</p>
+          </div>
         </div>
         <BiizzedBottomBar />
       </div>
     );
   }
 
-  // ==================== GATING: Not a contributor ====================
-  if (!isContributor) {
+  // ==================== GATING: Pending ====================
+  if (isPending) {
+    return (
+      <div className="min-h-screen bg-gray-100">
+        <BiizzedArticlesNavbar />
+        <div className="flex items-center justify-center min-h-[calc(100vh-200px)] px-4">
+          <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
+            <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FaClock className="text-yellow-600 text-2xl" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Application Pending</h2>
+            <p className="text-sm text-gray-500 mb-6">
+              Your contributor application is currently being reviewed by our team.
+              You'll be notified once a decision is made. Thank you for your patience!
+            </p>
+            <button
+              onClick={() => navigate('/profile')}
+              className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+            >
+              Back to Profile
+            </button>
+          </div>
+        </div>
+        <BiizzedBottomBar />
+      </div>
+    );
+  }
+
+  // ==================== GATING: Rejected ====================
+  if (isRejected) {
+    return (
+      <div className="min-h-screen bg-gray-100">
+        <BiizzedArticlesNavbar />
+        <div className="flex items-center justify-center min-h-[calc(100vh-200px)] px-4">
+          <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FaTimesCircle className="text-red-600 text-2xl" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Application Not Approved</h2>
+            <p className="text-sm text-gray-500 mb-6">
+              Unfortunately, your contributor application was not approved at this time.
+              You can reapply after 30 days.
+            </p>
+            <div className="space-y-3">
+              <button
+                onClick={() => navigate('/contributor/apply')}
+                className="w-full py-3 bg-[#1B3766] text-white rounded-xl font-semibold hover:bg-[#142952] transition-colors flex items-center justify-center gap-2"
+              >
+                Reapply
+                <FaArrowRight className="text-sm" />
+              </button>
+              <button
+                onClick={() => navigate('/profile')}
+                className="w-full py-3 border border-gray-200 text-gray-600 rounded-xl font-semibold hover:bg-gray-50 transition-colors"
+              >
+                Back to Profile
+              </button>
+            </div>
+          </div>
+        </div>
+        <BiizzedBottomBar />
+      </div>
+    );
+  }
+
+  // ==================== GATING: Not applied ====================
+  if (hasNotApplied) {
     return (
       <div className="min-h-screen bg-gray-100">
         <BiizzedArticlesNavbar />
@@ -239,7 +317,8 @@ const BiizzedCreateVideo = () => {
             </div>
             <h2 className="text-xl font-bold text-gray-900 mb-2">Only Contributors Can Post Videos</h2>
             <p className="text-sm text-gray-500 mb-6">
-              You need to be an approved Biizzed contributor to upload or share YouTube videos. Apply now to start sharing your content.
+              You need to be an approved Biizzed contributor to upload or share YouTube videos. 
+              Apply now to start sharing your content.
             </p>
             <button
               onClick={() => navigate('/contributor/apply')}
@@ -259,23 +338,29 @@ const BiizzedCreateVideo = () => {
   return (
     <div className="min-h-screen bg-gray-100">
       <BiizzedArticlesNavbar />
-      <div className="max-w-2xl mx-auto px-4 py-6">
+      <div className="max-w-2xl mx-auto px-4 py-6 pb-24">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-600 hover:text-[#1B3766] text-sm">
-            <FaArrowLeft /> Back
+          <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-600 hover:text-[#1B3766] text-sm group">
+            <FaArrowLeft className="group-hover:-translate-x-0.5 transition-transform" /> Back
           </button>
-          <button 
-            onClick={activeTab === 'upload' ? handleUploadSubmit : handleYoutubeSubmit} 
-            disabled={isLoading || (activeTab === 'youtube' && !isValidYoutube)} 
-            className="flex items-center gap-2 px-5 py-2.5 bg-[#1B3766] text-white rounded-xl font-medium text-sm hover:bg-[#142952] disabled:opacity-50"
-          >
-            {isLoading ? (
-              <><FaSpinner className="animate-spin" /> Posting...</>
-            ) : (
-              <><FaSave /> {activeTab === 'upload' ? 'Upload Video' : 'Post YouTube Video'}</>
-            )}
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Status Badge */}
+            <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium">
+              <FaCheckCircle className="text-[10px]" /> Contributor
+            </div>
+            <button 
+              onClick={activeTab === 'upload' ? handleUploadSubmit : handleYoutubeSubmit} 
+              disabled={isLoading || (activeTab === 'youtube' && !isValidYoutube)} 
+              className="flex items-center gap-2 px-5 py-2.5 bg-[#1B3766] text-white rounded-xl font-medium text-sm hover:bg-[#142952] disabled:opacity-50 transition-colors"
+            >
+              {isLoading ? (
+                <><FaSpinner className="animate-spin" /> Posting...</>
+              ) : (
+                <><FaSave /> {activeTab === 'upload' ? 'Upload Video' : 'Post YouTube Video'}</>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Tab Switcher */}
@@ -355,7 +440,7 @@ const BiizzedCreateVideo = () => {
               <input
                 type="text" name="title" value={formData.title} onChange={handleChange}
                 placeholder="Video title..."
-                className="w-full text-xl font-bold border-0 outline-none placeholder:text-gray-400"
+                className="w-full text-xl font-bold border-0 outline-none placeholder:text-gray-400 focus:ring-0"
               />
             </div>
 
@@ -365,7 +450,7 @@ const BiizzedCreateVideo = () => {
                 name="description" value={formData.description} onChange={handleChange}
                 placeholder="Video description..."
                 rows={3}
-                className="w-full text-sm border-0 outline-none placeholder:text-gray-400 resize-none"
+                className="w-full text-sm border-0 outline-none placeholder:text-gray-400 resize-none focus:ring-0"
               />
             </div>
 
@@ -373,21 +458,21 @@ const BiizzedCreateVideo = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
                 <label className="block text-xs font-semibold text-gray-500 mb-2"><FaTag className="inline mr-1" />Category</label>
-                <select name="category" value={formData.category} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+                <select name="category" value={formData.category} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]">
                   <option value="">Select</option>
                   {categories.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
                 <label className="block text-xs font-semibold text-gray-500 mb-2">Tags</label>
-                <input type="text" name="tags" value={formData.tags} onChange={handleChange} placeholder="tutorial, tech..." className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                <input type="text" name="tags" value={formData.tags} onChange={handleChange} placeholder="tutorial, tech..." className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]" />
               </div>
             </div>
 
             {/* Educational Toggle */}
             <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
               <label className="flex items-center gap-3 cursor-pointer">
-                <input type="checkbox" name="isEducational" checked={formData.isEducational} onChange={handleChange} className="w-4 h-4 text-[#1B3766] rounded" />
+                <input type="checkbox" name="isEducational" checked={formData.isEducational} onChange={handleChange} className="w-4 h-4 text-[#1B3766] rounded focus:ring-[#1B3766]" />
                 <div>
                   <p className="text-sm font-medium text-gray-700">Mark as Educational</p>
                   <p className="text-xs text-gray-400">Educational videos appear in learning feeds</p>
@@ -395,7 +480,7 @@ const BiizzedCreateVideo = () => {
               </label>
             </div>
 
-            <button onClick={handleUploadSubmit} disabled={isUploading} className="w-full py-3 bg-[#1B3766] text-white rounded-xl font-medium hover:bg-[#142952] disabled:opacity-50 lg:hidden">
+            <button onClick={handleUploadSubmit} disabled={isUploading} className="w-full py-3 bg-[#1B3766] text-white rounded-xl font-medium hover:bg-[#142952] disabled:opacity-50 transition-colors lg:hidden">
               {isUploading ? 'Uploading...' : 'Upload Video'}
             </button>
           </form>
@@ -497,7 +582,7 @@ const BiizzedCreateVideo = () => {
                 <select 
                   value={youtubeCategory} 
                   onChange={(e) => setYoutubeCategory(e.target.value)} 
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
                 >
                   <option value="">Select</option>
                   {categories.map(c => <option key={c} value={c}>{c}</option>)}
@@ -510,7 +595,7 @@ const BiizzedCreateVideo = () => {
                   value={youtubeTags} 
                   onChange={(e) => setYoutubeTags(e.target.value)} 
                   placeholder="tutorial, tech..." 
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" 
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]" 
                 />
               </div>
             </div>
@@ -534,7 +619,7 @@ const BiizzedCreateVideo = () => {
             <button 
               onClick={handleYoutubeSubmit} 
               disabled={isPostingYoutube || !isValidYoutube} 
-              className="w-full py-3 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 disabled:opacity-50 lg:hidden"
+              className="w-full py-3 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 disabled:opacity-50 transition-colors lg:hidden"
             >
               {isPostingYoutube ? 'Posting...' : 'Post YouTube Video'}
             </button>
