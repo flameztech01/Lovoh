@@ -347,35 +347,47 @@ const BiizzedArticleDetails = () => {
   const isBookmarked = optBookmark !== null ? optBookmark : (article?.bookmarks || []).some(b => extractId(b) === myId);
   const isFollowing = optFollow !== null ? optFollow : followingList.some(f => extractId(f) === authorId);
 
+  // ==================== FIXED: RENDER CONTENT WITH IMAGES INSERTED BETWEEN PARAGRAPHS ====================
   const renderContentWithImages = () => {
     if (!article?.content) return null;
+    
     let content = article.content;
+    
+    // Check if content has HTML tags
     const hasHtmlTags = /<[a-z][\s\S]*?>/i.test(content);
     let paragraphs = [];
 
     if (hasHtmlTags) {
+      // Handle custom tags format (<<p>>content<</p>>)
       const pMatches = content.match(/<<p[^>]*>([\s\S]*?)<<\/p>/gi);
-      if (pMatches && pMatches.length > 1) {
+      if (pMatches && pMatches.length > 0) {
         paragraphs = pMatches.map(match => match.replace(/<<p[^>]*>/i, '').replace(/<<\/p>/i, ''));
       } else {
-        content = content.replace(/<<br\s*\/?>/gi, '\n').replace(/<<\/div>\s*<<div[^>]*>/gi, '\n\n');
+        // Handle regular HTML
+        content = content.replace(/<br\s*\/?>/gi, '\n').replace(/<\/div>\s*<div[^>]*>/gi, '\n\n');
         paragraphs = content.split(/\n\s*\n/);
       }
     } else {
+      // Plain text - split by double newlines
       paragraphs = content.split(/\n\s*\n/);
     }
 
+    // Filter out empty paragraphs
     const validParagraphs = paragraphs.filter(p => p.trim().length > 10);
     const totalParagraphs = validParagraphs.length;
     const imageCount = additionalImages.length;
 
+    // If no images or only one paragraph, just render content directly
     if (totalParagraphs === 0 || imageCount === 0) {
       return (
-        <div className="text-gray-700 leading-8 space-y-5 text-[15px] sm:text-base"
-          dangerouslySetInnerHTML={{ __html: article.content }} />
+        <div 
+          className="text-gray-700 leading-8 space-y-5 text-[15px] sm:text-base article-content"
+          dangerouslySetInnerHTML={{ __html: article.content }} 
+        />
       );
     }
 
+    // Calculate positions to insert images (distribute evenly)
     const insertPositions = [];
     const step = totalParagraphs / (imageCount + 1);
     for (let i = 1; i <= imageCount; i++) {
@@ -386,23 +398,56 @@ const BiizzedArticleDetails = () => {
     let imageIndex = 0;
 
     for (let i = 0; i < validParagraphs.length; i++) {
+      // Add paragraph
       elements.push(
-        <div key={`para-${i}`} className="text-gray-700 leading-8 text-[15px] sm:text-base"
-          dangerouslySetInnerHTML={{ __html: validParagraphs[i].trim() }} />
+        <div 
+          key={`para-${i}`} 
+          className="text-gray-700 leading-8 text-[15px] sm:text-base mb-5"
+          dangerouslySetInnerHTML={{ __html: validParagraphs[i].trim() }} 
+        />
       );
 
-      if (insertPositions.includes(i + 1) && imageIndex < additionalImages.length) {
+      // Add image at calculated position
+      if (insertPositions.includes(i) && imageIndex < additionalImages.length) {
         elements.push(
           <figure key={`image-${imageIndex}`} className="my-8">
             <div className="rounded-2xl overflow-hidden border border-gray-100 bg-gray-50 shadow-sm">
-              <img src={additionalImages[imageIndex]} alt={`${article.title}`} className="w-full h-auto object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
+              <img 
+                src={additionalImages[imageIndex]} 
+                alt={`${article.title} - illustration ${imageIndex + 1}`} 
+                className="w-full h-auto object-cover" 
+                onError={(e) => { e.target.style.display = 'none'; }} 
+              />
             </div>
-            <figcaption className="text-xs text-gray-400 mt-2 text-center italic">{article.category} insights</figcaption>
+            <figcaption className="text-xs text-gray-400 mt-2 text-center italic">
+              {article.category} insights
+            </figcaption>
           </figure>
         );
         imageIndex++;
       }
     }
+
+    // Add any remaining images at the end
+    while (imageIndex < additionalImages.length) {
+      elements.push(
+        <figure key={`image-end-${imageIndex}`} className="my-8">
+          <div className="rounded-2xl overflow-hidden border border-gray-100 bg-gray-50 shadow-sm">
+            <img 
+              src={additionalImages[imageIndex]} 
+              alt={`${article.title} - illustration ${imageIndex + 1}`} 
+              className="w-full h-auto object-cover" 
+              onError={(e) => { e.target.style.display = 'none'; }} 
+            />
+          </div>
+          <figcaption className="text-xs text-gray-400 mt-2 text-center italic">
+            {article.category} insights
+          </figcaption>
+        </figure>
+      );
+      imageIndex++;
+    }
+
     return elements;
   };
 
@@ -471,7 +516,7 @@ const BiizzedArticleDetails = () => {
               )}
 
               <div className="p-6">
-                {/* Author Info with Follow - NOW CLICKABLE */}
+                {/* Author Info with Follow - CLICKABLE */}
                 <div className="flex items-center gap-3 mb-4">
                   <Link to={`/user/${authorUsername}`} onClick={(e) => e.stopPropagation()}>
                     {authorProfile ? (
@@ -541,6 +586,7 @@ const BiizzedArticleDetails = () => {
                   <span className="text-[11px] font-semibold text-[#1B3766] bg-[#1B3766]/5 px-2.5 py-1.5 rounded-full">Biizzed</span>
                 </div>
 
+                {/* Article Content with Images Between Paragraphs */}
                 <div className="space-y-5 mb-6">
                   {renderContentWithImages()}
                 </div>
@@ -750,6 +796,12 @@ const BiizzedArticleDetails = () => {
           to { opacity: 1; transform: translateY(0); }
         }
         .animate-fadeInUp { animation: fadeInUp 0.28s ease-out; }
+        .article-content img {
+          max-width: 100%;
+          height: auto;
+          border-radius: 1rem;
+          margin: 1.5rem 0;
+        }
       `}</style>
     </div>
   );
