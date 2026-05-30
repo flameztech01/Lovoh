@@ -1,16 +1,46 @@
 // screens/AllEvents.jsx – Full updated version (no subdomain)
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useGetEventsQuery } from '../slices/eventApiSlice';
 import {
   FaCalendarAlt, FaMapMarkerAlt, FaClock, FaTicketAlt,
   FaSpinner, FaArrowRight, FaSearch, FaTimes,
   FaSlidersH, FaWifi, FaExclamationTriangle, FaPhone,
-  FaEnvelope, FaDoorOpen,  // <-- replaced FaUsers with FaDoorOpen
+  FaEnvelope, FaDoorOpen, FaFire,
 } from 'react-icons/fa';
 import AllEventsNavbar from '../components/AllEventsNavbar';
 import EventUpcomingGrid from '../components/EventUpcomingGrid';
 import Footer from '../components/Footer';
+
+// ==================== HELPER: Check if event is happening today ====================
+const isEventToday = (event) => {
+  if (!event.date) return false;
+  const today = new Date();
+  const eventDate = new Date(event.date);
+  return today.toDateString() === eventDate.toDateString();
+};
+
+// ==================== HELPER: Check if event is still upcoming (not passed) ====================
+const isEventUpcoming = (event) => {
+  if (!event.date) return false;
+  
+  const now = new Date();
+  const eventDate = new Date(event.date);
+  
+  if (event.time) {
+    const [hours, minutes] = event.time.split(':').map(Number);
+    eventDate.setHours(hours, minutes, 0, 0);
+  } else {
+    eventDate.setHours(0, 0, 0, 0);
+  }
+  
+  return now < eventDate;
+};
+
+// ==================== HELPER: Get events happening today (that haven't passed yet) ====================
+const getTodaysEvents = (events) => {
+  return events.filter(event => isEventToday(event) && isEventUpcoming(event));
+};
 
 // ==================== SKELETON COMPONENTS ====================
 const DesktopCardSkeleton = () => (
@@ -29,7 +59,6 @@ const DesktopCardSkeleton = () => (
         <div className="h-3 w-2/3 bg-gray-200 rounded" />
       </div>
       <div className="flex items-center justify-between pt-3 border-t border-gray-100 mt-auto">
-        {/* Replaced attendee skeleton with EventRoom skeleton */}
         <div className="h-3 w-16 bg-gray-200 rounded" />
         <div className="h-3 w-16 bg-gray-200 rounded" />
       </div>
@@ -49,9 +78,20 @@ const MobileCardSkeleton = () => (
       <div className="h-3 w-1/2 bg-gray-200 rounded" />
       <div className="h-3 w-2/3 bg-gray-200 rounded" />
       <div className="flex items-center justify-between pt-1.5">
-        <div className="h-2.5 w-16 bg-gray-200 rounded" />  {/* EventRoom skeleton */}
+        <div className="h-2.5 w-16 bg-gray-200 rounded" />
         <div className="h-2.5 w-12 bg-gray-200 rounded" />
       </div>
+    </div>
+  </div>
+);
+
+const TodayCardSkeleton = () => (
+  <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col animate-pulse">
+    <div className="aspect-[4/3] bg-gray-200" />
+    <div className="p-3 space-y-2">
+      <div className="h-4 w-3/4 bg-gray-200 rounded" />
+      <div className="h-3 w-1/2 bg-gray-200 rounded" />
+      <div className="h-3 w-2/3 bg-gray-200 rounded" />
     </div>
   </div>
 );
@@ -141,11 +181,14 @@ const AllEvents = () => {
   const [showFilters, setShowFilters] = useState(false);
 
   const { data: eventsData, isLoading, error, refetch } = useGetEventsQuery({
-    upcoming: 'true',
-    limit: 50,
+    limit: 100, // Fetch more events to get today's events
   });
 
   const events = eventsData?.events || [];
+  
+  // Get today's events (that haven't passed yet)
+  const todaysEvents = useMemo(() => getTodaysEvents(events), [events]);
+  
   const categories = [...new Set(events.map(e => e.category).filter(Boolean))];
   const eventTypes = [...new Set(events.map(e => e.eventType).filter(Boolean))];
 
@@ -160,6 +203,18 @@ const AllEvents = () => {
   });
 
   const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-NG', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : 'TBD';
+  
+  const formatTimeForDisplay = (time) => {
+    if (!time) return '';
+    try {
+      const [hours, minutes] = time.split(':');
+      const date = new Date();
+      date.setHours(parseInt(hours), parseInt(minutes) || 0);
+      return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    } catch {
+      return time;
+    }
+  };
 
   const getEventPriceDisplay = (e) => {
     if (e.ticketTypes?.length > 0) {
@@ -202,6 +257,19 @@ const AllEvents = () => {
                 <div className="h-6 w-8 bg-gray-200 rounded-full animate-pulse" />
               </div>
               <FeaturedSkeleton />
+            </div>
+          </section>
+
+          {/* Today's Events Skeleton */}
+          <section className="py-8 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-7xl mx-auto">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="h-6 w-20 bg-gray-200 rounded animate-pulse" />
+                <div className="h-6 w-8 bg-gray-200 rounded animate-pulse" />
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                {[1, 2, 3, 4].map(i => <TodayCardSkeleton key={i} />)}
+              </div>
             </div>
           </section>
 
@@ -263,6 +331,138 @@ const AllEvents = () => {
         {/* Featured Events Section */}
         <EventUpcomingGrid />
 
+        {/* EVENTS HAPPENING TODAY - New Section */}
+        {todaysEvents.length > 0 && (
+          <section className="py-8 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-orange-50/50 to-transparent">
+            <div className="max-w-7xl mx-auto">
+              <div className="flex items-center gap-2 mb-4 sm:mb-6">
+                <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
+                  <FaFire className="text-white text-sm" />
+                </div>
+                <h2 className="text-lg sm:text-2xl font-bold text-gray-900">Happening Today</h2>
+                <span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full text-xs sm:text-sm font-semibold">
+                  {todaysEvents.length}
+                </span>
+                <div className="hidden sm:block h-px flex-1 bg-gradient-to-r from-orange-200 to-transparent ml-4" />
+              </div>
+              
+              {/* Desktop: 4 columns grid */}
+              <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {todaysEvents.slice(0, 4).map(event => (
+                  <Link
+                    key={event._id}
+                    to={`/${event.slug}`}
+                    className="group bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden hover:-translate-y-1 border border-gray-100"
+                  >
+                    <div className="aspect-[4/3] relative overflow-hidden">
+                      {event.images?.[0] ? (
+                        <img 
+                          src={event.images[0]} 
+                          alt={event.title} 
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-orange-100 to-yellow-100">
+                          <FaCalendarAlt className="text-4xl text-orange-300" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                      
+                      {/* Live indicator */}
+                      <div className="absolute top-3 left-3 flex items-center gap-1">
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                        </span>
+                        <span className="text-white text-[10px] font-bold bg-red-500/80 px-1.5 py-0.5 rounded-full">LIVE</span>
+                      </div>
+                      
+                      {/* Time badge */}
+                      {event.time && (
+                        <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-lg flex items-center gap-1">
+                          <FaClock className="text-[10px]" />
+                          {formatTimeForDisplay(event.time)}
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-3">
+                      <h3 className="font-bold text-gray-900 text-sm line-clamp-2 mb-1 group-hover:text-orange-600 transition-colors">
+                        {event.title}
+                      </h3>
+                      <div className="flex items-center gap-2 text-[10px] text-gray-500 mb-2">
+                        <span className="flex items-center gap-1">
+                          <FaMapMarkerAlt className="text-orange-500 text-[8px]" />
+                          <span className="truncate">{event.venue || event.location || 'TBD'}</span>
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
+                        <span className="text-xs font-bold text-orange-600">
+                          {getEventPriceDisplay(event)}
+                        </span>
+                        <span className="text-orange-600 text-xs group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">
+                          Register <FaArrowRight className="text-[8px]" />
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+              
+              {/* Mobile: Horizontal scroll for today's events */}
+              <div className="sm:hidden overflow-x-auto -mx-4 px-4">
+                <div className="flex gap-3">
+                  {todaysEvents.slice(0, 6).map(event => (
+                    <Link
+                      key={event._id}
+                      to={`/${event.slug}`}
+                      className="flex-shrink-0 w-64 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all"
+                    >
+                      <div className="relative h-32">
+                        {event.images?.[0] ? (
+                          <img src={event.images[0]} alt={event.title} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-orange-100 to-yellow-100">
+                            <FaCalendarAlt className="text-3xl text-orange-300" />
+                          </div>
+                        )}
+                        <div className="absolute top-2 left-2 flex items-center gap-1">
+                          <span className="relative flex h-1.5 w-1.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span>
+                          </span>
+                          <span className="text-white text-[8px] font-bold bg-red-500/80 px-1 py-0.5 rounded-full">LIVE</span>
+                        </div>
+                        {event.time && (
+                          <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-sm text-white text-[9px] px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                            <FaClock className="text-[7px]" />
+                            {formatTimeForDisplay(event.time)}
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-2">
+                        <h3 className="font-bold text-gray-900 text-xs line-clamp-2 mb-0.5">{event.title}</h3>
+                        <p className="text-[9px] text-gray-500 truncate">{event.venue || event.location || 'TBD'}</p>
+                        <div className="flex items-center justify-between mt-1.5">
+                          <span className="text-[10px] font-bold text-orange-600">{getEventPriceDisplay(event)}</span>
+                          <span className="text-orange-600 text-[9px]">Register →</span>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+              
+              {todaysEvents.length > 4 && (
+                <div className="mt-4 text-center sm:hidden">
+                  <Link to="/all-events" className="text-xs text-orange-600 font-medium">
+                    View all {todaysEvents.length} events → 
+                  </Link>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
         {/* All Events List Section */}
         <section className="py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
           <div className="max-w-6xl mx-auto">
@@ -279,15 +479,28 @@ const AllEvents = () => {
               <div className="hidden sm:flex items-center gap-2">
                 <div className="relative">
                   <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs" />
-                  <input type="text" placeholder="Search events..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-48 lg:w-56 pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1B3766]" />
+                  <input 
+                    type="text" 
+                    placeholder="Search events..." 
+                    value={searchTerm} 
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-48 lg:w-56 pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1B3766]" 
+                  />
                   {searchTerm && <button onClick={() => setSearchTerm('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400"><FaTimes className="text-xs" /></button>}
                 </div>
-                <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1B3766]">
+                <select 
+                  value={categoryFilter} 
+                  onChange={(e) => setCategoryFilter(e.target.value)} 
+                  className="px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
+                >
                   <option value="all">All Categories</option>
                   {categories.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
-                <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1B3766]">
+                <select 
+                  value={typeFilter} 
+                  onChange={(e) => setTypeFilter(e.target.value)} 
+                  className="px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
+                >
                   <option value="all">All Types</option>
                   {eventTypes.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
@@ -330,7 +543,6 @@ const AllEvents = () => {
                         <div className="flex items-center gap-1"><FaMapMarkerAlt className="text-[#1B3766] text-[10px]" /><span className="truncate">{event.venue || event.location}</span></div>
                       </div>
                       <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                        {/* REPLACED: attendee count with EventRoom indicator */}
                         <span className="text-[10px] text-gray-500 flex items-center gap-1">
                           <FaDoorOpen className="text-[#1B3766] text-[10px]" /> EventRoom
                         </span>
@@ -376,7 +588,6 @@ const AllEvents = () => {
                         <div className="flex items-center gap-1"><FaMapMarkerAlt className="text-[#1B3766] text-[9px]" /><span className="truncate">{event.venue || event.location}</span></div>
                       </div>
                       <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-gray-50">
-                        {/* REPLACED: attendee count with EventRoom indicator */}
                         <span className="text-[9px] text-gray-500 flex items-center gap-1">
                           <FaDoorOpen className="text-[#1B3766] text-[8px]" /> EventRoom
                         </span>
@@ -405,20 +616,36 @@ const AllEvents = () => {
             <div className="space-y-3">
               <div className="relative">
                 <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs" />
-                <input type="text" placeholder="Search events..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-8 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]" />
+                <input 
+                  type="text" 
+                  placeholder="Search events..." 
+                  value={searchTerm} 
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-9 pr-8 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]" 
+                />
                 {searchTerm && <button onClick={() => setSearchTerm('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400"><FaTimes className="text-xs" /></button>}
               </div>
-              <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]">
-                <option value="all">All Categories</option>{categories.map(c => <option key={c} value={c}>{c}</option>)}
+              <select 
+                value={categoryFilter} 
+                onChange={(e) => setCategoryFilter(e.target.value)} 
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
+              >
+                <option value="all">All Categories</option>
+                {categories.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
-              <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]">
-                <option value="all">All Types</option>{eventTypes.map(t => <option key={t} value={t}>{t}</option>)}
+              <select 
+                value={typeFilter} 
+                onChange={(e) => setTypeFilter(e.target.value)} 
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
+              >
+                <option value="all">All Types</option>
+                {eventTypes.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
           </div>
         )}
-        <button onClick={() => setShowFilters(!showFilters)}
+        <button 
+          onClick={() => setShowFilters(!showFilters)}
           className={`w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 ${
             showFilters ? 'bg-gray-800 text-white rotate-90' : 'bg-[#1B3766] text-white'
           } ${hasActiveFilters && !showFilters ? 'ring-4 ring-[#1B3766]/30' : ''}`}>

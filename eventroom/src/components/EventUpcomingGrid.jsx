@@ -24,7 +24,15 @@ const isEventUpcoming = (event) => {
   return now < eventDate;
 };
 
-// Helper to get upcoming events (same day events with future time are included)
+// Helper to check if event is today (same date)
+const isEventToday = (event) => {
+  if (!event.date) return false;
+  const today = new Date();
+  const eventDate = new Date(event.date);
+  return today.toDateString() === eventDate.toDateString();
+};
+
+// Helper to get upcoming events (including today's events with future time)
 const getUpcomingEvents = (events) => {
   return events.filter(event => isEventUpcoming(event));
 };
@@ -33,15 +41,17 @@ const EventUpcomingGrid = () => {
   const location = useLocation();
   const onAllEventsPage = location.pathname === '/all-events';
 
+  // 🔥 FIX: Don't use 'upcoming' filter from backend - fetch all featured events
+  // and filter them client-side with proper time comparison
   const { data: eventsData, isLoading } = useGetEventsQuery({ 
-    upcoming: 'true',
     featured: 'true',
-    limit: 8, // Fetch more to filter properly
+    limit: 20, // Fetch more to ensure we get enough after filtering
   });
 
   // Filter events on client side to ensure time-based filtering
   const allEvents = eventsData?.events || [];
   const events = useMemo(() => {
+    // Filter only upcoming events (including today's events that haven't started yet)
     const upcoming = getUpcomingEvents(allEvents);
     // Return only first 4 after filtering
     return upcoming.slice(0, 4);
@@ -109,7 +119,9 @@ const EventUpcomingGrid = () => {
             const eventDateTime = new Date(event.date);
             const [hours, minutes] = (event.time || '00:00').split(':').map(Number);
             eventDateTime.setHours(hours, minutes, 0, 0);
-            const isToday = new Date().toDateString() === new Date(event.date).toDateString();
+            const isToday = isEventToday(event);
+            const now = new Date();
+            const isEventStillHappening = isToday && now < eventDateTime;
             
             return (
               <Link
@@ -141,8 +153,8 @@ const EventUpcomingGrid = () => {
                     </div>
                   )}
 
-                  {/* Today Badge - Show if event is today but not passed yet */}
-                  {isToday && (
+                  {/* Today Badge - Show if event is today and still happening */}
+                  {isEventStillHappening && (
                     <div className="absolute top-2 sm:top-3 left-2 sm:left-3">
                       {!event.featured && (
                         <span className="bg-green-500 text-white text-[8px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full shadow-lg">
@@ -187,7 +199,7 @@ const EventUpcomingGrid = () => {
                       <span className="flex items-center gap-0.5 sm:gap-1">
                         <FaCalendarAlt className="text-[7px] sm:text-[9px]" />
                         {formatDate(event.date)}
-                        {isToday && (
+                        {isEventStillHappening && (
                           <span className="text-green-300 ml-1 text-[7px] sm:text-[8px]">(Today)</span>
                         )}
                       </span>
