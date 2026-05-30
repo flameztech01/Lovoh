@@ -64,22 +64,49 @@ const BiizzedCreateArticle = () => {
   // Track active formatting as the cursor moves
   useEffect(() => {
     const handleSelectionChange = () => {
-      const selection = document.getSelection();
+      const selection = window.getSelection();
       if (
         editorRef.current &&
         selection.rangeCount > 0 &&
         editorRef.current.contains(selection.anchorNode)
       ) {
-        setActiveFormats({
-          bold: document.queryCommandState('bold'),
-          italic: document.queryCommandState('italic'),
-          underline: document.queryCommandState('underline'),
-          justifyLeft: document.queryCommandState('justifyLeft'),
-          justifyCenter: document.queryCommandState('justifyCenter'),
-          justifyRight: document.queryCommandState('justifyRight'),
-          insertUnorderedList: document.queryCommandState('insertUnorderedList'),
-          insertOrderedList: document.queryCommandState('insertOrderedList'),
-        });
+        // Use modern selection API instead of queryCommandState (which is deprecated)
+        const formatState = {
+          bold: false,
+          italic: false,
+          underline: false,
+          justifyLeft: false,
+          justifyCenter: false,
+          justifyRight: false,
+          insertUnorderedList: false,
+          insertOrderedList: false,
+        };
+        
+        // Check formatting based on parent elements
+        const node = selection.anchorNode;
+        if (node) {
+          let parent = node.parentElement;
+          while (parent && parent !== editorRef.current) {
+            if (parent.tagName === 'STRONG' || parent.tagName === 'B') {
+              formatState.bold = true;
+            }
+            if (parent.tagName === 'EM' || parent.tagName === 'I') {
+              formatState.italic = true;
+            }
+            if (parent.tagName === 'U') {
+              formatState.underline = true;
+            }
+            if (parent.tagName === 'UL') {
+              formatState.insertUnorderedList = true;
+            }
+            if (parent.tagName === 'OL') {
+              formatState.insertOrderedList = true;
+            }
+            parent = parent.parentElement;
+          }
+        }
+        
+        setActiveFormats(formatState);
       }
     };
 
@@ -94,48 +121,264 @@ const BiizzedCreateArticle = () => {
     }
   }, [previewMode]);
 
+  // Helper function to save cursor position
+  const saveCursorPosition = () => {
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0 && editorRef.current && editorRef.current.contains(selection.anchorNode)) {
+      const range = selection.getRangeAt(0);
+      const preSelectionRange = range.cloneRange();
+      preSelectionRange.selectNodeContents(editorRef.current);
+      preSelectionRange.setEnd(range.startContainer, range.startOffset);
+      const start = preSelectionRange.toString().length;
+      return start;
+    }
+    return null;
+  };
+
+  // Helper function to restore cursor position
+  const restoreCursorPosition = (savedPos) => {
+    if (!savedPos) return;
+    const selection = window.getSelection();
+    const range = document.createRange();
+    let charIndex = 0;
+    let found = false;
+    
+    const walk = (node) => {
+      if (found) return;
+      if (node.nodeType === Node.TEXT_NODE) {
+        const textLength = node.textContent.length;
+        if (charIndex + textLength >= savedPos) {
+          range.setStart(node, savedPos - charIndex);
+          range.setEnd(node, savedPos - charIndex);
+          found = true;
+          return;
+        }
+        charIndex += textLength;
+      } else if (node.nodeType === Node.ELEMENT_NODE && node.childNodes) {
+        for (let i = 0; i < node.childNodes.length; i++) {
+          walk(node.childNodes[i]);
+          if (found) break;
+        }
+      }
+    };
+    
+    walk(editorRef.current);
+    if (found) {
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+  };
+
+  // Improved execCommand with proper list handling
   const execCommand = (command, value = null) => {
-    document.execCommand(command, false, value);
+    if (!editorRef.current) return;
+    
+    // Save cursor position
+    const savedPos = saveCursorPosition();
+    
+    // Focus the editor
+    editorRef.current.focus();
+    
+    // Handle lists specially to ensure proper HTML structure
+    if (command === 'insertUnorderedList' || command === 'insertOrderedList') {
+      const selection = window.getSelection();
+      if (!selection.rangeCount) return;
+      
+      const range = selection.getRangeAt(0);
+      const selectedContent = range.cloneContents();
+      const isListActive = activeFormats[command];
+      
+      // If list is already active, remove it
+      if (isListActive) {
+        document.execCommand('outdent', false, null);
+      } else {
+        // Check if selection is within a list or needs new list
+        let parent = selection.anchorNode.parentElement;
+        let inList = false;
+        while (parent && parent !== editorRef.current) {
+          if (parent.tagName === 'UL' || parent.tagName === 'OL') {
+            inList = true;
+            break;
+          }
+          parent = parent.parentElement;
+        }
+        
+        if (inList) {
+          document.execCommand('outdent', false, null);
+        } else {
+          // Create new list
+          const listTag = command === 'insertUnorderedList' ? 'UL' : 'OL';
+          const listItemTag = 'LI';
+          
+          // Get selected text or create new item
+          const text = selection.toString();
+          if (text) {
+            // Convert selected lines to list items
+            const lines = text.split('\n');
+            const list = document.createElement(listTag);
+            list.style.margin = '12px 0';
+            list.style.paddingLeft = '24px';
+            
+            lines.forEach(line => {
+              if (line.trim()) {
+                const li = document.createElement(listItemTag);
+                li.textContent = line;
+                list.appendChild(li);
+              }
+            });
+            
+            range.deleteContents();
+            range.insertNode(list);
+            
+            // Move cursor to end of last item
+            const lastItem = list.lastChild;
+            if (lastItem) {
+              const newRange = document.createRange();
+              newRange.selectNodeContents(lastItem);
+              newRange.collapse(false);
+              selection.removeAllRanges();
+              selection.addRange(newRange);
+            }
+          } else {
+            // Just insert an empty list item
+            const list = document.createElement(listTag);
+            list.style.margin = '12px 0';
+            list.style.paddingLeft = '24px';
+            const li = document.createElement(listItemTag);
+            li.innerHTML = '<br>';
+            list.appendChild(li);
+            range.insertNode(list);
+            
+            // Move cursor into the list item
+            const newRange = document.createRange();
+            newRange.selectNodeContents(li);
+            newRange.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
+          }
+        }
+      }
+    } 
+    // Handle other commands normally
+    else {
+      document.execCommand(command, false, value);
+    }
+    
+    // Update content and formatting
     if (editorRef.current) {
       setContent(editorRef.current.innerHTML);
-      // Immediately reflect new active state
-      setActiveFormats({
-        bold: document.queryCommandState('bold'),
-        italic: document.queryCommandState('italic'),
-        underline: document.queryCommandState('underline'),
-        justifyLeft: document.queryCommandState('justifyLeft'),
-        justifyCenter: document.queryCommandState('justifyCenter'),
-        justifyRight: document.queryCommandState('justifyRight'),
-        insertUnorderedList: document.queryCommandState('insertUnorderedList'),
-        insertOrderedList: document.queryCommandState('insertOrderedList'),
-      });
+      // Update active formats after command
+      setTimeout(() => {
+        const newFormats = {
+          bold: document.queryCommandState('bold'),
+          italic: document.queryCommandState('italic'),
+          underline: document.queryCommandState('underline'),
+          justifyLeft: document.queryCommandState('justifyLeft'),
+          justifyCenter: document.queryCommandState('justifyCenter'),
+          justifyRight: document.queryCommandState('justifyRight'),
+          insertUnorderedList: !!editorRef.current.querySelector('ul'),
+          insertOrderedList: !!editorRef.current.querySelector('ol'),
+        };
+        setActiveFormats(newFormats);
+      }, 10);
     }
+    
+    // Restore cursor position (approximate)
+    setTimeout(() => restoreCursorPosition(savedPos), 10);
   };
 
   const insertHeading = () => {
+    if (!editorRef.current) return;
+    editorRef.current.focus();
+    
     const selection = window.getSelection();
+    if (!selection.rangeCount) return;
+    
+    const range = selection.getRangeAt(0);
+    const savedPos = saveCursorPosition();
+    
     if (selection.toString()) {
-      const range = selection.getRangeAt(0);
       const h2 = document.createElement('h2');
-      h2.style.fontSize = '20px';
+      h2.style.fontSize = '1.5rem';
       h2.style.fontWeight = 'bold';
-      h2.style.marginBottom = '8px';
+      h2.style.margin = '1rem 0 0.5rem 0';
+      h2.style.lineHeight = '1.3';
       h2.textContent = selection.toString();
       range.deleteContents();
       range.insertNode(h2);
-      if (editorRef.current) setContent(editorRef.current.innerHTML);
+      
+      // Move cursor after the heading
+      range.setStartAfter(h2);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    } else {
+      const h2 = document.createElement('h2');
+      h2.style.fontSize = '1.5rem';
+      h2.style.fontWeight = 'bold';
+      h2.style.margin = '1rem 0 0.5rem 0';
+      h2.style.lineHeight = '1.3';
+      h2.innerHTML = '<br>';
+      range.insertNode(h2);
+      
+      // Move cursor inside the heading
+      range.selectNodeContents(h2);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
     }
+    
+    if (editorRef.current) {
+      setContent(editorRef.current.innerHTML);
+    }
+    setTimeout(() => restoreCursorPosition(savedPos), 10);
   };
 
   const insertLink = () => {
-    const url = prompt('Enter URL:');
-    if (url) execCommand('createLink', url);
+    const url = prompt('Enter URL:', 'https://');
+    if (url && editorRef.current) {
+      editorRef.current.focus();
+      const savedPos = saveCursorPosition();
+      
+      const selection = window.getSelection();
+      if (selection.toString()) {
+        document.execCommand('createLink', false, url);
+      } else {
+        const range = selection.getRangeAt(0);
+        const link = document.createElement('a');
+        link.href = url;
+        link.textContent = url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.style.color = '#1B3766';
+        link.style.textDecoration = 'underline';
+        range.insertNode(link);
+        
+        // Move cursor after the link
+        range.setStartAfter(link);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+      
+      if (editorRef.current) {
+        setContent(editorRef.current.innerHTML);
+      }
+      setTimeout(() => restoreCursorPosition(savedPos), 10);
+    }
   };
 
   const insertQuote = () => {
+    if (!editorRef.current) return;
+    editorRef.current.focus();
+    
     const selection = window.getSelection();
+    if (!selection.rangeCount) return;
+    
+    const range = selection.getRangeAt(0);
+    const savedPos = saveCursorPosition();
+    
     if (selection.toString()) {
-      const range = selection.getRangeAt(0);
       const blockquote = document.createElement('blockquote');
       blockquote.style.borderLeft = '3px solid #1B3766';
       blockquote.style.paddingLeft = '16px';
@@ -145,8 +388,33 @@ const BiizzedCreateArticle = () => {
       blockquote.textContent = selection.toString();
       range.deleteContents();
       range.insertNode(blockquote);
-      if (editorRef.current) setContent(editorRef.current.innerHTML);
+      
+      // Move cursor after the quote
+      range.setStartAfter(blockquote);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    } else {
+      const blockquote = document.createElement('blockquote');
+      blockquote.style.borderLeft = '3px solid #1B3766';
+      blockquote.style.paddingLeft = '16px';
+      blockquote.style.margin = '12px 0';
+      blockquote.style.color = '#4B5563';
+      blockquote.style.fontStyle = 'italic';
+      blockquote.innerHTML = '<br>';
+      range.insertNode(blockquote);
+      
+      // Move cursor inside the quote
+      range.selectNodeContents(blockquote);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
     }
+    
+    if (editorRef.current) {
+      setContent(editorRef.current.innerHTML);
+    }
+    setTimeout(() => restoreCursorPosition(savedPos), 10);
   };
 
   const handleChange = (e) => {
@@ -182,7 +450,7 @@ const BiizzedCreateArticle = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.title.trim()) { toast.error('Title is required'); return; }
-    if (!content || content.replace(/<<[^>]*>/g, '').trim().length < 50) { toast.error('Content must be at least 50 characters'); return; }
+    if (!content || content.replace(/<[^>]*>/g, '').trim().length < 50) { toast.error('Content must be at least 50 characters'); return; }
     if (!formData.category) { toast.error('Category is required'); return; }
     if (images.length === 0) { toast.error('At least one image is required'); return; }
 
@@ -391,8 +659,8 @@ const BiizzedCreateArticle = () => {
               <ToolbarButton onClick={() => execCommand('justifyCenter')} icon={FaAlignCenter} title="Center" active={activeFormats.justifyCenter} />
               <ToolbarButton onClick={() => execCommand('justifyRight')} icon={FaAlignRight} title="Right" active={activeFormats.justifyRight} />
               <div className="w-px h-5 bg-gray-300 mx-1" />
-              <ToolbarButton onClick={() => execCommand('insertUnorderedList')} icon={FaListUl} title="Bullets" active={activeFormats.insertUnorderedList} />
-              <ToolbarButton onClick={() => execCommand('insertOrderedList')} icon={FaListOl} title="Numbers" active={activeFormats.insertOrderedList} />
+              <ToolbarButton onClick={() => execCommand('insertUnorderedList')} icon={FaListUl} title="Bullet List" active={activeFormats.insertUnorderedList} />
+              <ToolbarButton onClick={() => execCommand('insertOrderedList')} icon={FaListOl} title="Numbered List" active={activeFormats.insertOrderedList} />
               <div className="w-px h-5 bg-gray-300 mx-1" />
               <ToolbarButton onClick={insertHeading} icon={FaHeading} title="Heading" active={false} />
               <ToolbarButton onClick={insertQuote} icon={FaQuoteRight} title="Quote" active={false} />
@@ -408,17 +676,47 @@ const BiizzedCreateArticle = () => {
               </button>
             </div>
             {previewMode ? (
-              <div className="min-h-[300px] p-4 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: content || '<p class="text-gray-400 italic">No content yet. Start writing...</p>' }} />
+              <div 
+                className="min-h-[300px] p-4 prose prose-sm max-w-none" 
+                dangerouslySetInnerHTML={{ __html: content || '<p class="text-gray-400 italic">No content yet. Start writing...</p>' }} 
+                style={{
+                  '--tw-prose-bullets': '#1B3766',
+                  '--tw-prose-counters': '#1B3766',
+                }}
+              />
             ) : (
               <div
                 ref={editorRef}
                 contentEditable
                 suppressContentEditableWarning
+                data-placeholder="Start writing your article..."
                 className="min-h-[300px] p-4 focus:outline-none text-gray-700 prose prose-sm max-w-none empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400"
                 onInput={(e) => setContent(e.currentTarget.innerHTML)}
+                style={{
+                  '--tw-prose-bullets': '#1B3766',
+                  '--tw-prose-counters': '#1B3766',
+                }}
               />
             )}
           </div>
+
+          {/* Style injection for lists */}
+          <style jsx>{`
+            .prose ul, .prose ol {
+              margin-top: 0.5rem;
+              margin-bottom: 0.5rem;
+              padding-left: 1.5rem;
+            }
+            .prose ul {
+              list-style-type: disc;
+            }
+            .prose ol {
+              list-style-type: decimal;
+            }
+            .prose li {
+              margin: 0.25rem 0;
+            }
+          `}</style>
 
           {/* Images */}
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
