@@ -8,7 +8,7 @@ import {
   FaShare, FaTicketAlt, FaCopy, FaUser, FaMapPin, FaGlobe,
   FaStar, FaLayerGroup, FaChair, FaVideo, FaChevronLeft, FaChevronRight,
   FaTimes, FaDownload, FaSearchPlus, FaExpand,
-  FaWifi, FaExclamationTriangle, FaPhone, FaEnvelope,
+  FaWifi, FaExclamationTriangle, FaPhone, FaEnvelope, FaLock,
 } from 'react-icons/fa';
 import { useGetEventByIdQuery, useVerifyPaymentQuery } from '../slices/eventApiSlice';
 import { toast } from 'react-toastify';
@@ -45,7 +45,62 @@ const toAbsoluteUrl = (url) => {
   return `${getBaseUrl()}/${url}`;
 };
 
-// ==================== SKELETON COMPONENTS (unchanged) ====================
+// ==================== HELPER: Check if event is truly passed (with time) ====================
+const isEventPassed = (event) => {
+  if (!event) return true;
+  if (event.status === 'passed' || event.status === 'cancelled' || event.status === 'postponed') return true;
+  
+  const now = new Date();
+  const eventDate = new Date(event.date);
+  
+  // Parse event time (e.g., "14:30" for 2:30 PM)
+  const [hours, minutes] = (event.time || '00:00').split(':').map(Number);
+  eventDate.setHours(hours, minutes, 0, 0);
+  
+  return now > eventDate;
+};
+
+// ==================== HELPER: Check if registration is still open ====================
+const isRegistrationOpen = (event) => {
+  if (!event) return false;
+  
+  const now = new Date();
+  const eventDateTime = new Date(event.date);
+  
+  // Parse event time (e.g., "14:30" for 2:30 PM)
+  const [hours, minutes] = (event.time || '00:00').split(':').map(Number);
+  eventDateTime.setHours(hours, minutes, 0, 0);
+  
+  let deadlineDateTime;
+  
+  if (event.registrationDeadline) {
+    deadlineDateTime = new Date(event.registrationDeadline);
+    const deadlineDateOnly = new Date(deadlineDateTime);
+    deadlineDateOnly.setHours(0, 0, 0, 0);
+    const eventDateOnly = new Date(eventDateTime);
+    eventDateOnly.setHours(0, 0, 0, 0);
+    
+    if (deadlineDateOnly.getTime() === eventDateOnly.getTime()) {
+      // Deadline is on same day as event - deadline is event start time
+      deadlineDateTime = new Date(eventDateTime);
+    } else {
+      // Deadline is before event - deadline is end of deadline day
+      deadlineDateTime.setHours(23, 59, 59, 999);
+    }
+  } else {
+    // No deadline specified - registration closes at event start time
+    deadlineDateTime = new Date(eventDateTime);
+  }
+  
+  // Check conditions
+  const isEventPassedTime = now > eventDateTime;
+  const isDeadlinePassed = now > deadlineDateTime;
+  const isEventActive = event.status !== 'passed' && event.status !== 'cancelled' && event.status !== 'postponed';
+  
+  return !isEventPassedTime && !isDeadlinePassed && isEventActive && !event.isDisabled;
+};
+
+// ==================== SKELETON COMPONENTS ====================
 const ImageSkeleton = () => (
   <div className="relative w-full h-56 sm:h-80 md:h-96 overflow-hidden bg-gray-200 animate-pulse">
     <div className="absolute inset-0 bg-gradient-to-t from-gray-300/40 to-transparent" />
@@ -310,7 +365,7 @@ const EventDetail = () => {
       if (err.name !== 'AbortError') {
         console.log('File share not supported, falling back to text share', err);
       } else {
-        return; // user cancelled
+        return;
       }
     }
 
@@ -365,21 +420,24 @@ const EventDetail = () => {
     }
   };
 
-  // ✅ UPDATED: copy the actual event page URL, not the OG endpoint
   const handleCopy = async () => {
-    const url = window.location.href.split('?')[0]; // clean URL, no query params
+    const url = window.location.href.split('?')[0];
     await navigator.clipboard.writeText(url);
     setCopied(true);
     toast.success('Link copied!');
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // ✅ FIXED: Get event status with proper time comparison
   const getEventStatus = () => {
     if (!event) return { label: 'Unknown', color: 'bg-gray-100 text-gray-600', icon: FaCheckCircle };
     if (event.isDisabled) return { label: 'Cancelled', color: 'bg-red-100 text-red-800', icon: FaCheckCircle };
     if (event.status === 'postponed') return { label: 'Postponed', color: 'bg-yellow-100 text-yellow-800', icon: FaCalendarDay };
-    const isPast = new Date(event.date) < new Date();
-    if (isPast || event.status === 'passed') return { label: 'Past Event', color: 'bg-gray-100 text-gray-600', icon: FaCalendarCheck };
+    
+    // Check if event has passed using time-aware function
+    const passed = isEventPassed(event);
+    if (passed || event.status === 'passed') return { label: 'Past Event', color: 'bg-gray-100 text-gray-600', icon: FaCalendarCheck };
+    
     return { label: 'Upcoming', color: 'bg-green-100 text-green-800', icon: FaCalendarDay };
   };
 
@@ -405,8 +463,36 @@ const EventDetail = () => {
   };
 
   const hasTicketTypes = event?.ticketTypes?.length > 0;
-  const isPastEvent = event ? (new Date(event.date) < new Date() || event.status === 'passed') : false;
-  const canRegister = !isPastEvent && !event?.isDisabled && event?.status !== 'postponed';
+  
+  // ✅ FIXED: Use proper time-aware check for past event
+  const pastEvent = isEventPassed(event);
+  
+  // ✅ UPDATED: Use the proper registration open check
+  const registrationOpen = event ? isRegistrationOpen(event) : false;
+  const canRegister = !pastEvent && !event?.isDisabled && event?.status !== 'postponed' && registrationOpen;
+  
+  // Get registration closed reason for better UX
+  const getRegistrationClosedReason = () => {
+    if (!event) return 'Registration Closed';
+    if (pastEvent) return 'Past Event — Registration Closed';
+    if (event.status === 'postponed') return 'Event Postponed';
+    if (event.isDisabled) return 'Event Cancelled';
+    if (!registrationOpen) {
+      const now = new Date();
+      const eventDateTime = new Date(event.date);
+      const [hours, minutes] = (event.time || '00:00').split(':').map(Number);
+      eventDateTime.setHours(hours, minutes, 0, 0);
+      
+      if (now > eventDateTime) return 'Event Has Started — Registration Closed';
+      if (event.registrationDeadline) {
+        const deadline = new Date(event.registrationDeadline);
+        if (now > deadline) return 'Registration Deadline Passed';
+      }
+      return 'Registration Closed';
+    }
+    return 'Registration Closed';
+  };
+  
   const hasImages = event?.images?.length > 0;
   const timeRangeDisplay = event ? formatTimeRange(event.time, event.duration) : 'TBD';
 
@@ -512,6 +598,7 @@ const EventDetail = () => {
 
   const status = getEventStatus();
   const StatusIcon = status.icon;
+  const registrationClosedReason = getRegistrationClosedReason();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -667,16 +754,21 @@ const EventDetail = () => {
 
             <div className="flex flex-col sm:flex-row gap-3 mb-6">
               {canRegister ? (
-                <Link to={getEventRegisterPath(id)}
-                  className="flex-1 py-3.5 bg-[#1B3766] text-white rounded-xl font-semibold text-lg hover:bg-[#142952] transition-all shadow-lg hover:shadow-xl text-center">
+                <Link 
+                  to={getEventRegisterPath(id)}
+                  className="flex-1 py-3.5 bg-[#1B3766] text-white rounded-xl font-semibold text-lg hover:bg-[#142952] transition-all shadow-lg hover:shadow-xl text-center"
+                >
                   {event.isPaid 
                     ? `Register from ${hasTicketTypes ? formatPrice(Math.min(...event.ticketTypes.map(t => t.price))) : formatPrice(event.price)}` 
                     : 'Register for Free'
                   }
                 </Link>
               ) : (
-                <button disabled className="flex-1 py-3.5 bg-gray-300 text-gray-500 rounded-xl font-semibold text-lg cursor-not-allowed">
-                  {isPastEvent ? 'Past Event — Registration Closed' : event.status === 'postponed' ? 'Event Postponed' : 'Registration Closed'}
+                <button 
+                  disabled 
+                  className="flex-1 py-3.5 bg-gray-300 text-gray-500 rounded-xl font-semibold text-lg cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  <FaLock className="text-sm" /> {registrationClosedReason}
                 </button>
               )}
               <div className="flex items-center gap-2 justify-center">
@@ -689,9 +781,32 @@ const EventDetail = () => {
               </div>
             </div>
 
+            {/* Show registration deadline message */}
             {event.registrationDeadline && canRegister && (
               <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200 mb-6">
-                <p className="text-sm text-yellow-800">⏰ Registration closes on <strong>{formatDate(event.registrationDeadline)}</strong></p>
+                <p className="text-sm text-yellow-800">
+                  ⏰ Registration closes on <strong>{formatDate(event.registrationDeadline)}</strong>
+                  {new Date(event.registrationDeadline).toDateString() === new Date(event.date).toDateString() && (
+                    <span className="block text-xs mt-1 text-yellow-700">
+                      (Registration closes when the event starts)
+                    </span>
+                  )}
+                </p>
+              </div>
+            )}
+
+            {/* Show if registration is closed but event hasn't started yet */}
+            {!canRegister && !pastEvent && event.status === 'upcoming' && !event.isDisabled && event.status !== 'postponed' && (
+              <div className="bg-red-50 rounded-lg p-3 border border-red-200 mb-6">
+                <p className="text-sm text-red-800 flex items-start gap-2">
+                  <FaLock className="text-sm mt-0.5 flex-shrink-0" />
+                  <span>
+                    <strong>Registration Closed</strong><br />
+                    {event.registrationDeadline 
+                      ? `Registration deadline was ${formatDate(event.registrationDeadline)}`
+                      : 'Registration closed when the event started'}
+                  </span>
+                </p>
               </div>
             )}
 

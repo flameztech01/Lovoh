@@ -5,23 +5,77 @@ import {
   FaArrowLeft, FaSpinner, FaCheckCircle, FaTicketAlt,
   FaDollarSign, FaCalendarAlt, FaClock, FaMapMarkerAlt,
   FaPlus, FaMinus, FaTimes, FaUser, FaEnvelope, FaPhone,
-  FaExclamationTriangle,
+  FaExclamationTriangle, FaLock,
 } from 'react-icons/fa';
 import { useGetEventByIdQuery, useRegisterForEventMutation, useGetEventCustomFormQuery } from '../slices/eventApiSlice';
 import { toast } from 'react-toastify';
 import AllEventsNavbar from '../components/AllEventsNavbar';
 import Footer from '../components/Footer';
 
+// ==================== HELPER: Check if registration is still open ====================
+const isRegistrationOpen = (event) => {
+  if (!event) return false;
+  
+  const now = new Date();
+  const eventDateTime = new Date(event.date);
+  
+  // Parse event time (e.g., "14:30" for 2:30 PM)
+  const [hours, minutes] = (event.time || '00:00').split(':').map(Number);
+  eventDateTime.setHours(hours, minutes, 0, 0);
+  
+  let deadlineDateTime;
+  
+  if (event.registrationDeadline) {
+    deadlineDateTime = new Date(event.registrationDeadline);
+    const deadlineDateOnly = new Date(deadlineDateTime);
+    deadlineDateOnly.setHours(0, 0, 0, 0);
+    const eventDateOnly = new Date(eventDateTime);
+    eventDateOnly.setHours(0, 0, 0, 0);
+    
+    if (deadlineDateOnly.getTime() === eventDateOnly.getTime()) {
+      // Deadline is on same day as event - deadline is event start time
+      deadlineDateTime = new Date(eventDateTime);
+    } else {
+      // Deadline is before event - deadline is end of deadline day
+      deadlineDateTime.setHours(23, 59, 59, 999);
+    }
+  } else {
+    // No deadline specified - registration closes at event start time
+    deadlineDateTime = new Date(eventDateTime);
+  }
+  
+  // Check conditions
+  const isEventPassed = now > eventDateTime;
+  const isDeadlinePassed = now > deadlineDateTime;
+  const isEventActive = event.status !== 'passed' && event.status !== 'cancelled' && event.status !== 'postponed';
+  
+  return !isEventPassed && !isDeadlinePassed && isEventActive && !event.isDisabled;
+};
+
+// ==================== HELPER: Check if event has passed ====================
+const isEventPassed = (event) => {
+  if (!event) return true;
+  if (event.status === 'passed' || event.status === 'cancelled' || event.status === 'postponed') return true;
+  
+  const now = new Date();
+  const eventDateTime = new Date(event.date);
+  
+  const [hours, minutes] = (event.time || '00:00').split(':').map(Number);
+  eventDateTime.setHours(hours, minutes, 0, 0);
+  
+  return now > eventDateTime;
+};
+
 const EventRegistration = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const { data: event, isLoading } = useGetEventByIdQuery(id);
+  const { data: event, isLoading, refetch } = useGetEventByIdQuery(id);
   const [registerForEvent, { isLoading: isRegistering }] = useRegisterForEventMutation();
   
   // Fetch custom form
   const { data: customFormResponse } = useGetEventCustomFormQuery(id);
-  const customForm = customFormResponse?._id ? customFormResponse : null; // only treat as valid if it has _id
+  const customForm = customFormResponse?._id ? customFormResponse : null;
 
   const [selectedTicketIndex, setSelectedTicketIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
@@ -36,7 +90,33 @@ const EventRegistration = () => {
   const selectedTicket = hasTicketTypes ? event.ticketTypes[selectedTicketIndex] : null;
   const ticketPrice = selectedTicket ? selectedTicket.price : (event?.price || 0);
   const totalAmount = ticketPrice * quantity;
-  const canRegister = event && !event.isDisabled && new Date(event.date) >= new Date();
+  
+  // ✅ Use proper registration open check
+  const registrationOpen = event ? isRegistrationOpen(event) : false;
+  const canRegister = registrationOpen && !event?.isDisabled && event?.status !== 'postponed';
+  
+  // Get reason why registration is closed
+  const getRegistrationClosedReason = () => {
+    if (!event) return 'Event not found';
+    if (event.isDisabled) return 'Event has been cancelled';
+    if (event.status === 'postponed') return 'Event has been postponed';
+    if (isEventPassed(event)) return 'Event has already passed';
+    if (event.registrationDeadline) {
+      const now = new Date();
+      const deadline = new Date(event.registrationDeadline);
+      if (now > deadline) return 'Registration deadline has passed';
+    }
+    if (!registrationOpen && !isEventPassed(event)) {
+      if (event.registrationDeadline) {
+        const deadline = new Date(event.registrationDeadline);
+        if (deadline.toDateString() === new Date(event.date).toDateString()) {
+          return 'Registration closed when the event started';
+        }
+      }
+      return 'Registration is currently closed';
+    }
+    return 'Registration is not available';
+  };
 
   // Initialize custom form responses
   useEffect(() => {
@@ -45,7 +125,7 @@ const EventRegistration = () => {
         customForm.fields.map((field) => ({
           fieldId: field._id,
           label: field.label,
-          value: field.type === 'checkbox' ? [] : '', // use array for multi-select checkbox
+          value: field.type === 'checkbox' ? [] : '',
         }))
       );
     } else {
@@ -80,7 +160,6 @@ const EventRegistration = () => {
   const handleCustomFormChange = (index, value, isCheckbox = false, isChecked = false) => {
     const updated = [...customFormResponses];
     if (isCheckbox) {
-      // For checkbox type, value is an array of selected options
       const current = updated[index].value || [];
       if (isChecked) {
         updated[index] = { ...updated[index], value: [...current, value] };
@@ -111,6 +190,14 @@ const EventRegistration = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Double-check registration is still open before submitting
+    if (!isRegistrationOpen(event)) {
+      toast.error('Registration is no longer open for this event');
+      refetch();
+      return;
+    }
+    
     if (!formData.name.trim() || !formData.email.trim()) {
       toast.error('Please enter your name and email');
       return;
@@ -148,7 +235,6 @@ const EventRegistration = () => {
           phone: a.phone || '',
         })) : [],
         sendIndividualTickets: showAttendeeFields && additionalAttendees.some(a => a.email),
-        // Include custom form responses if any fields exist
         customFormResponses: customFormResponses.length > 0 ? customFormResponses : undefined,
       };
 
@@ -168,9 +254,60 @@ const EventRegistration = () => {
     }
   };
 
-  if (isLoading) return (<div className="min-h-screen bg-gray-50"><AllEventsNavbar /><div className="flex justify-center items-center h-96 pt-20"><FaSpinner className="w-12 h-12 text-[#1B3766] animate-spin" /></div><Footer /></div>);
-  if (!event) return (<div className="min-h-screen bg-gray-50"><AllEventsNavbar /><div className="max-w-4xl mx-auto px-4 py-20 pt-24 text-center"><h1 className="text-2xl font-bold text-gray-900 mb-2">Event Not Found</h1><Link to="/" className="inline-flex items-center gap-2 px-6 py-2 bg-[#1B3766] text-white rounded-xl"><FaArrowLeft /> Browse Events</Link></div><Footer /></div>);
-  if (!canRegister) return (<div className="min-h-screen bg-gray-50"><AllEventsNavbar /><div className="max-w-4xl mx-auto px-4 py-20 pt-24 text-center"><h1 className="text-2xl font-bold text-gray-900 mb-2">Registration Closed</h1><p className="text-gray-600 mb-6">This event is no longer accepting registrations.</p><Link to={`/${id}`} className="inline-flex items-center gap-2 px-6 py-2 bg-[#1B3766] text-white rounded-xl"><FaArrowLeft /> Back to Event</Link></div><Footer /></div>);
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <AllEventsNavbar />
+        <div className="flex justify-center items-center h-96 pt-20">
+          <FaSpinner className="w-12 h-12 text-[#1B3766] animate-spin" />
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+  
+  if (!event) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <AllEventsNavbar />
+        <div className="max-w-4xl mx-auto px-4 py-20 pt-24 text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Event Not Found</h1>
+          <Link to="/" className="inline-flex items-center gap-2 px-6 py-2 bg-[#1B3766] text-white rounded-xl">
+            <FaArrowLeft /> Browse Events
+          </Link>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+  
+  // ✅ Show proper closed registration message with reason
+  if (!canRegister) {
+    const closedReason = getRegistrationClosedReason();
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <AllEventsNavbar />
+        <div className="max-w-4xl mx-auto px-4 py-20 pt-24 text-center">
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 max-w-md mx-auto">
+            <div className="w-20 h-20 mx-auto mb-6 bg-red-100 rounded-full flex items-center justify-center">
+              <FaLock className="text-4xl text-red-600" />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-3">Registration Closed</h1>
+            <p className="text-gray-600 mb-6">{closedReason}</p>
+            <div className="space-y-3">
+              <Link to={`/${id}`} className="block w-full py-3 bg-[#1B3766] text-white rounded-xl font-semibold hover:bg-[#142952] transition-all">
+                Back to Event
+              </Link>
+              <Link to="/" className="block w-full py-3 border border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-all">
+                Browse More Events
+              </Link>
+            </div>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   if (registrationComplete) {
     return (
@@ -198,10 +335,6 @@ const EventRegistration = () => {
     <div className="min-h-screen bg-gray-50">
       <AllEventsNavbar />
       <div className="max-w-2xl mx-auto px-4 py-8 pt-24">
-        {/* <button onClick={() => navigate(`/${id}`)} className="flex items-center gap-2 text-gray-600 hover:text-[#1B3766] mb-6 transition-colors text-sm group">
-          <FaArrowLeft className="text-xs group-hover:-translate-x-1 transition-transform" /> Back to Event
-        </button> */}
-
         {/* Event Summary */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6">
           <h1 className="text-xl font-bold text-gray-900 mb-2">{event.title}</h1>
@@ -210,11 +343,26 @@ const EventRegistration = () => {
             <span className="flex items-center gap-1"><FaClock className="text-xs" /> {formatTime(event.time)}</span>
             <span className="flex items-center gap-1"><FaMapMarkerAlt className="text-xs" /> {event.venue || event.location}</span>
           </div>
+          
+          {/* Show deadline warning if registration is closing soon */}
+          {event.registrationDeadline && new Date(event.registrationDeadline) > new Date() && (
+            <div className="mt-3 pt-3 border-t border-gray-100">
+              <p className="text-xs text-yellow-700 flex items-center gap-1">
+                <FaExclamationTriangle className="text-xs" />
+                Registration closes on {formatDate(event.registrationDeadline)}
+                {new Date(event.registrationDeadline).toDateString() === new Date(event.date).toDateString() && (
+                  <span className="block text-xs text-yellow-600">(Closes when event starts)</span>
+                )}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Registration Form */}
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2"><FaTicketAlt className="text-[#1B3766]" /> Complete Registration</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+            <FaTicketAlt className="text-[#1B3766]" /> Complete Registration
+          </h2>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Ticket Type Selection */}
@@ -223,8 +371,14 @@ const EventRegistration = () => {
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Select Ticket Type</label>
                 <div className="space-y-2">
                   {event.ticketTypes.map((tt, idx) => (
-                    <button key={idx} type="button" onClick={() => setSelectedTicketIndex(idx)}
-                      className={`w-full text-left p-3 rounded-lg border-2 transition-all ${selectedTicketIndex === idx ? 'border-[#1B3766] bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                    <button 
+                      key={idx} 
+                      type="button" 
+                      onClick={() => setSelectedTicketIndex(idx)}
+                      className={`w-full text-left p-3 rounded-lg border-2 transition-all ${
+                        selectedTicketIndex === idx ? 'border-[#1B3766] bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
                       <div className="flex justify-between items-center">
                         <span className="font-semibold text-gray-900">{tt.name}</span>
                         <span className="font-bold text-[#1B3766]">{formatPrice(tt.price)}</span>
@@ -245,9 +399,21 @@ const EventRegistration = () => {
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Number of Tickets</label>
                 <div className="flex items-center gap-4">
-                  <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-12 h-12 rounded-xl border-2 border-gray-200 flex items-center justify-center hover:border-[#1B3766] hover:text-[#1B3766] transition-all"><FaMinus /></button>
+                  <button 
+                    type="button" 
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))} 
+                    className="w-12 h-12 rounded-xl border-2 border-gray-200 flex items-center justify-center hover:border-[#1B3766] hover:text-[#1B3766] transition-all"
+                  >
+                    <FaMinus />
+                  </button>
                   <span className="text-2xl font-bold text-gray-900 w-12 text-center">{quantity}</span>
-                  <button type="button" onClick={() => setQuantity(Math.min(event.maxTicketsPerOrder || 10, quantity + 1))} className="w-12 h-12 rounded-xl border-2 border-gray-200 flex items-center justify-center hover:border-[#1B3766] hover:text-[#1B3766] transition-all"><FaPlus /></button>
+                  <button 
+                    type="button" 
+                    onClick={() => setQuantity(Math.min(event.maxTicketsPerOrder || 10, quantity + 1))} 
+                    className="w-12 h-12 rounded-xl border-2 border-gray-200 flex items-center justify-center hover:border-[#1B3766] hover:text-[#1B3766] transition-all"
+                  >
+                    <FaPlus />
+                  </button>
                 </div>
                 {event.isPaid && <p className="text-lg font-bold text-[#1B3766] mt-3">Total: {formatPrice(totalAmount)}</p>}
               </div>
@@ -255,11 +421,42 @@ const EventRegistration = () => {
 
             {/* Primary Attendee */}
             <div className="border-t border-gray-100 pt-5">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2"><FaUser className="text-[#1B3766]" /> Your Information</h3>
+              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <FaUser className="text-[#1B3766]" /> Your Information
+              </h3>
               <div className="space-y-3">
-                <div><input type="text" name="name" value={formData.name} onChange={handleChange} required placeholder="Full Name *" className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3766]" /></div>
-                <div><input type="email" name="email" value={formData.email} onChange={handleChange} required placeholder="Email Address *" className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3766]" /></div>
-                <div><input type="tel" name="phone" value={formData.phone} onChange={handleChange} required placeholder="Phone Number *" className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3766]" /></div>
+                <div>
+                  <input 
+                    type="text" 
+                    name="name" 
+                    value={formData.name} 
+                    onChange={handleChange} 
+                    required 
+                    placeholder="Full Name *" 
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3766]" 
+                  />
+                </div>
+                <div>
+                  <input 
+                    type="email" 
+                    name="email" 
+                    value={formData.email} 
+                    onChange={handleChange} 
+                    required 
+                    placeholder="Email Address *" 
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3766]" 
+                  />
+                </div>
+                <div>
+                  <input 
+                    type="tel" 
+                    name="phone" 
+                    value={formData.phone} 
+                    onChange={handleChange} 
+                    placeholder="Phone Number" 
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3766]" 
+                  />
+                </div>
               </div>
             </div>
 
@@ -387,11 +584,14 @@ const EventRegistration = () => {
             {/* Additional Attendees Toggle */}
             {quantity > 1 && (
               <div className="border-t border-gray-100 pt-5">
-                <button type="button" onClick={() => setShowAttendeeFields(!showAttendeeFields)}
+                <button 
+                  type="button" 
+                  onClick={() => setShowAttendeeFields(!showAttendeeFields)}
                   className={`w-full py-3 rounded-xl border-2 border-dashed font-medium text-sm transition-all ${
                     showAttendeeFields ? 'border-[#1B3766] text-[#1B3766] bg-blue-50' : 'border-gray-300 text-gray-500 hover:border-gray-400'
-                  }`}>
-                  {showAttendeeFields ? '✓' : '+'} Add names & emails of the other {quantity - 1} attendee{quantity > 2 ? 's' : ''} you're buying for?
+                  }`}
+                >
+                  {showAttendeeFields ? '✓ Hide' : '+'} Add names & emails of the other {quantity - 1} attendee{quantity > 2 ? 's' : ''} you're buying for?
                 </button>
 
                 {showAttendeeFields && (
@@ -401,8 +601,20 @@ const EventRegistration = () => {
                       <div key={idx} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
                         <p className="text-xs font-semibold text-gray-500 mb-2">Attendee #{idx + 2}</p>
                         <div className="space-y-2">
-                          <input type="text" value={att.name} onChange={(e) => updateAttendee(idx, 'name', e.target.value)} placeholder="Full Name" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]" />
-                          <input type="email" value={att.email} onChange={(e) => updateAttendee(idx, 'email', e.target.value)} placeholder="Email (to receive ticket)" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]" />
+                          <input 
+                            type="text" 
+                            value={att.name} 
+                            onChange={(e) => updateAttendee(idx, 'name', e.target.value)} 
+                            placeholder="Full Name" 
+                            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]" 
+                          />
+                          <input 
+                            type="email" 
+                            value={att.email} 
+                            onChange={(e) => updateAttendee(idx, 'email', e.target.value)} 
+                            placeholder="Email (to receive ticket)" 
+                            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]" 
+                          />
                         </div>
                       </div>
                     ))}
@@ -421,7 +633,7 @@ const EventRegistration = () => {
               </div>
             )}
 
-            {/* ⚠️ Security Warning - Do not submit sensitive information */}
+            {/* Security Warning */}
             <div className="bg-amber-50 border-l-4 border-amber-500 rounded-xl p-4 text-sm">
               <div className="flex items-start gap-3">
                 <FaExclamationTriangle className="text-amber-600 text-lg mt-0.5 flex-shrink-0" />
@@ -436,8 +648,11 @@ const EventRegistration = () => {
               </div>
             </div>
 
-            <button type="submit" disabled={isRegistering}
-              className="w-full py-4 bg-[#1B3766] text-white rounded-xl font-bold text-lg hover:bg-[#142952] transition-all shadow-lg disabled:opacity-50">
+            <button 
+              type="submit" 
+              disabled={isRegistering}
+              className="w-full py-4 bg-[#1B3766] text-white rounded-xl font-bold text-lg hover:bg-[#142952] transition-all shadow-lg disabled:opacity-50"
+            >
               {isRegistering ? 'Processing...' : event.isPaid ? `Proceed to Pay ${formatPrice(totalAmount)}` : 'Register for Free'}
             </button>
           </form>
