@@ -29,24 +29,92 @@ import { useSelector, useDispatch } from "react-redux";
 import { toast } from "react-toastify";
 import { clearAllAuth } from "../slices/authslice";
 
-// ====== VERIFICATION BADGE COMPONENT ======
-const VerificationBadge = ({ className = "" }) => (
-  <svg
-    className={`inline-block ${className}`}
-    viewBox="0 0 24 24"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <circle cx="12" cy="12" r="11" fill="#1B3766" stroke="#1B3766" strokeWidth="1" />
-    <path
-      d="M7.5 12L10.5 15L16.5 9"
-      stroke="white"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
+// ====== VERIFIED CONTRIBUTOR BADGE (Facebook/Meta Style) ======
+const ContributorBadge = ({ className = "", size = "md", showTooltip = true }) => {
+  const [showTooltipText, setShowTooltipText] = useState(false);
+  
+  const sizes = {
+    sm: { wrapper: "w-4 h-4", icon: "w-3 h-3", tooltip: "text-xs" },
+    md: { wrapper: "w-5 h-5", icon: "w-3.5 h-3.5", tooltip: "text-sm" },
+    lg: { wrapper: "w-6 h-6", icon: "w-4 h-4", tooltip: "text-base" },
+  };
+  
+  const currentSize = sizes[size] || sizes.md;
+  
+  return (
+    <div 
+      className={`relative inline-flex items-center justify-center ${currentSize.wrapper} ${className}`}
+      onMouseEnter={() => setShowTooltipText(true)}
+      onMouseLeave={() => setShowTooltipText(false)}
+    >
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="w-full h-full"
+      >
+        <path 
+          d="M12 0L14.59 4.41L19.39 2.61L18.8 7.8L24 9L20.49 12.51L24 15L18.8 16.2L19.39 21.39L14.59 19.59L12 24L9.41 19.59L4.61 21.39L5.2 16.2L0 15L3.51 12.51L0 9L5.2 7.8L4.61 2.61L9.41 4.41L12 0Z" 
+          fill="#0095F6"
+        />
+        <path 
+          d="M18 9L10.5 16.5L6 12" 
+          stroke="white" 
+          strokeWidth="2.5" 
+          strokeLinecap="round" 
+          strokeLinejoin="round"
+        />
+      </svg>
+      
+      {/* Tooltip */}
+      {showTooltip && showTooltipText && (
+        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2.5 py-1.5 bg-gray-900 text-white rounded-lg whitespace-nowrap z-20 shadow-lg">
+          <span className={`${currentSize.tooltip} font-medium`}>Verified Contributor</span>
+          <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
+            <div className="w-2 h-2 bg-gray-900 rotate-45" />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ====== CONTRIBUTOR STATUS BADGE ======
+const ContributorStatusBadge = ({ status, size = "sm" }) => {
+  const statusConfig = {
+    approved: {
+      icon: FaCheck,
+      text: "Verified Contributor",
+      bgClass: "bg-green-50",
+      textClass: "text-green-700",
+      borderClass: "border-green-200",
+    },
+    pending: {
+      icon: FaClock,
+      text: "Pending Approval",
+      bgClass: "bg-yellow-50",
+      textClass: "text-yellow-700",
+      borderClass: "border-yellow-200",
+    },
+    rejected: {
+      icon: FaTimes,
+      text: "Not Verified",
+      bgClass: "bg-red-50",
+      textClass: "text-red-700",
+      borderClass: "border-red-200",
+    },
+  };
+  
+  const config = statusConfig[status] || statusConfig.pending;
+  const Icon = config.icon;
+  
+  return (
+    <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full ${config.bgClass} ${config.textClass} border ${config.borderClass}`}>
+      <Icon className={`${size === "sm" ? "text-[10px]" : "text-xs"}`} />
+      <span className={`${size === "sm" ? "text-[10px]" : "text-xs"} font-medium`}>{config.text}</span>
+    </div>
+  );
+};
 
 const BiizzedProfile = () => {
   const navigate = useNavigate();
@@ -495,18 +563,11 @@ const BiizzedProfile = () => {
         <div className="lg:flex lg:items-start lg:gap-10 lg:mb-8">
           {/* Left: Avatar & Actions */}
           <div className="flex flex-col items-center text-center lg:items-start lg:text-left lg:flex-shrink-0">
-            {/* Mobile Top bar only */}
-            <div className="w-full flex items-center justify-between mb-4 lg:hidden">
-              <div className="w-8" />
-              <div className="flex items-center gap-1">
-                <h2 className="text-base font-bold text-gray-900">{profile?.username || "user"}</h2>
-                {isContributorApproved && <VerificationBadge className="w-4 h-4" />}
-              </div>
-              <div className="flex items-center gap-3">
-                <button onClick={() => navigate('/settings')} className="text-gray-900 text-lg p-1">
-                  <FaCog />
-                </button>
-              </div>
+            {/* Mobile Top bar - REMOVED username, only settings icon now */}
+            <div className="w-full flex items-center justify-end mb-4 lg:hidden">
+              <button onClick={() => navigate('/settings')} className="text-gray-900 text-lg p-1">
+                <FaCog />
+              </button>
             </div>
 
             {/* Avatar */}
@@ -530,11 +591,11 @@ const BiizzedProfile = () => {
               </button>
             </div>
 
-            {/* Mobile: Name + Username directly under avatar, centered */}
+            {/* Mobile: Name + Username under avatar, centered (only place where username appears on mobile) */}
             <div className="lg:hidden flex flex-col items-center mb-4">
               <div className="flex items-center gap-2 mb-0.5">
                 <h2 className="text-lg font-bold text-gray-900">{profile?.name || "User"}</h2>
-                {isContributorApproved && <VerificationBadge className="w-5 h-5" />}
+                {isContributorApproved && <ContributorBadge size="md" />}
               </div>
               <p className="text-sm text-gray-500">@{profile?.username || "user"}</p>
             </div>
@@ -543,7 +604,7 @@ const BiizzedProfile = () => {
             <div className="hidden lg:block">
               <div className="flex items-center gap-2 mb-1">
                 <h2 className="text-xl font-bold text-gray-900">{profile?.name || "User"}</h2>
-                {isContributorApproved && <VerificationBadge className="w-5 h-5" />}
+                {isContributorApproved && <ContributorBadge size="lg" showTooltip={true} />}
               </div>
               <p className="text-sm text-gray-500 mb-1">@{profile?.username || "user"}</p>
               {profile?.bio && (
@@ -613,13 +674,11 @@ const BiizzedProfile = () => {
                   <FaPlus className="text-[10px]" /> Apply to Contribute
                 </button>
               ) : isContributorPending ? (
-                <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">
-                  <FaClock className="text-[10px]" /> Pending Approval
-                </span>
+                <ContributorStatusBadge status="pending" />
               ) : isContributorRejected ? (
-                <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-100 text-red-700 rounded-full text-xs font-medium">
-                  <FaTimes className="text-[10px]" /> Application Rejected
-                </span>
+                <ContributorStatusBadge status="rejected" />
+              ) : isContributorApproved ? (
+                <ContributorStatusBadge status="approved" />
               ) : null}
 
               <button
