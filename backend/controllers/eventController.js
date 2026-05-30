@@ -70,6 +70,44 @@ const upsertEventForm = async (eventId, formData) => {
   return form._id;
 };
 
+// Check if registration is still open
+const isRegistrationOpen = (event) => {
+  const now = new Date();
+  const eventDate = new Date(event.date);
+  const registrationDeadline = event.registrationDeadline ? new Date(event.registrationDeadline) : new Date(event.date);
+  
+  // Set times to end of day for comparison
+  const todayEnd = new Date(now);
+  todayEnd.setHours(23, 59, 59, 999);
+  
+  const deadlineEnd = new Date(registrationDeadline);
+  deadlineEnd.setHours(23, 59, 59, 999);
+  
+  const eventEnd = new Date(eventDate);
+  eventEnd.setHours(23, 59, 59, 999);
+  
+  // Registration is open if:
+  // 1. Event hasn't passed (current time <= event end of day)
+  // 2. Registration deadline hasn't passed (current time <= deadline end of day)
+  // 3. Event status is not passed/cancelled/postponed
+  // 4. Event is not disabled
+  
+  const isEventPassed = now > eventEnd;
+  const isDeadlinePassed = now > deadlineEnd;
+  const isEventActive = event.status !== 'passed' && event.status !== 'cancelled' && event.status !== 'postponed';
+  
+  return !isEventPassed && !isDeadlinePassed && isEventActive && !event.isDisabled;
+};
+
+// Check if event has passed (for status updates)
+const hasEventPassed = (event) => {
+  const now = new Date();
+  const eventDate = new Date(event.date);
+  const eventEnd = new Date(eventDate);
+  eventEnd.setHours(23, 59, 59, 999);
+  return now > eventEnd;
+};
+
 // --------------------- EVENT CREATION ---------------------
 
 const createEvent = asyncHandler(async (req, res) => {
@@ -169,6 +207,7 @@ const createEvent = asyncHandler(async (req, res) => {
 
   const eventDate = new Date(date);
   const now = new Date();
+  const eventPassed = hasEventPassed({ date: eventDate });
 
   const event = await Event.create({
     title: title.trim(),
@@ -192,7 +231,7 @@ const createEvent = asyncHandler(async (req, res) => {
     enableMultipleTickets: enableMultipleTickets === 'true' || enableMultipleTickets === true,
     maxTicketsPerOrder: maxTicketsPerOrder ? Number(maxTicketsPerOrder) : 10,
     registrationDeadline: registrationDeadline ? new Date(registrationDeadline) : eventDate,
-    status: eventDate < now ? 'passed' : 'upcoming',
+    status: eventPassed ? 'passed' : 'upcoming',
     tags: tags ? (Array.isArray(tags) ? tags : tags.split(',').map(t => t.trim()).filter(Boolean)) : [],
     createdBy: req.user._id,
     creatorType: isAdmin ? 'admin' : 'user',
@@ -209,7 +248,6 @@ const createEvent = asyncHandler(async (req, res) => {
         await event.save();
       }
     } catch (err) {
-      // rollback: delete event if form creation fails?
       throw new Error('Invalid custom form format');
     }
   }
@@ -292,7 +330,7 @@ const getEvents = asyncHandler(async (req, res) => {
 
   const now = new Date();
   for (const event of events) {
-    if (event.date < now && event.status === 'upcoming') {
+    if (hasEventPassed(event) && event.status === 'upcoming') {
       event.status = 'passed';
       await Event.findByIdAndUpdate(event._id, { status: 'passed' });
     }
@@ -332,6 +370,7 @@ const getEventById = asyncHandler(async (req, res) => {
 
   const eventObj = event.toObject({ virtuals: true });
   eventObj.currentAttendees = confirmedCount;
+  eventObj.registrationOpen = isRegistrationOpen(event);
   res.json(eventObj);
 });
 
@@ -442,7 +481,7 @@ const updateEvent = asyncHandler(async (req, res) => {
   if (date) {
     event.date = new Date(date);
     if (event.status !== 'postponed' && event.status !== 'cancelled') {
-      event.status = event.date < new Date() ? 'passed' : 'upcoming';
+      event.status = hasEventPassed(event) ? 'passed' : 'upcoming';
     }
   }
   if (time) event.time = time;
@@ -569,13 +608,11 @@ const registerForEvent = asyncHandler(async (req, res) => {
     res.status(404);
     throw new Error('Event not found');
   }
-  if (event.status === 'passed' || new Date(event.date) < new Date()) {
+  
+  // Check if registration is still open
+  if (!isRegistrationOpen(event)) {
     res.status(400);
-    throw new Error('Event has already passed');
-  }
-  if (event.registrationDeadline && new Date(event.registrationDeadline) < new Date()) {
-    res.status(400);
-    throw new Error('Registration deadline has passed');
+    throw new Error('Registration is closed for this event');
   }
 
   // Load custom form and validate required fields
@@ -1234,9 +1271,19 @@ const getEventRegistrations = asyncHandler(async (req, res) => {
 
 const getMyRegistrations = asyncHandler(async (req, res) => {
   const registrations = await EventRegistration.find({ email: req.user.email.toLowerCase() })
-    .populate('event', 'title slug date time location status')
+    .populate('event', 'title slug date time location status registrationDeadline')
     .sort({ createdAt: -1 });
-  res.json(registrations);
+  
+  // Add registration open status for each event
+  const registrationsWithStatus = registrations.map(reg => {
+    const regObj = reg.toObject();
+    if (regObj.event) {
+      regObj.event.registrationOpen = isRegistrationOpen(regObj.event);
+    }
+    return regObj;
+  });
+  
+  res.json(registrationsWithStatus);
 });
 
 // --------------------- ADMIN DASHBOARD ---------------------
@@ -1344,8 +1391,8 @@ const handleSettlementSuccess = async (data) => {
   }
 };
 
+// --------------------- REMINDERS ---------------------
 
-// Add this function after your existing functions
 const sendReminder = asyncHandler(async (req, res) => {
   const { id } = req.params;
   
@@ -1359,36 +1406,41 @@ const sendReminder = asyncHandler(async (req, res) => {
   today.setHours(0, 0, 0, 0);
   
   const registrationDeadline = event.registrationDeadline ? new Date(event.registrationDeadline) : new Date(event.date);
-  registrationDeadline.setHours(0, 0, 0, 0);
+  registrationDeadline.setHours(23, 59, 59, 999);
   
   const eventDate = new Date(event.date);
-  eventDate.setHours(0, 0, 0, 0);
+  eventDate.setHours(23, 59, 59, 999);
   
-  const daysUntilDeadline = Math.ceil((registrationDeadline - today) / (1000 * 60 * 60 * 24));
-  const daysUntilEvent = Math.ceil((eventDate - today) / (1000 * 60 * 60 * 24));
+  const now = new Date();
+  const daysUntilDeadline = Math.ceil((registrationDeadline - now) / (1000 * 60 * 60 * 24));
+  const daysUntilEvent = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
   
   let reminderType = null;
   let daysRemaining = null;
   
-  // Check registration deadline reminders first
-  if (daysUntilDeadline === 1 && registrationDeadline <= eventDate) {
+  // Check if registration is still open (deadline not passed)
+  const isDeadlinePassed = now > registrationDeadline;
+  const isEventPassed = now > eventDate;
+  
+  // Check registration deadline reminders (only if not passed)
+  if (!isDeadlinePassed && daysUntilDeadline === 1) {
     reminderType = 'registration_tomorrow';
     daysRemaining = 1;
-  } else if (daysUntilDeadline === 0 && registrationDeadline <= eventDate) {
+  } else if (!isDeadlinePassed && daysUntilDeadline === 0) {
     reminderType = 'registration_today';
     daysRemaining = 0;
   } 
-  // Then check event reminders
-  else if (daysUntilEvent === 3) {
+  // Check event reminders (only if event hasn't passed and registration deadline may have passed)
+  else if (!isEventPassed && daysUntilEvent === 3) {
     reminderType = '3_days';
     daysRemaining = 3;
-  } else if (daysUntilEvent === 2) {
+  } else if (!isEventPassed && daysUntilEvent === 2) {
     reminderType = '2_days';
     daysRemaining = 2;
-  } else if (daysUntilEvent === 1) {
+  } else if (!isEventPassed && daysUntilEvent === 1) {
     reminderType = '1_day';
     daysRemaining = 1;
-  } else if (daysUntilEvent === 0) {
+  } else if (!isEventPassed && daysUntilEvent === 0) {
     reminderType = 'event_today';
     daysRemaining = 0;
   }
@@ -1396,7 +1448,7 @@ const sendReminder = asyncHandler(async (req, res) => {
   // If no reminder needed today
   if (!reminderType) {
     let message = '';
-    if (daysUntilEvent < 0) {
+    if (isEventPassed) {
       message = 'Event has already passed';
     } else if (daysUntilDeadline > 1 && daysUntilEvent > 3) {
       message = `No reminders to send today. Next reminder will be ${daysUntilDeadline === 1 ? 'tomorrow (registration deadline)' : daysUntilEvent === 3 ? 'in 3 days (event)' : 'closer to event'}`;
@@ -1408,7 +1460,9 @@ const sendReminder = asyncHandler(async (req, res) => {
       daysUntilDeadline,
       daysUntilEvent,
       registrationDeadline: registrationDeadline.toISOString().split('T')[0],
-      eventDate: eventDate.toISOString().split('T')[0]
+      eventDate: eventDate.toISOString().split('T')[0],
+      isRegistrationOpen: !isDeadlinePassed,
+      isEventPassed
     });
   }
   
@@ -1458,14 +1512,14 @@ const sendReminder = asyncHandler(async (req, res) => {
     reminderType,
     daysRemaining,
     daysUntilEvent,
-    daysUntilDeadline
+    daysUntilDeadline,
+    isRegistrationOpen: !isDeadlinePassed
   });
 });
 
-// Optional: Add a function to send reminders for ALL events that need them (for cron jobs)
+// Send reminders for ALL events that need them (for cron jobs)
 const sendAllReminders = asyncHandler(async (req, res) => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const now = new Date();
   
   const events = await Event.find({ 
     isDisabled: { $ne: true },
@@ -1477,30 +1531,33 @@ const sendAllReminders = asyncHandler(async (req, res) => {
   
   for (const event of events) {
     const registrationDeadline = event.registrationDeadline ? new Date(event.registrationDeadline) : new Date(event.date);
-    registrationDeadline.setHours(0, 0, 0, 0);
+    registrationDeadline.setHours(23, 59, 59, 999);
     
     const eventDate = new Date(event.date);
-    eventDate.setHours(0, 0, 0, 0);
+    eventDate.setHours(23, 59, 59, 999);
     
-    const daysUntilDeadline = Math.ceil((registrationDeadline - today) / (1000 * 60 * 60 * 24));
-    const daysUntilEvent = Math.ceil((eventDate - today) / (1000 * 60 * 60 * 24));
+    const daysUntilDeadline = Math.ceil((registrationDeadline - now) / (1000 * 60 * 60 * 24));
+    const daysUntilEvent = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
+    
+    const isDeadlinePassed = now > registrationDeadline;
+    const isEventPassed = now > eventDate;
     
     let reminderType = null;
     
-    // Registration deadline reminders
-    if (daysUntilDeadline === 1 && registrationDeadline <= eventDate) {
+    // Registration deadline reminders (only if not passed)
+    if (!isDeadlinePassed && daysUntilDeadline === 1) {
       reminderType = 'registration_tomorrow';
-    } else if (daysUntilDeadline === 0 && registrationDeadline <= eventDate) {
+    } else if (!isDeadlinePassed && daysUntilDeadline === 0) {
       reminderType = 'registration_today';
     } 
-    // Event day reminders
-    else if (daysUntilEvent === 3) {
+    // Event day reminders (only if event hasn't passed)
+    else if (!isEventPassed && daysUntilEvent === 3) {
       reminderType = '3_days';
-    } else if (daysUntilEvent === 2) {
+    } else if (!isEventPassed && daysUntilEvent === 2) {
       reminderType = '2_days';
-    } else if (daysUntilEvent === 1) {
+    } else if (!isEventPassed && daysUntilEvent === 1) {
       reminderType = '1_day';
-    } else if (daysUntilEvent === 0) {
+    } else if (!isEventPassed && daysUntilEvent === 0) {
       reminderType = 'event_today';
     }
     
