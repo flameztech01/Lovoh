@@ -587,7 +587,7 @@ const BiizzedProfile = () => {
                 onClick={openEditModal}
                 className="absolute bottom-0 right-0 w-7 h-7 bg-[#1B3766] text-white rounded-full flex items-center justify-center border-2 border-white shadow-sm lg:w-9 lg:h-9"
               >
-                <FaPlus className="text-xs lg:text-sm" />
+                <FaCamera className="text-xs lg:text-sm" />
               </button>
             </div>
 
