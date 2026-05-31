@@ -25,23 +25,50 @@ export const notificationApiSlice = apiSlice.injectEndpoints({
       invalidatesTags: ['NotificationPreferences'],
     }),
 
-    // ==================== WEB‑PUSH SUBSCRIPTION ====================
+    // ==================== PUSH SUBSCRIPTION (Web + Capacitor) ====================
 
-    // Subscribe to web‑push
+    // Subscribe to push notifications (handles both web and native)
     subscribeToPush: builder.mutation({
-      query: (data) => ({
-        url: `${NOTIFICATIONS_URL}/subscribe`,
-        method: 'POST',
-        body: data,   // expects { subscription }
-      }),
+      query: (data) => {
+        // For web push: data = { subscription }
+        // For native push: data = { token, platform, deviceId }
+        
+        let requestBody = {};
+        
+        if (data.subscription) {
+          // Web push subscription object
+          requestBody = {
+            type: 'web',
+            subscription: data.subscription,
+          };
+        } else if (data.token) {
+          // Native (Capacitor) push token
+          requestBody = {
+            type: 'native',
+            token: data.token,
+            platform: data.platform || 'unknown',
+            deviceId: data.deviceId,
+          };
+        } else {
+          // Legacy support
+          requestBody = data;
+        }
+        
+        return {
+          url: `${NOTIFICATIONS_URL}/subscribe`,
+          method: 'POST',
+          body: requestBody,
+        };
+      },
       invalidatesTags: ['NotificationPreferences'],
     }),
 
-    // Unsubscribe from web‑push
+    // Unsubscribe from push notifications (handles both web and native)
     unsubscribeFromPush: builder.mutation({
-      query: () => ({
+      query: (data) => ({
         url: `${NOTIFICATIONS_URL}/unsubscribe`,
         method: 'POST',
+        body: data, // Optional: { type, token } to specify which subscription to remove
       }),
       invalidatesTags: ['NotificationPreferences'],
     }),
@@ -57,13 +84,21 @@ export const notificationApiSlice = apiSlice.injectEndpoints({
       providesTags: ['Notifications'],
     }),
 
+    // Get unread count
+    getUnreadCount: builder.query({
+      query: () => ({
+        url: `${NOTIFICATIONS_URL}/unread-count`,
+      }),
+      providesTags: ['Notifications'],
+    }),
+
     // Mark single notification as read
     markNotificationRead: builder.mutation({
       query: (id) => ({
         url: `${NOTIFICATIONS_URL}/${id}/read`,
         method: 'PUT',
       }),
-      invalidatesTags: ['Notifications'],
+      invalidatesTags: ['Notifications', 'UnreadCount'],
     }),
 
     // Mark all notifications as read
@@ -72,7 +107,25 @@ export const notificationApiSlice = apiSlice.injectEndpoints({
         url: `${NOTIFICATIONS_URL}/read-all`,
         method: 'PUT',
       }),
-      invalidatesTags: ['Notifications'],
+      invalidatesTags: ['Notifications', 'UnreadCount'],
+    }),
+
+    // Delete notification
+    deleteNotification: builder.mutation({
+      query: (id) => ({
+        url: `${NOTIFICATIONS_URL}/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Notifications', 'UnreadCount'],
+    }),
+
+    // Clear all notifications
+    clearAllNotifications: builder.mutation({
+      query: () => ({
+        url: `${NOTIFICATIONS_URL}/clear-all`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Notifications', 'UnreadCount'],
     }),
   }),
 });
@@ -80,9 +133,12 @@ export const notificationApiSlice = apiSlice.injectEndpoints({
 export const {
   useGetNotificationPreferencesQuery,
   useUpdateNotificationPreferencesMutation,
-  useSubscribeToPushMutation,          // new – subscribe
-  useUnsubscribeFromPushMutation,      // new – unsubscribe
+  useSubscribeToPushMutation,
+  useUnsubscribeFromPushMutation,
   useGetNotificationsQuery,
+  useGetUnreadCountQuery,
   useMarkNotificationReadMutation,
   useMarkAllNotificationsReadMutation,
+  useDeleteNotificationMutation,
+  useClearAllNotificationsMutation,
 } = notificationApiSlice;

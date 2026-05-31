@@ -1,4 +1,4 @@
-// controllers/userController.js - with notification calls for follower events
+// controllers/userController.js - Complete with all settings features
 import express from "express";
 import mongoose from "mongoose";
 import userMessage from "../models/userMessageModel.js";
@@ -6,19 +6,20 @@ import User from "../models/userModel.js";
 import asyncHandler from "express-async-handler";
 import generateUserToken from "../utils/generateUserToken.js";
 import { OAuth2Client } from "google-auth-library";
-import { notifyFollowerEvent } from "./notificationController.js"; // <-- new
+import { notifyFollowerEvent } from "./notificationController.js";
 import bcrypt from "bcryptjs";
-import { sendOTPEmail, sendPasswordResetEmail } from "../utils/sendOTPEmail.js"; // your email utility
-// Add these imports with your other imports
+import { sendOTPEmail, sendPasswordResetEmail } from "../utils/sendOTPEmail.js";
+import cloudinary from "cloudinary";
 import Article from "../models/articleModel.js";
 import Magazine from "../models/magazineModel.js";
 import Video from "../models/videoModel.js";
+import EventRegistration from "../models/eventRegistrationModel.js";
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const getUserInfoFromAccessToken = async (accessToken) => {
   const response = await fetch(
-    "https://www.googleapis.com/oauth2/v3/userinfo ",
+    "https://www.googleapis.com/oauth2/v3/userinfo",
     {
       headers: { Authorization: `Bearer ${accessToken}` },
     },
@@ -56,14 +57,12 @@ const googleAuth = asyncHandler(async (req, res) => {
     });
 
     const payload = ticket.getPayload();
-
     googleId = payload?.sub || "";
     email = payload?.email || "";
     name = payload?.name || "";
     picture = payload?.picture || "";
   } catch (error) {
     const userInfo = await getUserInfoFromAccessToken(googleToken);
-
     googleId = userInfo?.sub || `google-${userInfo?.email || Date.now()}`;
     email = userInfo?.email || "";
     name = userInfo?.name || "";
@@ -126,24 +125,19 @@ const googleAuth = asyncHandler(async (req, res) => {
       );
     }
 
-    // Only add Google ID if not already present
     if (!user.googleId) {
       user.googleId = googleId;
     }
 
-    // Update profile picture only if user doesn't have one
     if (!user.profile && picture) {
       user.profile = picture;
     }
 
-    // Update name only if user doesn't have one
     if (!user.name && name) {
       user.name = name;
     }
 
     user.isVerified = true;
-    // DO NOT change authMethod to 'google' for existing email/password users
-    // Only set authMethod to 'google' during signup.
     await user.save();
   }
 
@@ -167,12 +161,6 @@ const generateOTP = () => {
 // @desc    Register new user with email & password (OTP sent)
 // @route   POST /api/users/register
 // @access  Public
-// @desc    Register new user with email & password (OTP sent)
-// @route   POST /api/users/register
-// @access  Public
-// @desc    Register new user with email & password (OTP sent)
-// @route   POST /api/users/register
-// @access  Public
 const registerUser = asyncHandler(async (req, res) => {
   const { name, username, email, password, phone } = req.body;
 
@@ -181,11 +169,9 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new Error("Name, username, email, and password are required");
   }
 
-  // Check if user already exists (verified or unverified)
   const existingUser = await User.findOne({ $or: [{ email }, { username }] });
 
   if (existingUser) {
-    // If the user is already verified → block re-registration
     if (existingUser.isVerified) {
       res.status(400);
       throw new Error(
@@ -193,16 +179,14 @@ const registerUser = asyncHandler(async (req, res) => {
       );
     }
 
-    // Unverified user → update their information and send a new OTP
     existingUser.name = name;
     existingUser.username = username;
-    existingUser.password = password; // model's pre-save will hash it
+    existingUser.password = password;
     existingUser.phone = phone || "";
     existingUser.otp = generateOTP();
     existingUser.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
     await existingUser.save();
 
-    // Send new OTP email (fire and forget)
     sendOTPEmail(existingUser.email, existingUser.otp).catch((err) =>
       console.error("OTP email error:", err),
     );
@@ -214,7 +198,6 @@ const registerUser = asyncHandler(async (req, res) => {
     });
   }
 
-  // No existing user – create a brand new account
   const otp = generateOTP();
   const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
 
@@ -230,7 +213,6 @@ const registerUser = asyncHandler(async (req, res) => {
     otpExpiry,
   });
 
-  // Send OTP email (fire and forget)
   sendOTPEmail(user.email, otp).catch((err) =>
     console.error("OTP email error:", err),
   );
@@ -273,13 +255,11 @@ const verifyEmail = asyncHandler(async (req, res) => {
     throw new Error("OTP has expired. Please request a new one.");
   }
 
-  // Verify user
   user.isVerified = true;
   user.otp = undefined;
   user.otpExpiry = undefined;
   await user.save();
 
-  // Generate token and log in
   const token = generateUserToken(res, user._id);
 
   res.status(200).json({
@@ -311,13 +291,11 @@ const resendOTP = asyncHandler(async (req, res) => {
     throw new Error("Email is already verified");
   }
 
-  // Generate new OTP
-  const otp = generateOTP(); // same generateOTP() shown above
+  const otp = generateOTP();
   user.otp = otp;
   user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
   await user.save();
 
-  // Send email
   sendOTPEmail(user.email, otp).catch((err) =>
     console.error("OTP email error:", err),
   );
@@ -345,7 +323,6 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new Error("Invalid email or password");
   }
 
-  // If the user's password is auto-generated for Google auth, they cannot use email login
   if (!user.password || user.password.startsWith("google-auth-")) {
     res.status(401);
     throw new Error(
@@ -378,7 +355,54 @@ const loginUser = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Update user profile (name and profile picture)
+// @desc    Change user password
+// @route   PUT /api/users/change-password
+// @access  Private
+const changePassword = asyncHandler(async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+
+  if (!currentPassword || !newPassword) {
+    res.status(400);
+    throw new Error("Current password and new password are required");
+  }
+
+  if (newPassword.length < 6) {
+    res.status(400);
+    throw new Error("New password must be at least 6 characters");
+  }
+
+  const user = await User.findById(req.user._id);
+
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+
+  // Check if user is Google auth user (no password set)
+  if (!user.password || user.password.startsWith("google-auth-")) {
+    res.status(400);
+    throw new Error(
+      "This account uses Google Sign-In. Password cannot be changed.",
+    );
+  }
+
+  // Verify current password
+  const isMatch = await bcrypt.compare(currentPassword, user.password);
+  if (!isMatch) {
+    res.status(401);
+    throw new Error("Current password is incorrect");
+  }
+
+  // Update password (pre-save hook will hash it)
+  user.password = newPassword;
+  await user.save();
+
+  res.status(200).json({
+    message: "Password changed successfully. Please log in again.",
+  });
+});
+
+// @desc    Update user profile (name, username, phone, bio, profile picture)
 // @route   PUT /api/users/profile
 // @access  Private
 const updateProfile = asyncHandler(async (req, res) => {
@@ -400,7 +424,6 @@ const updateProfile = asyncHandler(async (req, res) => {
   if (username !== undefined && username.trim() !== "") {
     const trimmedUsername = username.trim();
 
-    // Check if username is already taken by another user
     const existingUser = await User.findOne({
       username: trimmedUsername,
       _id: { $ne: user._id },
@@ -418,7 +441,6 @@ const updateProfile = asyncHandler(async (req, res) => {
   if (phone !== undefined && phone.trim() !== "") {
     const trimmedPhone = phone.trim();
 
-    // Check if phone number is already used by another user
     const existingUser = await User.findOne({
       phone: trimmedPhone,
       _id: { $ne: user._id },
@@ -434,11 +456,22 @@ const updateProfile = asyncHandler(async (req, res) => {
 
   // Update bio
   if (bio !== undefined) {
-    user.bio = bio.trim() || ""; // Allow empty bio
+    user.bio = bio.trim() || "";
   }
 
   // Update profile picture if file uploaded
   if (req.file) {
+    // Delete old image from Cloudinary if it exists and not a Google photo
+    if (user.profile && !user.profile.includes("googleusercontent")) {
+      try {
+        const publicId = user.profile.split("/").pop().split(".")[0];
+        if (publicId) {
+          await cloudinary.uploader.destroy(`The_Brave_ProfilePicture/${publicId}`);
+        }
+      } catch (err) {
+        console.error("Error deleting old profile image:", err);
+      }
+    }
     user.profile = req.file.path;
   }
 
@@ -453,13 +486,10 @@ const updateProfile = asyncHandler(async (req, res) => {
     bio: updatedUser.bio,
     profile: updatedUser.profile,
     authMethod: updatedUser.authMethod,
-    message: req.file ? "Profile updated with new picture" : "Profile updated",
+    message: "Profile updated successfully",
   });
 });
 
-// @desc    Get current user's profile info
-// @route   GET /api/users/profile
-// @access  Private
 // @desc    Get current user's profile info
 // @route   GET /api/users/profile
 // @access  Private
@@ -481,12 +511,12 @@ const getProfileInfo = asyncHandler(async (req, res) => {
     throw new Error("User not found");
   }
 
-  // Make sure counts are accurate
   user.followersCount = user.followers.length;
   user.followingCount = user.following.length;
 
   res.json(user);
 });
+
 // @desc    Get user profile by ID (public)
 // @route   GET /api/users/profile/:id
 // @access  Public
@@ -508,21 +538,15 @@ const getProfileById = asyncHandler(async (req, res) => {
 // @route   POST /api/users/follow/:id
 // @access  Private
 const followUser = asyncHandler(async (req, res) => {
-  console.log("🔵 followUser called");
-  console.log("  req.params.id:", req.params.id, "type:", typeof req.params.id);
-  console.log("  req.user._id:", req.user._id);
-
   const userToFollowId = req.params.id;
 
   if (!mongoose.Types.ObjectId.isValid(userToFollowId)) {
-    console.log("❌ Invalid ObjectId format");
     res.status(400);
     throw new Error("Invalid user ID format");
   }
 
   const userToFollow = await User.findById(userToFollowId);
   if (!userToFollow) {
-    console.log("❌ User not found");
     res.status(404);
     throw new Error("User not found");
   }
@@ -531,13 +555,11 @@ const followUser = asyncHandler(async (req, res) => {
 
   const isAlreadyFollowing = currentUser.following.includes(userToFollowId);
   if (isAlreadyFollowing) {
-    console.log("❌ Already following");
     res.status(400);
     throw new Error("Already following this user");
   }
 
   if (req.user._id.toString() === userToFollowId) {
-    console.log("❌ Cannot follow yourself");
     res.status(400);
     throw new Error("Cannot follow yourself");
   }
@@ -548,14 +570,12 @@ const followUser = asyncHandler(async (req, res) => {
   await currentUser.save();
   await userToFollow.save();
 
-  // 🔔 Notify the target user
   await notifyFollowerEvent({
     targetUserId: userToFollowId,
     followerName: currentUser.name || currentUser.username,
     type: "follow",
   });
 
-  console.log("✅ Follow successful");
   res.json({ message: "Followed successfully" });
 });
 
@@ -589,7 +609,6 @@ const unfollowUser = asyncHandler(async (req, res) => {
   userToUnfollow.followersCount = userToUnfollow.followers.length;
   await userToUnfollow.save();
 
-  // 🔔 Notify the target user
   await notifyFollowerEvent({
     targetUserId: req.params.id,
     followerName: currentUser.name || currentUser.username,
@@ -708,6 +727,7 @@ const deleteAccount = asyncHandler(async (req, res) => {
     throw new Error("User not found");
   }
 
+  // Remove user from other users' followers/following lists
   await User.updateMany(
     { followers: req.user._id },
     { $pull: { followers: req.user._id }, $inc: { followersCount: -1 } },
@@ -718,21 +738,30 @@ const deleteAccount = asyncHandler(async (req, res) => {
     { $pull: { following: req.user._id }, $inc: { followingCount: -1 } },
   );
 
+  // Delete user's content
+  await Article.deleteMany({ createdBy: req.user._id });
+  await Magazine.deleteMany({ createdBy: req.user._id });
+  await Video.deleteMany({ user: req.user._id });
+  
+  // Delete user's event registrations
+  await EventRegistration.deleteMany({ email: user.email });
+
+  // Delete profile picture from Cloudinary if not a Google photo
   if (user.profile && !user.profile.includes("googleusercontent")) {
     try {
       const publicId = user.profile.split("/").pop().split(".")[0];
       if (publicId) {
-        await cloudinary.uploader.destroy(
-          `The_Brave_ProfilePicture/${publicId}`,
-        );
+        await cloudinary.uploader.destroy(`The_Brave_ProfilePicture/${publicId}`);
       }
     } catch (error) {
-      console.error("Error deleting image from Cloudinary:", error);
+      console.error("Error deleting profile image from Cloudinary:", error);
     }
   }
 
+  // Delete the user
   await User.deleteOne({ _id: req.user._id });
 
+  // Clear cookie
   res.cookie("jwt", "", {
     httpOnly: true,
     expires: new Date(0),
@@ -743,7 +772,7 @@ const deleteAccount = asyncHandler(async (req, res) => {
   res.status(200).json({ message: "Account deleted successfully" });
 });
 
-const postMessage = asyncHandler(async (req, res, next) => {
+const postMessage = asyncHandler(async (req, res) => {
   const { name, email, subject, message } = req.body;
 
   if (!name || !email || !subject || !message) {
@@ -774,14 +803,12 @@ const forgotPassword = asyncHandler(async (req, res) => {
 
   const user = await User.findOne({ email });
 
-  // For security, always return same message even if email not found
   if (!user) {
     return res
       .status(200)
       .json({ message: "If that email exists, we have sent a reset code." });
   }
 
-  // Do not allow password reset for accounts that never set a password (e.g., pure Google)
   if (!user.password || user.password.startsWith("google-auth-")) {
     return res
       .status(400)
@@ -790,13 +817,11 @@ const forgotPassword = asyncHandler(async (req, res) => {
       });
   }
 
-  // Generate 6-digit OTP
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
   user.resetPasswordOtp = otp;
-  user.resetPasswordExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+  user.resetPasswordExpiry = new Date(Date.now() + 10 * 60 * 1000);
   await user.save();
 
-  // Send email (don't await – fire and forget to avoid delaying response)
   sendPasswordResetEmail(user.email, otp).catch((err) =>
     console.error("Password reset email error:", err),
   );
@@ -826,19 +851,16 @@ const resetPassword = asyncHandler(async (req, res) => {
     throw new Error("User not found");
   }
 
-  // Check OTP existence and match
   if (!user.resetPasswordOtp || user.resetPasswordOtp !== otp) {
     res.status(400);
     throw new Error("Invalid OTP");
   }
 
-  // Check expiry
   if (user.resetPasswordExpiry < new Date()) {
     res.status(400);
     throw new Error("OTP has expired. Please request a new one.");
   }
 
-  // Update password (pre‑save hook will hash it)
   user.password = newPassword;
   user.resetPasswordOtp = undefined;
   user.resetPasswordExpiry = undefined;
@@ -852,16 +874,13 @@ const resetPassword = asyncHandler(async (req, res) => {
     });
 });
 
-// Add this to your userController.js
-
-// @desc    Get user profile with all their posts (articles, magazines, videos)
+// @desc    Get user profile with all their posts
 // @route   GET /api/users/profile/:id/posts
 // @access  Public
 const getUserPosts = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { page = 1, limit = 20, type } = req.query; // type can be 'articles', 'magazines', 'videos', or undefined for all
+  const { page = 1, limit = 20, type } = req.query;
 
-  // Check if user exists
   const user = await User.findById(id).select(
     "name username profile bio followersCount followingCount",
   );
@@ -873,11 +892,10 @@ const getUserPosts = asyncHandler(async (req, res) => {
   const result = { user: { ...user.toObject(), _id: user._id.toString() } };
   const posts = {};
 
-  // Fetch articles if requested
   if (!type || type === "articles") {
     const articlesQuery = {
       createdBy: id,
-      status: { $in: ["published", "coming_soon"] }, // Only show published and coming soon to other users
+      status: { $in: ["published", "coming_soon"] },
     };
 
     const articles = await Article.find(articlesQuery)
@@ -903,7 +921,6 @@ const getUserPosts = asyncHandler(async (req, res) => {
     };
   }
 
-  // Fetch magazines if requested
   if (!type || type === "magazines") {
     const magazinesQuery = {
       createdBy: id,
@@ -933,11 +950,10 @@ const getUserPosts = asyncHandler(async (req, res) => {
     };
   }
 
-  // Fetch videos if requested
   if (!type || type === "videos") {
     const videosQuery = {
       user: id,
-      status: "published", // Only published videos
+      status: "published",
     };
 
     const videos = await Video.find(videosQuery)
@@ -983,7 +999,6 @@ const getProfileByUsername = asyncHandler(async (req, res) => {
     throw new Error("User not found");
   }
 
-  // Get user's published posts count
   const articlesCount = await Article.countDocuments({
     createdBy: user._id,
     status: { $in: ["published", "coming_soon"] },
@@ -1016,6 +1031,7 @@ export {
   resendOTP,
   loginUser,
   updateProfile,
+  changePassword,
   logout,
   deleteAccount,
   getProfileInfo,
@@ -1027,6 +1043,6 @@ export {
   getUserSuggestions,
   forgotPassword,
   resetPassword,
-  getUserPosts,        // <-- new
+  getUserPosts,
   getProfileByUsername,
 };

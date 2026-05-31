@@ -563,7 +563,7 @@ const BiizzedProfile = () => {
         <div className="lg:flex lg:items-start lg:gap-10 lg:mb-8">
           {/* Left: Avatar & Actions */}
           <div className="flex flex-col items-center text-center lg:items-start lg:text-left lg:flex-shrink-0">
-            {/* Mobile Top bar - REMOVED username, only settings icon now */}
+            {/* Mobile Top bar - settings icon only */}
             <div className="w-full flex items-center justify-end mb-4 lg:hidden">
               <button onClick={() => navigate('/settings')} className="text-gray-900 text-lg p-1">
                 <FaCog />
@@ -591,7 +591,7 @@ const BiizzedProfile = () => {
               </button>
             </div>
 
-            {/* Mobile: Name + Username under avatar, centered (only place where username appears on mobile) */}
+            {/* Mobile: Name + Username under avatar, centered */}
             <div className="lg:hidden flex flex-col items-center mb-4">
               <div className="flex items-center gap-2 mb-0.5">
                 <h2 className="text-lg font-bold text-gray-900">{profile?.name || "User"}</h2>
@@ -600,11 +600,21 @@ const BiizzedProfile = () => {
               <p className="text-sm text-gray-500">@{profile?.username || "user"}</p>
             </div>
 
-            {/* Desktop: Name & Username below avatar */}
+            {/* Desktop: Name & Username below avatar with Settings button */}
             <div className="hidden lg:block">
-              <div className="flex items-center gap-2 mb-1">
-                <h2 className="text-xl font-bold text-gray-900">{profile?.name || "User"}</h2>
-                {isContributorApproved && <ContributorBadge size="lg" showTooltip={true} />}
+              <div className="flex items-center gap-3 mb-1">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-bold text-gray-900">{profile?.name || "User"}</h2>
+                  {isContributorApproved && <ContributorBadge size="lg" showTooltip={true} />}
+                </div>
+                {/* Settings button added here for desktop */}
+                <button 
+                  onClick={() => navigate('/settings')} 
+                  className="text-gray-500 hover:text-[#1B3766] transition-colors p-1"
+                  title="Settings"
+                >
+                  <FaCog className="text-lg" />
+                </button>
               </div>
               <p className="text-sm text-gray-500 mb-1">@{profile?.username || "user"}</p>
               {profile?.bio && (

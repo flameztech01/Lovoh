@@ -5,7 +5,7 @@ import {
   FaArrowLeft, FaSave, FaImage, FaTrashAlt, FaPlus,
   FaBold, FaItalic, FaUnderline, FaAlignLeft, FaAlignCenter, FaAlignRight,
   FaListUl, FaListOl, FaLink, FaHeading, FaEye, FaQuoteRight, FaTimes,
-  FaSpinner, FaTag, FaNewspaper, FaClock, FaInfoCircle,
+  FaSpinner, FaTag, FaNewspaper, FaClock, FaInfoCircle, FaHandPointer, FaMagic,
 } from 'react-icons/fa';
 import { useGetArticleByIdQuery, useUpdateArticleMutation } from '../slices/articlesApiSlice';
 import { toast } from 'react-toastify';
@@ -33,7 +33,7 @@ const BiizzedEditArticle = () => {
   const navigate = useNavigate();
   const editorRef = useRef(null);
 
-  const { data: article, isLoading, error } = useGetArticleByIdQuery(id);
+  const { data: article, isLoading, error, refetch } = useGetArticleByIdQuery(id);
   const [updateArticle, { isLoading: isUpdating }] = useUpdateArticleMutation();
 
   const [formData, setFormData] = useState({
@@ -53,6 +53,8 @@ const BiizzedEditArticle = () => {
   const [removedImages, setRemovedImages] = useState([]);
   const [activeFormats, setActiveFormats] = useState({});
   const [isEditorInitialized, setIsEditorInitialized] = useState(false);
+  const [imagePlacementMode, setImagePlacementMode] = useState('manual');
+  const [showModeSelector, setShowModeSelector] = useState(false);
 
   const categories = ['Business', 'Technology', 'Startups', 'Leadership', 'Marketing', 'Finance', 'Lifestyle', 'Innovation'];
 
@@ -71,7 +73,7 @@ const BiizzedEditArticle = () => {
       setExistingImages(article.images || []);
       setKeepImages(article.images || []);
       
-      // Set editor content without triggering re-renders
+      // Set editor content
       editorRef.current.innerHTML = article.content || '';
       setIsEditorInitialized(true);
     }
@@ -86,41 +88,16 @@ const BiizzedEditArticle = () => {
         selection.rangeCount > 0 &&
         editorRef.current.contains(selection.anchorNode)
       ) {
-        const formatState = {
-          bold: false,
-          italic: false,
-          underline: false,
-          justifyLeft: false,
-          justifyCenter: false,
-          justifyRight: false,
-          insertUnorderedList: false,
-          insertOrderedList: false,
-        };
-        
-        const node = selection.anchorNode;
-        if (node) {
-          let parent = node.parentElement;
-          while (parent && parent !== editorRef.current) {
-            if (parent.tagName === 'STRONG' || parent.tagName === 'B') {
-              formatState.bold = true;
-            }
-            if (parent.tagName === 'EM' || parent.tagName === 'I') {
-              formatState.italic = true;
-            }
-            if (parent.tagName === 'U') {
-              formatState.underline = true;
-            }
-            if (parent.tagName === 'UL') {
-              formatState.insertUnorderedList = true;
-            }
-            if (parent.tagName === 'OL') {
-              formatState.insertOrderedList = true;
-            }
-            parent = parent.parentElement;
-          }
-        }
-        
-        setActiveFormats(formatState);
+        setActiveFormats({
+          bold: document.queryCommandState('bold'),
+          italic: document.queryCommandState('italic'),
+          underline: document.queryCommandState('underline'),
+          justifyLeft: document.queryCommandState('justifyLeft'),
+          justifyCenter: document.queryCommandState('justifyCenter'),
+          justifyRight: document.queryCommandState('justifyRight'),
+          insertUnorderedList: document.queryCommandState('insertUnorderedList'),
+          insertOrderedList: document.queryCommandState('insertOrderedList'),
+        });
       }
     };
 
@@ -135,7 +112,7 @@ const BiizzedEditArticle = () => {
     }
   }, [previewMode]);
 
-  // Helper function to save cursor position
+  // Save cursor position
   const saveCursorPosition = () => {
     const selection = window.getSelection();
     if (selection.rangeCount > 0 && editorRef.current && editorRef.current.contains(selection.anchorNode)) {
@@ -143,13 +120,12 @@ const BiizzedEditArticle = () => {
       const preSelectionRange = range.cloneRange();
       preSelectionRange.selectNodeContents(editorRef.current);
       preSelectionRange.setEnd(range.startContainer, range.startOffset);
-      const start = preSelectionRange.toString().length;
-      return start;
+      return preSelectionRange.toString().length;
     }
     return null;
   };
 
-  // Helper function to restore cursor position
+  // Restore cursor position
   const restoreCursorPosition = (savedPos) => {
     if (!savedPos) return;
     const selection = window.getSelection();
@@ -183,101 +159,27 @@ const BiizzedEditArticle = () => {
     }
   };
 
-  // Improved execCommand with proper list handling
+  // Simple execCommand that works
   const execCommand = (command, value = null) => {
     if (!editorRef.current) return;
     
     const savedPos = saveCursorPosition();
     editorRef.current.focus();
+    document.execCommand(command, false, value);
     
-    if (command === 'insertUnorderedList' || command === 'insertOrderedList') {
-      const selection = window.getSelection();
-      if (!selection.rangeCount) return;
-      
-      const range = selection.getRangeAt(0);
-      const isListActive = activeFormats[command];
-      
-      if (isListActive) {
-        document.execCommand('outdent', false, null);
-      } else {
-        let parent = selection.anchorNode.parentElement;
-        let inList = false;
-        while (parent && parent !== editorRef.current) {
-          if (parent.tagName === 'UL' || parent.tagName === 'OL') {
-            inList = true;
-            break;
-          }
-          parent = parent.parentElement;
-        }
-        
-        if (inList) {
-          document.execCommand('outdent', false, null);
-        } else {
-          const listTag = command === 'insertUnorderedList' ? 'UL' : 'OL';
-          const listItemTag = 'LI';
-          const text = selection.toString();
-          
-          if (text) {
-            const lines = text.split('\n');
-            const list = document.createElement(listTag);
-            list.style.margin = '12px 0';
-            list.style.paddingLeft = '24px';
-            
-            lines.forEach(line => {
-              if (line.trim()) {
-                const li = document.createElement(listItemTag);
-                li.textContent = line;
-                list.appendChild(li);
-              }
-            });
-            
-            range.deleteContents();
-            range.insertNode(list);
-            
-            const lastItem = list.lastChild;
-            if (lastItem) {
-              const newRange = document.createRange();
-              newRange.selectNodeContents(lastItem);
-              newRange.collapse(false);
-              selection.removeAllRanges();
-              selection.addRange(newRange);
-            }
-          } else {
-            const list = document.createElement(listTag);
-            list.style.margin = '12px 0';
-            list.style.paddingLeft = '24px';
-            const li = document.createElement(listItemTag);
-            li.innerHTML = '<br>';
-            list.appendChild(li);
-            range.insertNode(list);
-            
-            const newRange = document.createRange();
-            newRange.selectNodeContents(li);
-            newRange.collapse(true);
-            selection.removeAllRanges();
-            selection.addRange(newRange);
-          }
-        }
-      }
-    } else {
-      document.execCommand(command, false, value);
-    }
-    
-    // Update content state after command
     if (editorRef.current) {
       setContent(editorRef.current.innerHTML);
       setTimeout(() => {
-        const newFormats = {
+        setActiveFormats({
           bold: document.queryCommandState('bold'),
           italic: document.queryCommandState('italic'),
           underline: document.queryCommandState('underline'),
           justifyLeft: document.queryCommandState('justifyLeft'),
           justifyCenter: document.queryCommandState('justifyCenter'),
           justifyRight: document.queryCommandState('justifyRight'),
-          insertUnorderedList: !!editorRef.current.querySelector('ul'),
-          insertOrderedList: !!editorRef.current.querySelector('ol'),
-        };
-        setActiveFormats(newFormats);
+          insertUnorderedList: document.queryCommandState('insertUnorderedList'),
+          insertOrderedList: document.queryCommandState('insertOrderedList'),
+        });
       }, 10);
     }
     
@@ -439,6 +341,9 @@ const BiizzedEditArticle = () => {
         newPrevs.push(reader.result);
         if (newPrevs.length === newImgs.length) {
           setNewImagePreviews(prev => [...prev, ...newPrevs]);
+          if (imagePlacementMode === 'manual') {
+            toast.info('Image uploaded. Click on it to insert into the editor.');
+          }
         }
       };
       reader.readAsDataURL(file);
@@ -456,6 +361,68 @@ const BiizzedEditArticle = () => {
   const removeNewImage = (index) => {
     setNewImages(prev => prev.filter((_, i) => i !== index));
     setNewImagePreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Insert image at cursor position
+  const insertImageAtCursor = (imageUrl, imageIndex) => {
+    if (!editorRef.current) {
+      toast.error('Click in the editor first to place the image');
+      return;
+    }
+    
+    editorRef.current.focus();
+    
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return;
+    
+    const range = selection.getRangeAt(0);
+    const savedPos = saveCursorPosition();
+    
+    // Create clean image container (no caption input)
+    const container = document.createElement('div');
+    container.className = 'inserted-image-container my-4 relative group';
+    container.setAttribute('contenteditable', 'false');
+    
+    const img = document.createElement('img');
+    img.src = imageUrl;
+    img.className = 'w-full max-w-2xl h-auto rounded-xl shadow-md mx-auto block';
+    img.alt = `Article image ${imageIndex + 1}`;
+    
+    // Delete button only
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'absolute top-2 right-2 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 z-10';
+    deleteBtn.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>';
+    deleteBtn.onclick = (e) => {
+      e.stopPropagation();
+      if (confirm('Remove this image from the article?')) {
+        container.remove();
+        setContent(editorRef.current.innerHTML);
+        toast.info('Image removed from article');
+      }
+    };
+    
+    container.appendChild(img);
+    container.appendChild(deleteBtn);
+    
+    range.insertNode(container);
+    
+    // Add a line break after image
+    const br = document.createElement('br');
+    range.setStartAfter(container);
+    range.insertNode(br);
+    
+    // Move cursor after the image
+    range.setStartAfter(br);
+    range.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    
+    if (editorRef.current) {
+      setContent(editorRef.current.innerHTML);
+    }
+    
+    setTimeout(() => restoreCursorPosition(savedPos), 10);
+    toast.success(`Image inserted at cursor position`);
   };
 
   const handleSubmit = async (e) => {
@@ -526,6 +493,7 @@ const BiizzedEditArticle = () => {
 
   const totalImages = existingImages.length + newImages.length;
   const canAddMore = totalImages < 5;
+  const allNewImages = [...newImagePreviews];
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -544,6 +512,16 @@ const BiizzedEditArticle = () => {
             {isUpdating ? <><FaSpinner className="animate-spin" /> Saving...</> : <><FaSave /> Update Article</>}
           </button>
         </div>
+
+        {/* Image Placement Mode Indicator */}
+        {!formData.comingSoon && (
+          <div className="flex items-center justify-between mb-4 p-2 bg-blue-50 rounded-xl border border-blue-200">
+            <div className="flex items-center gap-2">
+              <FaHandPointer className="text-[#1B3766] text-sm" />
+              <span className="text-xs font-medium text-gray-700">Manual Mode: Click any new image below to insert it at your cursor position</span>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={e => e.preventDefault()} className="space-y-4">
           {/* Coming Soon Toggle */}
@@ -626,10 +604,6 @@ const BiizzedEditArticle = () => {
                 <div 
                   className="min-h-[300px] p-4 prose prose-sm max-w-none" 
                   dangerouslySetInnerHTML={{ __html: content || '<p class="text-gray-400 italic">No content yet. Start writing...</p>' }} 
-                  style={{
-                    '--tw-prose-bullets': '#1B3766',
-                    '--tw-prose-counters': '#1B3766',
-                  }}
                 />
               ) : (
                 <div
@@ -639,10 +613,6 @@ const BiizzedEditArticle = () => {
                   data-placeholder="Write your article content here..."
                   className="min-h-[300px] p-4 focus:outline-none text-gray-700 prose prose-sm max-w-none empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400"
                   onInput={handleEditorInput}
-                  style={{
-                    '--tw-prose-bullets': '#1B3766',
-                    '--tw-prose-counters': '#1B3766',
-                  }}
                 />
               )}
             </div>
@@ -654,6 +624,16 @@ const BiizzedEditArticle = () => {
               <FaClock className="text-3xl text-[#1B3766] mx-auto mb-2" />
               <p className="text-sm text-gray-600">Content editing is disabled in "Coming Soon" mode.</p>
               <p className="text-xs text-gray-500 mt-1">Uncheck "Coming Soon Mode" to edit the full content.</p>
+            </div>
+          )}
+
+          {/* Instruction for manual mode */}
+          {!formData.comingSoon && allNewImages.length > 0 && (
+            <div className="bg-blue-50 rounded-xl p-3 text-center border border-blue-200">
+              <p className="text-xs text-blue-700 flex items-center justify-center gap-2">
+                <FaHandPointer className="text-sm" />
+                <span>Click on any new image below to insert it at your cursor position in the editor</span>
+              </p>
             </div>
           )}
 
@@ -669,7 +649,7 @@ const BiizzedEditArticle = () => {
               </span>
             </p>
 
-            {/* Existing images */}
+            {/* Existing images - read only, cannot insert again */}
             {existingImages.length > 0 && (
               <div className="mb-4">
                 <p className="text-xs text-gray-500 mb-2">Current images</p>
@@ -678,14 +658,15 @@ const BiizzedEditArticle = () => {
                     <div key={idx} className="relative group">
                       <img src={url} alt="" className="w-full h-28 object-cover rounded-lg border" />
                       {idx === 0 && (
-                        <span className="absolute top-1 left-1 px-1.5 py-0.5 bg-[#1B3766] text-white text-[10px] font-medium rounded">
-                          Cover
+                        <span className="absolute top-1 left-1 px-1.5 py-0.5 bg-[#1B3766] text-white text-[8px] font-medium rounded">
+                          COVER
                         </span>
                       )}
                       <button
                         type="button"
                         onClick={() => removeExistingImage(idx)}
                         className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Delete image"
                       >
                         <FaTrashAlt className="text-[10px]" />
                       </button>
@@ -695,24 +676,55 @@ const BiizzedEditArticle = () => {
               </div>
             )}
 
-            {/* New images previews */}
+            {/* New images previews - click to insert */}
             {newImagePreviews.length > 0 && (
               <div className="mb-4">
-                <p className="text-xs text-gray-500 mb-2">New images to add</p>
+                <p className="text-xs text-gray-500 mb-2 flex items-center justify-between">
+                  <span>New images to add ({newImagePreviews.length})</span>
+                  <span className="text-[10px] text-blue-600">Click to insert into editor</span>
+                </p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {newImagePreviews.map((preview, idx) => (
-                    <div key={idx} className="relative group">
-                      <img src={preview} alt="" className="w-full h-28 object-cover rounded-lg border" />
-                      <button
-                        type="button"
-                        onClick={() => removeNewImage(idx)}
-                        className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <FaTrashAlt className="text-[10px]" />
-                      </button>
+                    <div
+                      key={idx}
+                      className="relative group cursor-pointer transition-all duration-200 hover:scale-105"
+                      onClick={() => insertImageAtCursor(preview, idx)}
+                    >
+                      <div className="relative">
+                        <img 
+                          src={preview} 
+                          alt="" 
+                          className="w-full h-28 object-cover rounded-lg border-2 border-blue-300 hover:border-[#1B3766] transition-all"
+                        />
+                        {/* Cover badge for new images */}
+                        {existingImages.length === 0 && idx === 0 && (
+                          <span className="absolute top-1 left-1 px-1.5 py-0.5 bg-[#1B3766] text-white text-[8px] font-medium rounded z-10">
+                            COVER
+                          </span>
+                        )}
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                          <span className="text-white text-[10px] font-medium bg-black/60 px-2 py-1 rounded-full">
+                            Click to Insert
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeNewImage(idx);
+                          }}
+                          className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                          title="Delete image"
+                        >
+                          <FaTrashAlt className="text-[10px]" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
+                <p className="text-[10px] text-gray-400 mt-2 text-center">
+                  💡 Tip: Click on any image above to insert it at your cursor position in the editor
+                </p>
               </div>
             )}
 
@@ -722,6 +734,7 @@ const BiizzedEditArticle = () => {
                 <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-[#1B3766] transition-colors">
                   <FaPlus className="text-xl text-gray-400 mx-auto mb-1" />
                   <p className="text-xs text-gray-500">Add more images</p>
+                  <p className="text-[9px] text-gray-400 mt-1">Max 5 images, up to 5MB each</p>
                   <input type="file" accept="image/*" multiple onChange={handleImageSelect} className="hidden" />
                 </div>
               </label>
@@ -788,6 +801,9 @@ const BiizzedEditArticle = () => {
         [contenteditable]:empty:before {
           content: attr(data-placeholder);
           color: #9CA3AF;
+        }
+        .inserted-image-container {
+          position: relative;
         }
       `}</style>
     </div>

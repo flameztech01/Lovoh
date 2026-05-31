@@ -70,6 +70,15 @@ export const userApiSlice = apiSlice.injectEndpoints({
       }),
     }),
 
+    // Change Password (while logged in)
+    changePassword: builder.mutation({
+      query: (data) => ({
+        url: `${USERS_URL}/change-password`,
+        method: 'PUT',
+        body: data,
+      }),
+    }),
+
     // Logout
     logout: builder.mutation({
       query: () => ({
@@ -104,7 +113,7 @@ export const userApiSlice = apiSlice.injectEndpoints({
       providesTags: (result, error, id) => [{ type: 'UserProfile', id }],
     }),
 
-    // Get user profile by username (public) - NEW
+    // Get user profile by username (public)
     getProfileByUsername: builder.query({
       query: (username) => ({
         url: `${USERS_URL}/profile/username/${username}`,
@@ -112,7 +121,7 @@ export const userApiSlice = apiSlice.injectEndpoints({
       providesTags: (result, error, username) => [{ type: 'UserProfile', username }],
     }),
 
-    // Get user posts (articles, magazines, videos) - NEW
+    // Get user posts (articles, magazines, videos)
     getUserPosts: builder.query({
       query: ({ id, type, page = 1, limit = 20 }) => ({
         url: `${USERS_URL}/profile/${id}/posts`,
@@ -201,14 +210,15 @@ export const {
   useLoginMutation,
   useForgotPasswordMutation,
   useResetPasswordMutation,
+  useChangePasswordMutation,  // NEW - for settings page
   useLogoutMutation,
   useDeleteAccountMutation,
 
   // Profile
   useGetProfileInfoQuery,
   useGetProfileByIdQuery,
-  useGetProfileByUsernameQuery,  // NEW
-  useGetUserPostsQuery,           // NEW
+  useGetProfileByUsernameQuery,
+  useGetUserPostsQuery,
   useUpdateProfileMutation,
 
   // Social/Follow

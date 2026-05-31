@@ -15,13 +15,15 @@ import {
   getFollowing,
   getUserSuggestions,
   getUserPosts,
-  // New imports
+  // Auth routes
   registerUser,
   verifyEmail,
   resendOTP,
   loginUser,
   forgotPassword,
   resetPassword,
+  // Settings routes
+  changePassword,
 } from '../controllers/userController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
@@ -71,8 +73,8 @@ router.post('/contact', postMessage);
 
 // Public profile routes
 router.get('/profile/:id', getProfileById);                    // Get profile by ID
-router.get('/profile/username/:username', getProfileByUsername); // Get profile by username (NEW)
-router.get('/profile/:id/posts', getUserPosts);                // Get user posts (NEW)
+router.get('/profile/username/:username', getProfileByUsername); // Get profile by username
+router.get('/profile/:id/posts', getUserPosts);                // Get user posts
 
 // Followers/Following routes (public view)
 router.get('/followers/:id', getFollowers);
@@ -84,6 +86,9 @@ router.get('/following/:id', getFollowing);
 router.get('/profile', protect, getProfileInfo);
 router.put('/profile', protect, upload.single('profile'), updateProfile);
 router.delete('/profile', protect, deleteAccount);
+
+// Password change route (for settings page)
+router.put('/change-password', protect, changePassword);
 
 // Follow/Unfollow routes
 router.post('/follow/:id', protect, followUser);

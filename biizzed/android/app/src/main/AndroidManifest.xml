@@ -1,3 +1,4 @@
+<!-- android/app/src/main/AndroidManifest.xml - MINIMAL VERSION -->
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
@@ -38,10 +39,14 @@
             android:grantUriPermissions="true">
             <meta-data
                 android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_paths"></meta-data>
+                android:resource="@xml/file_paths" />
         </provider>
+
     </application>
 
     <uses-permission android:name="android.permission.INTERNET" />
+    
+    <!-- Required for Android 13+ push notifications -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
 </manifest>

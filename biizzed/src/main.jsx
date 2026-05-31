@@ -154,8 +154,7 @@ const router = createBrowserRouter([
       { path: "create-magazine", element: <BiizzedCreateMagazine /> },
       { path: "edit-magazine/:id", element: <BiizzedEditMagazine /> },
 
-      // IMPORTANT FIX
-      // DO NOT USE ":slug" ALONE
+      // Magazine stories
       { path: "story/:slug", element: <MagazineStoryDetail /> },
 
       // User
@@ -223,22 +222,35 @@ const GOOGLE_CLIENT_ID =
   import.meta.env.VITE_GOOGLE_CLIENT_ID ||
   "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
 
-// ==================== PWA ====================
-if ("serviceWorker" in navigator) {
+// ==================== PWA / SERVICE WORKER ====================
+// Register service worker for web push (only on web platform)
+if (!native && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker
       .register("/sw.js")
       .then((registration) => {
         console.log("Service Worker registered:", registration);
+        
+        // Check for existing subscription
+        registration.pushManager.getSubscription().then(subscription => {
+          if (subscription) {
+            console.log("Existing web push subscription found");
+          } else {
+            console.log("No existing web push subscription");
+          }
+        }).catch(err => {
+          console.error("Error checking subscription:", err);
+        });
       })
       .catch((error) => {
-        console.error("Service Worker failed:", error);
+        console.error("Service Worker registration failed:", error);
       });
   });
 }
 
 // ==================== APP ====================
 function AppWithNotifications() {
+  // Initialize push notifications (handles both web and native)
   usePushNotifications();
 
   return <RouterProvider router={router} />;

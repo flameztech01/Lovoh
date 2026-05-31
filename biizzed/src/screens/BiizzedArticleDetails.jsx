@@ -1,4 +1,4 @@
-// screens/BiizzedArticleDetails.jsx - With Auth Modal & Modern Share (Web + Mobile)
+// screens/BiizzedArticleDetails.jsx - Fixed version (NO delete buttons, NO editing features)
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -90,18 +90,18 @@ const ShareModal = ({ isOpen, onClose, url, title }) => {
 
   const handleNativeShare = async () => {
     try {
-      const { Share } = await import('@capacitor/share');
-      await Share.share({
-        title: title,
-        text: title,
-        url: url,
-      });
-    } catch (err) {
-      // Fallback to clipboard
-      try {
+      if (navigator.share) {
+        await navigator.share({
+          title: title,
+          text: title,
+          url: url,
+        });
+      } else {
         await navigator.clipboard.writeText(url);
         toast.success('Link copied!');
-      } catch {
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') {
         const textArea = document.createElement('textarea');
         textArea.value = url;
         document.body.appendChild(textArea);
@@ -143,7 +143,6 @@ const ShareModal = ({ isOpen, onClose, url, title }) => {
         </button>
         <h3 className="text-lg font-bold text-gray-900 mb-4">Share this article</h3>
         
-        {/* Native share button for mobile */}
         <button
           onClick={handleNativeShare}
           className="w-full mb-4 py-2.5 bg-[#1B3766] text-white rounded-xl text-sm font-medium hover:bg-[#142952] transition-colors flex items-center justify-center gap-2"
@@ -190,7 +189,6 @@ const BiizzedArticleDetails = () => {
   const [showShareModal, setShowShareModal] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
   
-  // Optimistic state
   const [optLikes, setOptLikes] = useState(null);
   const [optBookmark, setOptBookmark] = useState(null);
   const [optFollow, setOptFollow] = useState(null);
@@ -212,8 +210,8 @@ const BiizzedArticleDetails = () => {
 
   const relatedArticles = relatedData?.articles?.filter(item => item.slug !== slug)?.slice(0, 3) || [];
   const coverImage = article?.featuredImage || article?.images?.[0];
-  const images = article?.images || [];
-  const additionalImages = images.slice(1);
+  const allImages = article?.images || [];
+  const additionalImages = allImages.slice(1);
 
   const authorId = extractId(article?.authorId?._id || article?.authorId || article?.createdBy);
   const authorUsername = article?.authorId?.username || article?.authorUsername || authorId;
@@ -249,7 +247,6 @@ const BiizzedArticleDetails = () => {
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
-  // Auth-guarded actions
   const requireAuth = (action) => {
     if (!userInfo) {
       setPendingAction(action);
@@ -319,7 +316,6 @@ const BiizzedArticleDetails = () => {
     setShowReplies(prev => ({ ...prev, [commentId]: !prev[commentId] }));
   };
 
-  // Updated share — uses WEBSITE_URL, works on web + mobile
   const handleShare = (platform) => {
     const url = `${WEBSITE_URL}/articles/${slug}`;
     const title = article?.title || '';
@@ -341,113 +337,191 @@ const BiizzedArticleDetails = () => {
     }
   };
 
-  // Get optimistic values
   const isLiked = optLikes ? optLikes.liked : (article?.likes || []).some(l => extractId(l) === myId);
   const likesCount = optLikes ? optLikes.count : (article?.likesCount || (article?.likes || []).length);
   const isBookmarked = optBookmark !== null ? optBookmark : (article?.bookmarks || []).some(b => extractId(b) === myId);
   const isFollowing = optFollow !== null ? optFollow : followingList.some(f => extractId(f) === authorId);
 
-  // ==================== FIXED: RENDER CONTENT WITH IMAGES INSERTED BETWEEN PARAGRAPHS ====================
+  // Get default caption based on category
+  const getDefaultCaption = (category, index) => {
+    const captions = {
+      Business: ['Business insights', 'Market trends', 'Industry analysis', 'Corporate strategy'],
+      Technology: ['Tech innovation', 'Digital transformation', 'Future of tech', 'Tech insights'],
+      Startups: ['Startup journey', 'Entrepreneurship', 'Building a startup', 'Founder stories'],
+      Leadership: ['Leadership lessons', 'Management insights', 'Leading teams', 'Executive wisdom'],
+      Marketing: ['Marketing strategy', 'Digital marketing', 'Brand building', 'Consumer insights'],
+      Finance: ['Financial insights', 'Investment strategy', 'Market analysis', 'Wealth management'],
+      Lifestyle: ['Life balance', 'Wellness tips', 'Daily inspiration', 'Living better'],
+      Innovation: ['Creative thinking', 'Innovation lab', 'Future trends', 'Disruptive ideas'],
+    };
+    const categoryCaptions = captions[category] || ['Article insights', 'Featured image', 'Visual story', 'Illustration'];
+    return categoryCaptions[index % categoryCaptions.length];
+  };
+
+  // ==================== CLEAN CONTENT - REMOVE ALL EDITING ELEMENTS ====================
+  const cleanManualContent = (content) => {
+    if (!content) return '';
+    
+    let cleanHtml = content;
+    
+    // Remove delete buttons (red circle with trash icon)
+    cleanHtml = cleanHtml.replace(/<button[^>]*class="[^"]*bg-red-500[^"]*"[^>]*>[\s\S]*?<\/button>/gi, '');
+    
+    // Remove drag handle buttons
+    cleanHtml = cleanHtml.replace(/<div[^>]*class="[^"]*absolute top-2 left-2[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '');
+    
+    // Remove caption input fields
+    cleanHtml = cleanHtml.replace(/<div[^>]*class="[^"]*text-center mt-2[^"]*"[^>]*>[\s\S]*?<input[^>]*placeholder="[^"]*caption[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '');
+    
+    // Remove any other input elements that might be inside image containers
+    cleanHtml = cleanHtml.replace(/<input[^>]*>/gi, '');
+    
+    // Remove any leftover divs that contain editing elements
+    cleanHtml = cleanHtml.replace(/<div[^>]*class="[^"]*absolute[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '');
+    
+    // Remove any contenteditable attributes
+    cleanHtml = cleanHtml.replace(/contenteditable="[^"]*"/gi, '');
+    
+    // Remove draggable attributes
+    cleanHtml = cleanHtml.replace(/draggable="[^"]*"/gi, '');
+    
+    // Fix image containers - remove editing-related classes but keep the image
+    cleanHtml = cleanHtml.replace(/<div[^>]*class="[^"]*image-container[^"]*"[^>]*>/gi, '<div class="image-container my-4">');
+    
+    // Ensure images are properly styled for viewing
+    cleanHtml = cleanHtml.replace(/<img([^>]*)>/gi, (match, attrs) => {
+      // Remove any cursor-move classes
+      let cleanAttrs = attrs.replace(/cursor-move/gi, '');
+      cleanAttrs = cleanAttrs.replace(/class="[^"]*"/gi, (classMatch) => {
+        let cleanClass = classMatch.replace(/cursor-move/gi, '');
+        return cleanClass;
+      });
+      return `<img${cleanAttrs} class="w-full max-w-2xl h-auto rounded-xl shadow-md mx-auto block my-4">`;
+    });
+    
+    return cleanHtml;
+  };
+
+  // ==================== RENDER CONTENT ====================
   const renderContentWithImages = () => {
-    if (!article?.content) return null;
+    if (!article?.content) {
+      return <p className="text-gray-400 italic">No content available.</p>;
+    }
     
     let content = article.content;
     
-    // Check if content has HTML tags
-    const hasHtmlTags = /<[a-z][\s\S]*?>/i.test(content);
-    let paragraphs = [];
-
-    if (hasHtmlTags) {
-      // Handle custom tags format (<<p>>content<</p>>)
-      const pMatches = content.match(/<<p[^>]*>([\s\S]*?)<<\/p>/gi);
-      if (pMatches && pMatches.length > 0) {
-        paragraphs = pMatches.map(match => match.replace(/<<p[^>]*>/i, '').replace(/<<\/p>/i, ''));
-      } else {
-        // Handle regular HTML
-        content = content.replace(/<br\s*\/?>/gi, '\n').replace(/<\/div>\s*<div[^>]*>/gi, '\n\n');
-        paragraphs = content.split(/\n\s*\n/);
-      }
-    } else {
-      // Plain text - split by double newlines
-      paragraphs = content.split(/\n\s*\n/);
-    }
-
-    // Filter out empty paragraphs
-    const validParagraphs = paragraphs.filter(p => p.trim().length > 10);
-    const totalParagraphs = validParagraphs.length;
-    const imageCount = additionalImages.length;
-
-    // If no images or only one paragraph, just render content directly
-    if (totalParagraphs === 0 || imageCount === 0) {
+    // Check if content contains manually inserted image containers
+    const hasManualImages = content.includes('inserted-image-container') || content.includes('image-container');
+    
+    if (hasManualImages) {
+      // Clean the content to remove all editing elements
+      const cleanContent = cleanManualContent(content);
+      
       return (
         <div 
           className="text-gray-700 leading-8 space-y-5 text-[15px] sm:text-base article-content"
-          dangerouslySetInnerHTML={{ __html: article.content }} 
+          dangerouslySetInnerHTML={{ __html: cleanContent }} 
         />
       );
     }
-
-    // Calculate positions to insert images (distribute evenly)
+    
+    // Auto mode - distribute additional images between paragraphs
+    if (additionalImages.length === 0) {
+      return (
+        <div 
+          className="text-gray-700 leading-8 space-y-5 text-[15px] sm:text-base article-content"
+          dangerouslySetInnerHTML={{ __html: content }} 
+        />
+      );
+    }
+    
+    // Simple paragraph splitting for auto mode
+    let paragraphs = [];
+    let textContent = content.replace(/<[^>]+>/g, '');
+    paragraphs = textContent.split(/\n\s*\n|\.\s+/);
+    const validParagraphs = paragraphs.filter(p => p.trim().length > 30);
+    const totalParagraphs = validParagraphs.length;
+    const imageCount = additionalImages.length;
+    
+    if (totalParagraphs === 0) {
+      return (
+        <div 
+          className="text-gray-700 leading-8 space-y-5 text-[15px] sm:text-base article-content"
+          dangerouslySetInnerHTML={{ __html: content }} 
+        />
+      );
+    }
+    
+    // Distribute images evenly
     const insertPositions = [];
     const step = totalParagraphs / (imageCount + 1);
     for (let i = 1; i <= imageCount; i++) {
-      insertPositions.push(Math.min(Math.round(i * step), totalParagraphs - 1));
+      const position = Math.min(Math.round(i * step) - 1, totalParagraphs - 1);
+      if (position === 0 && totalParagraphs > 3) {
+        insertPositions.push(1);
+      } else if (position === totalParagraphs - 1 && totalParagraphs > 3) {
+        insertPositions.push(totalParagraphs - 2);
+      } else {
+        insertPositions.push(position);
+      }
     }
-
+    
     const elements = [];
     let imageIndex = 0;
-
+    
     for (let i = 0; i < validParagraphs.length; i++) {
-      // Add paragraph
+      const paragraphContent = validParagraphs[i].trim();
+      
       elements.push(
         <div 
           key={`para-${i}`} 
           className="text-gray-700 leading-8 text-[15px] sm:text-base mb-5"
-          dangerouslySetInnerHTML={{ __html: validParagraphs[i].trim() }} 
-        />
+        >
+          <p className="mb-0">{paragraphContent}</p>
+        </div>
       );
-
-      // Add image at calculated position
+      
       if (insertPositions.includes(i) && imageIndex < additionalImages.length) {
+        const defaultCaption = getDefaultCaption(article.category, imageIndex);
         elements.push(
           <figure key={`image-${imageIndex}`} className="my-8">
             <div className="rounded-2xl overflow-hidden border border-gray-100 bg-gray-50 shadow-sm">
               <img 
                 src={additionalImages[imageIndex]} 
-                alt={`${article.title} - illustration ${imageIndex + 1}`} 
+                alt={`${article.title} - ${defaultCaption}`} 
                 className="w-full h-auto object-cover" 
-                onError={(e) => { e.target.style.display = 'none'; }} 
+                loading="lazy"
               />
             </div>
             <figcaption className="text-xs text-gray-400 mt-2 text-center italic">
-              {article.category} insights
+              {defaultCaption}
             </figcaption>
           </figure>
         );
         imageIndex++;
       }
     }
-
-    // Add any remaining images at the end
+    
     while (imageIndex < additionalImages.length) {
+      const defaultCaption = getDefaultCaption(article.category, imageIndex);
       elements.push(
         <figure key={`image-end-${imageIndex}`} className="my-8">
           <div className="rounded-2xl overflow-hidden border border-gray-100 bg-gray-50 shadow-sm">
             <img 
               src={additionalImages[imageIndex]} 
-              alt={`${article.title} - illustration ${imageIndex + 1}`} 
+              alt={`${article.title} - ${defaultCaption}`} 
               className="w-full h-auto object-cover" 
-              onError={(e) => { e.target.style.display = 'none'; }} 
+              loading="lazy"
             />
           </div>
           <figcaption className="text-xs text-gray-400 mt-2 text-center italic">
-            {article.category} insights
+            {defaultCaption}
           </figcaption>
         </figure>
       );
       imageIndex++;
     }
-
+    
     return elements;
   };
 
@@ -511,12 +585,17 @@ const BiizzedArticleDetails = () => {
             <article className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
               {coverImage && (
                 <div className="aspect-[16/9] overflow-hidden bg-gray-100">
-                  <img src={coverImage} alt={article.title} className="w-full h-full object-cover" />
+                  <img 
+                    src={coverImage} 
+                    alt={article.title} 
+                    className="w-full h-full object-cover"
+                    loading="eager"
+                  />
                 </div>
               )}
 
               <div className="p-6">
-                {/* Author Info with Follow - CLICKABLE */}
+                {/* Author Info with Follow */}
                 <div className="flex items-center gap-3 mb-4">
                   <Link to={`/user/${authorUsername}`} onClick={(e) => e.stopPropagation()}>
                     {authorProfile ? (
@@ -563,7 +642,7 @@ const BiizzedArticleDetails = () => {
                       <span className="text-[13px] font-medium">{likesCount}</span>
                     </button>
 
-                    <button onClick={e => { e.preventDefault(); }} className="group flex items-center gap-1.5 px-3 py-2 rounded-full text-gray-500 hover:text-[#1B3766] hover:bg-[#1B3766]/5 transition-colors">
+                    <button onClick={e => { e.preventDefault(); document.getElementById('comments-section')?.scrollIntoView({ behavior: 'smooth' }); }} className="group flex items-center gap-1.5 px-3 py-2 rounded-full text-gray-500 hover:text-[#1B3766] hover:bg-[#1B3766]/5 transition-colors">
                       <FaRegComment className="text-sm" />
                       <span className="text-[13px] font-medium">{article.comments?.length || 0}</span>
                     </button>
@@ -573,7 +652,6 @@ const BiizzedArticleDetails = () => {
                       <span className="text-[13px] font-medium">{article.views || 0}</span>
                     </div>
 
-                    {/* Share button - opens modern share modal */}
                     <button onClick={() => setShowShareModal(true)} className="group flex items-center gap-1.5 px-3 py-2 rounded-full text-gray-500 hover:text-[#1B3766] hover:bg-[#1B3766]/5 transition-colors">
                       <FaShare className="text-sm" />
                     </button>
@@ -586,7 +664,7 @@ const BiizzedArticleDetails = () => {
                   <span className="text-[11px] font-semibold text-[#1B3766] bg-[#1B3766]/5 px-2.5 py-1.5 rounded-full">Biizzed</span>
                 </div>
 
-                {/* Article Content with Images Between Paragraphs */}
+                {/* Article Content with Images - CLEAN, NO EDITING FEATURES */}
                 <div className="space-y-5 mb-6">
                   {renderContentWithImages()}
                 </div>
@@ -600,7 +678,7 @@ const BiizzedArticleDetails = () => {
                 )}
 
                 {/* Comments Section */}
-                <div className="border-t border-gray-200 pt-6">
+                <div id="comments-section" className="border-t border-gray-200 pt-6">
                   <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                     <FaRegComment className="text-[#1B3766]" /> Comments ({article.comments?.length || 0})
                   </h3>
@@ -621,8 +699,16 @@ const BiizzedArticleDetails = () => {
                         </div>
                       )}
                       <div className="flex-1">
-                        <input type="text" value={commentText} onChange={(e) => setCommentText(e.target.value)} placeholder="Add a comment..." className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]" />
-                        <button type="submit" disabled={!commentText.trim()} className="mt-2 px-4 py-1.5 bg-[#1B3766] text-white rounded-full text-xs font-medium hover:bg-[#142952] disabled:opacity-50">Post</button>
+                        <input 
+                          type="text" 
+                          value={commentText} 
+                          onChange={(e) => setCommentText(e.target.value)} 
+                          placeholder="Add a comment..." 
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]" 
+                        />
+                        <button type="submit" disabled={!commentText.trim()} className="mt-2 px-4 py-1.5 bg-[#1B3766] text-white rounded-full text-xs font-medium hover:bg-[#142952] disabled:opacity-50">
+                          Post <FaPaperPlane className="inline ml-1 text-[10px]" />
+                        </button>
                       </div>
                     </div>
                   </form>
@@ -714,7 +800,7 @@ const BiizzedArticleDetails = () => {
           {/* Right Sidebar */}
           <aside className="hidden lg:block w-[320px] flex-shrink-0">
             <div className="fixed top-[120px] w-[320px] h-[calc(100vh-140px)] overflow-y-auto space-y-4 pb-8 no-scrollbar">
-              {/* Share Section - Modern circular icons */}
+              {/* Share Section */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Share</h3>
                 <div className="flex justify-around">
@@ -762,7 +848,7 @@ const BiizzedArticleDetails = () => {
                 </div>
               )}
 
-              {/* Author Info - CLICKABLE */}
+              {/* Author Info */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 text-center">
                 <Link to={`/user/${authorUsername}`}>
                   {authorProfile ? (
@@ -796,11 +882,49 @@ const BiizzedArticleDetails = () => {
           to { opacity: 1; transform: translateY(0); }
         }
         .animate-fadeInUp { animation: fadeInUp 0.28s ease-out; }
+        
         .article-content img {
           max-width: 100%;
           height: auto;
-          border-radius: 1rem;
+          border-radius: 0.75rem;
           margin: 1.5rem 0;
+        }
+        
+        .article-content p {
+          margin-bottom: 1.25rem;
+          line-height: 1.75;
+        }
+        
+        .article-content h1, .article-content h2, .article-content h3 {
+          margin-top: 1.5rem;
+          margin-bottom: 0.75rem;
+          font-weight: 700;
+          color: #1f2937;
+        }
+        
+        .article-content h2 {
+          font-size: 1.5rem;
+        }
+        
+        .article-content h3 {
+          font-size: 1.25rem;
+        }
+        
+        .article-content ul, .article-content ol {
+          margin: 1rem 0;
+          padding-left: 1.5rem;
+        }
+        
+        .article-content li {
+          margin: 0.25rem 0;
+        }
+        
+        .article-content blockquote {
+          border-left: 3px solid #1B3766;
+          padding-left: 1rem;
+          margin: 1rem 0;
+          color: #4b5563;
+          font-style: italic;
         }
       `}</style>
     </div>
