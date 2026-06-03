@@ -28,7 +28,7 @@ const AdminDashboard = () => {
   // Redirect if not admin
   useEffect(() => {
     if (!adminInfo) {
-      navigate('/admin/login');
+      navigate('/super_user/login');
     }
   }, [adminInfo, navigate]);
 
@@ -43,49 +43,49 @@ const AdminDashboard = () => {
       value: adStats?.totalActive || 0,
       icon: FaAd,
       color: 'bg-blue-500',
-      link: '/admin/ads',
+      link: '/super_user/ads',
     },
     {
       title: 'Subscribers',
       value: subscribersData?.total || 0,
       icon: FaUsers,
       color: 'bg-green-500',
-      link: '/admin/subscribers',
+      link: '/super_user/subscribers',
     },
     {
       title: 'Articles',
       value: magazineStats?.stats?.published || 0,
       icon: FaNewspaper,
       color: 'bg-purple-500',
-      link: '/admin/articles',
+      link: '/super_user/articles',
     },
     {
       title: 'Magazines',
       value: magazineStats?.stats?.published || 0,
       icon: FaBookOpen,
       color: 'bg-orange-500',
-      link: '/admin/magazines',
+      link: '/super_user/magazines',
     },
     {
       title: 'Videos',
       value: 0,
       icon: FaVideo,
       color: 'bg-red-500',
-      link: '/admin/videos',
+      link: '/super_user/videos',
     },
     {
       title: 'Total Ad Views',
       value: adStats?.totalViews || 0,
       icon: FaEye,
       color: 'bg-teal-500',
-      link: '/admin/ads',
+      link: '/super_user/ads',
     },
     {
       title: 'Total Ad Clicks',
       value: adStats?.totalClicks || 0,
       icon: FaMousePointer,
       color: 'bg-indigo-500',
-      link: '/admin/ads',
+      link: '/super_user/ads',
     },
   ];
 

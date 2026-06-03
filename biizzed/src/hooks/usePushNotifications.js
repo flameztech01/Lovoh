@@ -2,8 +2,7 @@
 import { useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { Capacitor } from '@capacitor/core';
-import { PushNotifications } from '@capacitor/push-notifications';
-import { LocalNotifications } from '@capacitor/local-notifications';
+import OneSignal from 'onesignal-cordova-plugin';
 import { useSubscribeToPushMutation } from '../slices/notificationApiSlice';
 
 const usePushNotifications = () => {
@@ -17,7 +16,7 @@ const usePushNotifications = () => {
     if (!userInfo) return;
 
     if (isNative) {
-      // Native (iOS/Android) push setup
+      // Native (iOS/Android) push setup with OneSignal
       initNativePush();
     } else {
       // Web push setup (your existing code)
@@ -25,7 +24,7 @@ const usePushNotifications = () => {
     }
   }, [userInfo]);
 
-  // ========== WEB PUSH (YOUR EXISTING CODE) ==========
+  // ========== WEB PUSH (YOUR EXISTING CODE - UNCHANGED) ==========
   const initWebPush = async () => {
     if (!('serviceWorker' in navigator)) return;
 
@@ -46,80 +45,79 @@ const usePushNotifications = () => {
     }
   };
 
-  // ========== NATIVE (CAPACITOR) PUSH ==========
+  // ========== NATIVE (CAPACITOR) PUSH WITH ONESIGNAL ==========
   const initNativePush = async () => {
     try {
-      // Request permission
-      let permStatus = await PushNotifications.checkPermissions();
+      // Initialize OneSignal
+      OneSignal.initialize(import.meta.env.VITE_ONESIGNAL_APP_ID);
       
-      if (permStatus.receive !== 'granted') {
-        permStatus = await PushNotifications.requestPermissions();
-      }
+      // Request permission (OneSignal handles this automatically)
+      OneSignal.Notifications.requestPermission(true);
       
-      if (permStatus.receive !== 'granted') {
-        console.log('Push permission denied');
-        return;
-      }
-
-      // Register with Apple/Google
-      await PushNotifications.register();
-
-      // Listen for registration success
-      PushNotifications.addListener('registration', async (token) => {
-        console.log('✅ Native push registered, token:', token.value);
-        
-        // Send token to backend (same endpoint as web push)
+      // Set up listener for user ID (OneSignal player ID)
+      OneSignal.User.addTag('userId', userInfo._id);
+      OneSignal.User.addTag('email', userInfo.email);
+      OneSignal.User.addTag('username', userInfo.username || userInfo.name);
+      
+      // Get the OneSignal player ID (device token equivalent)
+      const playerId = await OneSignal.User.getOnesignalId();
+      console.log('✅ OneSignal Player ID:', playerId);
+      
+      // Send to your backend
+      if (playerId) {
         try {
-          await subscribeToPush({ 
-            token: token.value,
+          await subscribeToPush({
+            token: playerId,
             platform: Capacitor.getPlatform(),
-            isNative: true 
+            isNative: true,
+            service: 'onesignal'
           }).unwrap();
-          console.log('✅ Native token sent to backend');
+          console.log('✅ OneSignal token sent to backend');
         } catch (error) {
-          console.error('Failed to send native token:', error);
+          console.error('Failed to send OneSignal token:', error);
         }
-      });
-
-      // Listen for registration error
-      PushNotifications.addListener('registrationError', (err) => {
-        console.error('Native push registration error:', err);
-      });
-
-      // Listen for push notification received while app is in foreground
-      PushNotifications.addListener('pushNotificationReceived', async (notification) => {
-        console.log('📱 Push received:', notification);
+      }
+      
+      // Listen for when a notification is received while app is in foreground
+      OneSignal.Notifications.addEventListener('foregroundWillDisplay', (event) => {
+        console.log('📱 Notification received in foreground:', event);
         
-        // Show local notification when app is in foreground
-        if (notification.data) {
-          await LocalNotifications.schedule({
-            notifications: [{
-              title: notification.title,
-              body: notification.body,
-              id: Date.now(),
-              schedule: { at: new Date() },
-              extra: notification.data,
-            }]
-          });
-        }
+        // Prevent default display (we'll show it ourselves)
+        event.preventDefault();
+        
+        // Get notification data
+        const notification = event.getNotification();
+        
+        // Show custom notification handling if needed
+        // For example, update a badge count or show an in-app alert
       });
-
-      // Listen for when user taps on notification
-      PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
-        console.log('📱 Push tapped:', notification);
+      
+      // Listen for when a notification is clicked/tapped
+      OneSignal.Notifications.addEventListener('click', (event) => {
+        console.log('📱 Notification clicked:', event);
+        
+        const notification = event.getNotification();
+        const additionalData = notification.additionalData;
         
         // Handle navigation based on notification data
-        const data = notification.notification.data;
-        if (data?.screen) {
-          // Use your router to navigate
-          // For React Router:
-          // navigate(data.screen);
+        if (additionalData?.screen) {
+          // Navigate using your router
+          // For example with React Router:
+          // navigate(additionalData.screen);
+          
+          // Or use window.location for simple navigation
+          if (additionalData.screen.startsWith('/')) {
+            window.location.href = additionalData.screen;
+          }
         }
       });
-
-      console.log('✅ Native push initialized');
+      
+      // Set external user ID for targeting (optional but recommended)
+      OneSignal.User.addAlias('externalId', userInfo._id);
+      
+      console.log('✅ OneSignal native push initialized');
     } catch (error) {
-      console.error('Error initializing native push:', error);
+      console.error('Error initializing OneSignal:', error);
     }
   };
 

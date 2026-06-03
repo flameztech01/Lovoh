@@ -1,4 +1,4 @@
-// slices/notificationApiSlice.js
+// slices/notificationApiSlice.js (updated for OneSignal)
 import { apiSlice } from './apiSlice';
 
 const NOTIFICATIONS_URL = '/notifications';
@@ -6,8 +6,6 @@ const NOTIFICATIONS_URL = '/notifications';
 export const notificationApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
     // ==================== PREFERENCES ====================
-
-    // Get current notification preferences
     getNotificationPreferences: builder.query({
       query: () => ({
         url: `${NOTIFICATIONS_URL}/preferences`,
@@ -15,7 +13,6 @@ export const notificationApiSlice = apiSlice.injectEndpoints({
       providesTags: ['NotificationPreferences'],
     }),
 
-    // Update preferences (and optionally store a push subscription)
     updateNotificationPreferences: builder.mutation({
       query: (data) => ({
         url: `${NOTIFICATIONS_URL}/preferences`,
@@ -25,14 +22,9 @@ export const notificationApiSlice = apiSlice.injectEndpoints({
       invalidatesTags: ['NotificationPreferences'],
     }),
 
-    // ==================== PUSH SUBSCRIPTION (Web + Capacitor) ====================
-
-    // Subscribe to push notifications (handles both web and native)
+    // ==================== PUSH SUBSCRIPTION (Web + OneSignal) ====================
     subscribeToPush: builder.mutation({
       query: (data) => {
-        // For web push: data = { subscription }
-        // For native push: data = { token, platform, deviceId }
-        
         let requestBody = {};
         
         if (data.subscription) {
@@ -42,15 +34,14 @@ export const notificationApiSlice = apiSlice.injectEndpoints({
             subscription: data.subscription,
           };
         } else if (data.token) {
-          // Native (Capacitor) push token
+          // OneSignal (or native) push token
           requestBody = {
-            type: 'native',
+            type: 'onesignal', // or 'native'
             token: data.token,
             platform: data.platform || 'unknown',
-            deviceId: data.deviceId,
+            service: data.service || 'onesignal',
           };
         } else {
-          // Legacy support
           requestBody = data;
         }
         
@@ -63,19 +54,17 @@ export const notificationApiSlice = apiSlice.injectEndpoints({
       invalidatesTags: ['NotificationPreferences'],
     }),
 
-    // Unsubscribe from push notifications (handles both web and native)
+    // Unsubscribe from push notifications
     unsubscribeFromPush: builder.mutation({
       query: (data) => ({
         url: `${NOTIFICATIONS_URL}/unsubscribe`,
         method: 'POST',
-        body: data, // Optional: { type, token } to specify which subscription to remove
+        body: data,
       }),
       invalidatesTags: ['NotificationPreferences'],
     }),
 
     // ==================== IN‑APP NOTIFICATIONS ====================
-
-    // Get list of notifications
     getNotifications: builder.query({
       query: (params) => ({
         url: NOTIFICATIONS_URL,
@@ -84,7 +73,6 @@ export const notificationApiSlice = apiSlice.injectEndpoints({
       providesTags: ['Notifications'],
     }),
 
-    // Get unread count
     getUnreadCount: builder.query({
       query: () => ({
         url: `${NOTIFICATIONS_URL}/unread-count`,
@@ -92,7 +80,6 @@ export const notificationApiSlice = apiSlice.injectEndpoints({
       providesTags: ['Notifications'],
     }),
 
-    // Mark single notification as read
     markNotificationRead: builder.mutation({
       query: (id) => ({
         url: `${NOTIFICATIONS_URL}/${id}/read`,
@@ -101,7 +88,6 @@ export const notificationApiSlice = apiSlice.injectEndpoints({
       invalidatesTags: ['Notifications', 'UnreadCount'],
     }),
 
-    // Mark all notifications as read
     markAllNotificationsRead: builder.mutation({
       query: () => ({
         url: `${NOTIFICATIONS_URL}/read-all`,
@@ -110,7 +96,6 @@ export const notificationApiSlice = apiSlice.injectEndpoints({
       invalidatesTags: ['Notifications', 'UnreadCount'],
     }),
 
-    // Delete notification
     deleteNotification: builder.mutation({
       query: (id) => ({
         url: `${NOTIFICATIONS_URL}/${id}`,
@@ -119,7 +104,6 @@ export const notificationApiSlice = apiSlice.injectEndpoints({
       invalidatesTags: ['Notifications', 'UnreadCount'],
     }),
 
-    // Clear all notifications
     clearAllNotifications: builder.mutation({
       query: () => ({
         url: `${NOTIFICATIONS_URL}/clear-all`,

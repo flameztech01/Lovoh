@@ -179,7 +179,7 @@ const router = createBrowserRouter([
 
   // ==================== ADMIN ====================
   {
-    path: "/admin",
+    path: "/super_user",
     element: <PrivateAdminRoute />,
     children: [
       {

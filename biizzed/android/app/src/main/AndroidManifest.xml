@@ -1,4 +1,3 @@
-<!-- android/app/src/main/AndroidManifest.xml - MINIMAL VERSION -->
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
@@ -32,6 +31,15 @@
 
         </activity>
 
+        <!-- OneSignal Configuration -->
+        <meta-data
+            android:name="onesignal_app_id"
+            android:value="d97a1b85-445f-4308-a65e-770748bb574d" />
+        
+        <meta-data
+            android:name="onesignal_allow_settings_default"
+            android:value="true" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -48,5 +56,9 @@
     
     <!-- Required for Android 13+ push notifications -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Optional but recommended permissions -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.VIBRATE" />
 
 </manifest>

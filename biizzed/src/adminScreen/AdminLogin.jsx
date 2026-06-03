@@ -25,7 +25,7 @@ const AdminLogin = () => {
   // Redirect if already logged in
   useEffect(() => {
     if (adminInfo) {
-      navigate('/admin/dashboard');
+      navigate('/super_user/dashboard');
     }
   }, [adminInfo, navigate]);
 
@@ -43,7 +43,7 @@ const AdminLogin = () => {
       const res = await adminLogin({ email, password }).unwrap();
       dispatch(setAdminCredentials({ ...res }));
       toast.success(`Welcome back, ${res.username || 'Admin'}!`);
-      navigate('/admin/dashboard');
+      navigate('/super_user/dashboard');
     } catch (err) {
       const errorMsg = err?.data?.message || 'Invalid email or password';
       setLoginError(errorMsg);

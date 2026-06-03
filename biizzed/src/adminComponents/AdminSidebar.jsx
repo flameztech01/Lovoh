@@ -1,10 +1,10 @@
 // components/adminComponents/AdminSidebar.jsx
-import React from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
-import { useAdminLogoutMutation } from '../slices/adminApiSlice';
-import { logoutAdmin } from '../slices/authslice';
-import { toast } from 'react-toastify';
+import React from "react";
+import { NavLink, useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { useAdminLogoutMutation } from "../slices/adminApiSlice";
+import { logoutAdmin } from "../slices/authslice";
+import { toast } from "react-toastify";
 import {
   FaTachometerAlt,
   FaAd,
@@ -15,7 +15,7 @@ import {
   FaVideo,
   FaChartLine,
   FaSignOutAlt,
-} from 'react-icons/fa';
+} from "react-icons/fa";
 
 const AdminSidebar = () => {
   const navigate = useNavigate();
@@ -23,26 +23,30 @@ const AdminSidebar = () => {
   const [adminLogout] = useAdminLogoutMutation();
 
   const handleLogout = async () => {
-    if (!window.confirm('Are you sure you want to logout?')) return;
+    if (!window.confirm("Are you sure you want to logout?")) return;
     try {
       await adminLogout().unwrap();
       dispatch(logoutAdmin());
-      toast.success('Logged out successfully');
-      navigate('/admin/login');
+      toast.success("Logged out successfully");
+      navigate("/admin/login");
     } catch (err) {
-      toast.error('Logout failed');
+      toast.error("Logout failed");
     }
   };
 
   const navItems = [
-    { path: '/admin/dashboard', label: 'Dashboard', icon: FaTachometerAlt },
-    { path: '/admin/ads', label: 'Ads Manager', icon: FaAd },
-    { path: '/admin/subscribers', label: 'Subscribers', icon: FaUsers },
-    { path: '/admin/articles', label: 'Articles', icon: FaNewspaper },
-    { path: '/admin/magazines', label: 'Magazines', icon: FaBookOpen },
-    { path: '/admin/videos', label: 'Videos', icon: FaVideo },
-    { path: '/admin/analytics', label: 'Analytics', icon: FaChartLine },
-    { path: '/admin/contributors', label: 'Contributors', icon: FaUsers },
+    {
+      path: "/super_user/dashboard",
+      label: "Dashboard",
+      icon: FaTachometerAlt,
+    },
+    { path: "/super_user/ads", label: "Ads Manager", icon: FaAd },
+    { path: "/super_user/subscribers", label: "Subscribers", icon: FaUsers },
+    { path: "/super_user/articles", label: "Articles", icon: FaNewspaper },
+    { path: "/super_user/magazines", label: "Magazines", icon: FaBookOpen },
+    { path: "/super_user/videos", label: "Videos", icon: FaVideo },
+    { path: "/super_user/analytics", label: "Analytics", icon: FaChartLine },
+    { path: "/super_user/contributors", label: "Contributors", icon: FaUsers },
   ];
 
   return (
@@ -59,8 +63,8 @@ const AdminSidebar = () => {
             className={({ isActive }) =>
               `flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                 isActive
-                  ? 'bg-[#1B3766] text-white'
-                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                  ? "bg-[#1B3766] text-white"
+                  : "text-gray-300 hover:bg-gray-800 hover:text-white"
               }`
             }
           >

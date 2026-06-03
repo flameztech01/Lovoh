@@ -4,7 +4,7 @@ import { useSelector } from 'react-redux';
 
 const PrivateAdminRoute = () => {
   const { adminInfo } = useSelector((state) => state.auth);
-  return adminInfo ? <Outlet /> : <Navigate to="/admin/login" replace />;
+  return adminInfo ? <Outlet /> : <Navigate to="/super_user/login" replace />;
 };
 
 export default PrivateAdminRoute;
