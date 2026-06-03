@@ -1,6 +1,6 @@
 // screens/BiizzedLogin.jsx
 // Full-screen Login: Left random articles slider | Right form (no scroll)
-// Matching the Signup page design exactly
+// Matching the Signup page design exactly with Capacitor browser support
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
@@ -14,9 +14,11 @@ import {
 import { setCredentials } from '../slices/authslice';
 import { toast } from 'react-toastify';
 import { GoogleLogin } from '@react-oauth/google';
+import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 import {
   FaArrowLeft, FaSpinner, FaNewspaper,
-  FaEnvelope, FaLock, FaEye, FaEyeSlash,
+  FaEnvelope, FaLock, FaEye, FaEyeSlash, FaGoogle,
   FaTimes, FaHeart, FaRegHeart, FaBookmark, FaRegBookmark,
   FaRegComment, FaQuoteLeft,
 } from 'react-icons/fa';
@@ -219,6 +221,71 @@ const ArticlesSlider = () => {
   );
 };
 
+// ========== GOOGLE LOGIN BUTTON COMPONENT (Works with Capacitor) ==========
+const GoogleLoginButton = ({ onSuccess, onError, isLoading }) => {
+  const isNative = Capacitor.isNativePlatform();
+
+  // For web platform, use the standard GoogleLogin button
+  if (!isNative) {
+    return (
+      <div className="flex justify-center">
+        <GoogleLogin
+          onSuccess={onSuccess}
+          onError={onError}
+          theme="outline"
+          size="large"
+          text="continue_with"
+          shape="pill"
+          width="300"
+        />
+      </div>
+    );
+  }
+
+  // For native platform, open Google Sign-In in browser
+  const handleNativeGoogleLogin = async () => {
+    try {
+      // Get your Google OAuth URL
+      const clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+      const redirectUri = 'https://your-app.com/auth/google/callback'; // Update with your redirect URI
+      const scope = 'email profile';
+      const responseType = 'token id_token';
+      
+      const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=${responseType}&scope=${encodeURIComponent(scope)}&nonce=${Math.random().toString(36)}`;
+      
+      // Open Google Sign-In in browser
+      await Browser.open({
+        url: googleAuthUrl,
+        presentationStyle: 'popover',
+        toolbarColor: '#1B3766',
+      });
+      
+      toast.info('Please complete sign-in in the browser window');
+      
+    } catch (error) {
+      console.error('Native Google Sign-In Error:', error);
+      toast.error('Failed to open Google Sign-In. Please try again.');
+    }
+  };
+
+  return (
+    <button
+      onClick={handleNativeGoogleLogin}
+      disabled={isLoading}
+      className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-all duration-200 shadow-sm"
+    >
+      {isLoading ? (
+        <FaSpinner className="animate-spin text-[#1B3766]" />
+      ) : (
+        <FaGoogle className="text-[#4285F4] text-lg" />
+      )}
+      <span className="text-gray-700 font-medium">
+        {isLoading ? 'Signing in...' : 'Continue with Google'}
+      </span>
+    </button>
+  );
+};
+
 // ========== MAIN LOGIN COMPONENT ==========
 const BiizzedLogin = () => {
   const navigate = useNavigate();
@@ -302,7 +369,10 @@ const BiizzedLogin = () => {
     }
   };
 
-  const handleGoogleError = () => toast.error('Google login failed. Please try again.');
+  const handleGoogleError = (error) => {
+    console.error('Google login error:', error);
+    toast.error('Google login failed. Please try again.');
+  };
 
   const handleSendOtp = async (e) => {
     e.preventDefault();
@@ -344,12 +414,7 @@ const BiizzedLogin = () => {
     try {
       await resetPassword({ email: resetEmail, otp, newPassword }).unwrap();
       toast.success('Password reset successfully. Please log in.');
-      setShowModal(false);
-      setModalStep('email');
-      setResetEmail('');
-      setOtp('');
-      setNewPassword('');
-      setConfirmPassword('');
+      closeModal();
     } catch (err) {
       const msg = err?.data?.message || 'Reset failed. Invalid OTP or expired.';
       setResetError(msg);
@@ -390,7 +455,7 @@ const BiizzedLogin = () => {
         </div>
 
         {/* Form Container */}
-        <div className="flex-1 flex flex-col justify-center px-4 py-6 lg:py-0">
+        <div className="flex-1 flex flex-col justify-center px-4 py-6 lg:py-0 overflow-y-auto">
           <div className="max-w-md mx-auto w-full">
             {/* Desktop Header */}
             <div className="hidden lg:block text-center mb-6">
@@ -399,6 +464,12 @@ const BiizzedLogin = () => {
               </div>
               <h1 className="text-2xl font-bold text-gray-900">Welcome Back</h1>
               <p className="text-gray-500 text-sm mt-1">Sign in to continue to Biizzed</p>
+            </div>
+
+            {/* Mobile Title */}
+            <div className="lg:hidden text-center mb-5">
+              <h1 className="text-xl font-bold text-gray-900">Welcome Back</h1>
+              <p className="text-gray-500 text-xs mt-1">Sign in to your account</p>
             </div>
 
             {/* Login Card */}
@@ -478,24 +549,11 @@ const BiizzedLogin = () => {
                 <div className="relative flex justify-center text-xs"><span className="px-3 bg-white text-gray-500">OR</span></div>
               </div>
 
-              <div className="flex justify-center">
-                {googleLoading ? (
-                  <div className="flex items-center gap-3 px-8 py-3 bg-gray-100 rounded-xl">
-                    <FaSpinner className="animate-spin text-[#1B3766]" />
-                    <span className="text-gray-600 text-sm">Signing in...</span>
-                  </div>
-                ) : (
-                  <GoogleLogin
-                    onSuccess={handleGoogleSuccess}
-                    onError={handleGoogleError}
-                    theme="outline"
-                    size="large"
-                    text="continue_with"
-                    shape="pill"
-                    width="300"
-                  />
-                )}
-              </div>
+              <GoogleLoginButton
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleError}
+                isLoading={googleLoading}
+              />
             </div>
 
             {/* Sign Up Link */}

@@ -246,18 +246,20 @@ const UduuaHero = () => {
                 Quality products. Better pricing. For everyday shoppers and bulk buyers.
               </p>
             </div>
-            <div className="flex flex-col sm:flex-row gap-4 pt-4">
-              <Link to="/shop" className="group inline-flex items-center justify-center gap-2 bg-[#0043FC] hover:bg-[#0038D4] text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg">
-                <FaShoppingBag /> Shop Marketplace <FaArrowRight className="group-hover:translate-x-1 transition-transform" />
-              </Link>
-              <Link to="/services" className="inline-flex items-center justify-center gap-2 bg-white hover:bg-gray-50 border-2 border-gray-200 hover:border-[#0043FC] text-[#0043FC] hover:text-[#0043FC] px-6 py-3 rounded-xl font-semibold transition-all duration-300">
-                <FaRocket /> Grow your Brand
-              </Link>
-              {/* Install App Button - Added Here */}
+            <div className="flex flex-col gap-4 pt-4">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Link to="/shop" className="group inline-flex items-center justify-center gap-2 bg-[#0043FC] hover:bg-[#0038D4] text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg">
+                  <FaShoppingBag /> Shop Marketplace <FaArrowRight className="group-hover:translate-x-1 transition-transform" />
+                </Link>
+                <Link to="/services" className="inline-flex items-center justify-center gap-2 bg-white hover:bg-gray-50 border-2 border-gray-200 hover:border-[#0043FC] text-[#0043FC] hover:text-[#0043FC] px-6 py-3 rounded-xl font-semibold transition-all duration-300">
+                  <FaRocket /> Grow your Brand
+                </Link>
+              </div>
+              {/* Install App Button - Moved Here Under the Two Buttons */}
               {showInstallButton && (
                 <button 
                   onClick={handleInstallClick}
-                  className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-[#0043FC] to-[#79FFFF] text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg animate-pulse"
+                  className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-[#0043FC] to-[#79FFFF] text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg animate-pulse w-full sm:w-auto"
                 >
                   <FaDownload className="text-sm" /> Install App
                 </button>
