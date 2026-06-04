@@ -62,12 +62,13 @@ const uploadReview = multer({
 });
 
 // ==================== PUBLIC ROUTES ====================
+// IMPORTANT: Place specific routes BEFORE wildcard routes (/:id)
 router.get('/', getProducts);
+router.get('/search', searchProducts);  // <-- MUST come before /:id
 router.get('/categories', getCategories);
 router.get('/brands', getBrands);
-router.get('/:id', getProductById);
+router.get('/:id', getProductById);  // <-- Wildcard route goes LAST
 router.get('/:id/reviews', getProductReviews);
-router.get('/search', searchProducts);
 
 // ==================== SELLER ROUTES (Protected) ====================
 router.get('/seller/my-products', protect, getSellerProducts);
