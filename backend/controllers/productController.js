@@ -837,8 +837,8 @@ const deleteProductReview = asyncHandler(async (req, res) => {
 // controllers/productController.js - Add this new endpoint
 
 // @desc    Advanced search products with text search
-// @route   GET /api/products/search
-// @access  Public
+// controllers/productController.js - Fix searchProducts response
+
 const searchProducts = asyncHandler(async (req, res) => {
   const { 
     q,           // search query
@@ -857,17 +857,14 @@ const searchProducts = asyncHandler(async (req, res) => {
 
   // Text search on indexed fields
   if (q && q.trim()) {
-    // Use text search if available
-    query.$text = { $search: q.trim() };
-    
-    // Alternative: regex search on multiple fields
-    // query.$or = [
-    //   { name: { $regex: q, $options: 'i' } },
-    //   { brandName: { $regex: q, $options: 'i' } },
-    //   { description: { $regex: q, $options: 'i' } },
-    //   { category: { $in: [new RegExp(q, 'i')] } },
-    //   { tags: { $in: [new RegExp(q, 'i')] } },
-    // ];
+    // Use regex search for better compatibility (since text search requires index)
+    query.$or = [
+      { name: { $regex: q, $options: 'i' } },
+      { brandName: { $regex: q, $options: 'i' } },
+      { description: { $regex: q, $options: 'i' } },
+      { category: { $in: [new RegExp(q, 'i')] } },
+      { tags: { $in: [new RegExp(q, 'i')] } },
+    ];
   }
 
   // Category filter (multiple)
@@ -901,11 +898,9 @@ const searchProducts = asyncHandler(async (req, res) => {
     query.quantityAvailable = { $gt: 0 };
   }
 
-  // Sorting with text score if text search is used
-  let sortOptions = {};
-  if (q && q.trim()) {
-    sortOptions = { score: { $meta: "textScore" }, createdAt: -1 };
-  } else if (sort) {
+  // Sorting
+  let sortOptions = { createdAt: -1 };
+  if (sort) {
     switch (sort) {
       case 'price-asc': sortOptions = { retailPrice: 1 }; break;
       case 'price-desc': sortOptions = { retailPrice: -1 }; break;
@@ -915,19 +910,10 @@ const searchProducts = asyncHandler(async (req, res) => {
       case 'rating': sortOptions = { rating: -1 }; break;
       default: sortOptions = { createdAt: -1 };
     }
-  } else {
-    sortOptions = { createdAt: -1 };
   }
 
-  let productsQuery = Product.find(query)
-    .populate('seller', 'name businessName brandLogo');
-
-  // Add text score projection if text search is used
-  if (q && q.trim()) {
-    productsQuery = productsQuery.select({ score: { $meta: "textScore" } });
-  }
-
-  const products = await productsQuery
+  const products = await Product.find(query)
+    .populate('seller', 'name businessName brandLogo')
     .sort(sortOptions)
     .limit(limit * 1)
     .skip((page - 1) * limit);
@@ -941,9 +927,9 @@ const searchProducts = asyncHandler(async (req, res) => {
     return productObj;
   });
 
+  // ✅ Return the SAME structure as getProducts
   res.json({
     products: productsWithData,
-    searchTerm: q || null,
     page: Number(page),
     pages: Math.ceil(total / limit),
     total,
