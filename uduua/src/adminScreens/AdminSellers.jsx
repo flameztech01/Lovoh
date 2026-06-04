@@ -335,7 +335,7 @@ const AdminSellers = () => {
                           <FaEye className="text-xs" /> View Details
                         </button>
                         <Link
-                          to={`/admin/seller-products/${application._id}`}
+                          to={`/superuser/seller-products/${application._id}`}
                           className="px-3 py-1.5 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-1"
                         >
                           <FaStore className="text-xs" /> View Products

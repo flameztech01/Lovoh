@@ -35,14 +35,14 @@ const AdminLayout = () => {
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!adminInfo) {
-      navigate('/admin/login', { replace: true });
+      navigate('/superuser/login', { replace: true });
     }
   }, [adminInfo, navigate]);
 
   const handleLogout = () => {
     dispatch(logoutAdmin());
     toast.success('Logged out successfully');
-    navigate('/admin/login', { replace: true });
+    navigate('/superuser/login', { replace: true });
   };
 
   // Show nothing while checking auth (prevents flash)

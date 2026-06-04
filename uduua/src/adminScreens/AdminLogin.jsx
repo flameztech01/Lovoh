@@ -23,7 +23,7 @@ const AdminLogin = () => {
 
   useEffect(() => {
     if (adminInfo) {
-      navigate('/admin/dashboard');
+      navigate('/superuser/dashboard');
     }
   }, [adminInfo, navigate]);
 
@@ -44,7 +44,7 @@ const AdminLogin = () => {
       const res = await adminLogin(formData).unwrap();
       dispatch(setAdminCredentials(res));
       toast.success('Welcome back, Admin!');
-      navigate('/admin/dashboard');
+      navigate('/superuser/dashboard');
     } catch (error) {
       toast.error(error?.data?.message || 'Invalid email or password');
     } finally {

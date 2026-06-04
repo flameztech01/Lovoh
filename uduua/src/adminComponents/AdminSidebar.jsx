@@ -26,18 +26,18 @@ const AdminSidebar = ({ isOpen, onClose }) => {
   const handleLogout = () => {
     dispatch(logoutAdmin());
     toast.success('Logged out successfully');
-    navigate('/admin/login');
+    navigate('/superuser/login');
     if (onClose) onClose();
   };
 
   const menuItems = [
-    { path: '/admin/dashboard', icon: FaTachometerAlt, label: 'Dashboard' },
-    { path: '/admin/products', icon: FaBoxes, label: 'Products' },
-    { path: '/admin/sellers', icon: FaStore, label: 'Sellers' },
-    { path: '/admin/reports', icon: FaFlag, label: 'Reports' },
-    { path: '/admin/payouts', icon: FaMoneyBillWave, label: 'Payouts' },
-    {path: '/admin/ads', icon: FaTags, label: 'Ads' },
-    { path: '/admin/settings', icon: FaCog, label: 'Settings' },
+    { path: '/superuser/dashboard', icon: FaTachometerAlt, label: 'Dashboard' },
+    { path: '/superuser/products', icon: FaBoxes, label: 'Products' },
+    { path: '/superuser/sellers', icon: FaStore, label: 'Sellers' },
+    { path: '/superuser/reports', icon: FaFlag, label: 'Reports' },
+    { path: '/superuser/payouts', icon: FaMoneyBillWave, label: 'Payouts' },
+    {path: '/superuser/ads', icon: FaTags, label: 'Ads' },
+    { path: '/superuser/settings', icon: FaCog, label: 'Settings' },
   ];
 
   const sidebarClasses = `
