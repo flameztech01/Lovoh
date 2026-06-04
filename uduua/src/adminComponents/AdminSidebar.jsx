@@ -16,7 +16,7 @@ import {
   FaMoneyBillWave,
   FaEnvelope,
 } from 'react-icons/fa';
-import { logoutAdmin } from '../slices/authSlice.js';
+import { logoutAdmin } from '../slices/authslice.js';
 import { toast } from 'react-toastify';
 
 const AdminSidebar = ({ isOpen, onClose }) => {

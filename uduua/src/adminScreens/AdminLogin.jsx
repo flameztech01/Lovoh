@@ -5,7 +5,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { FaEnvelope, FaLock, FaEye, FaEyeSlash, FaSpinner, FaArrowLeft } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { useAdminLoginMutation } from '../slices/adminApiSlice';
-import { setAdminCredentials } from '../slices/authSlice';
+import { setAdminCredentials } from '../slices/authslice';
 
 const AdminLogin = () => {
   const navigate = useNavigate();

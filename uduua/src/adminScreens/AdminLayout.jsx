@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { FaBars, FaTimes, FaSignOutAlt, FaUserCircle } from 'react-icons/fa';
-import { logoutAdmin } from '../slices/authSlice.js';
+import { logoutAdmin } from '../slices/authslice.js';
 import AdminSidebar from '../adminComponents/AdminSidebar.jsx';
 import { toast } from 'react-toastify';
 
