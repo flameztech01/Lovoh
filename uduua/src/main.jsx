@@ -7,6 +7,8 @@ import { Provider } from "react-redux";
 import store from "./store.js";
 import { Analytics } from "@vercel/analytics/react";
 import { GoogleOAuthProvider } from "@react-oauth/google";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 // Layout & screens (Uduua only)
 import UduuaLayout from "./screens/UduuaLayout.jsx";
@@ -24,6 +26,7 @@ import UduuaHelp from "./screens/UduuaHelp.jsx";
 import UduuaServices from "./screens/UduuaServices.jsx";
 import UduuaApplySeller from "./screens/UduuaApplySeller.jsx";
 import UduuaAddProduct from "./screens/UduuaAddProduct.jsx";
+import UduuaEditProduct from "./screens/UduuaEditProduct.jsx";
 import UduuaSellerDashboard from "./screens/UduuaSellerDashboard.jsx";
 import UduuaSellerProducts from "./screens/UduuaSellerProducts.jsx";
 import UduuaSellerOrders from "./screens/UduuaSellerOrders.jsx";
@@ -32,6 +35,17 @@ import UduuaSellerPaymentHistory from "./screens/UduuaSellerPaymentHistory.jsx";
 import UduuaPaymentVerify from "./screens/UduuaPaymentVerify.jsx";
 import UduuaPaymentPage from "./screens/UduuaPaymentPage.jsx";
 
+//Admin imports
+import AdminLayout from "./adminScreens/AdminLayout.jsx";
+import AdminLogin from "./adminScreens/AdminLogin.jsx";
+import AdminDashboard from "./adminScreens/AdminDashboard.jsx";
+import AdminProducts from "./adminScreens/AdminProducts.jsx";
+import AdminSellers from "./adminScreens/AdminSellers.jsx";
+import AdminReports from "./adminScreens/AdminReports.jsx";
+import AdminPayouts from "./adminScreens/AdminPayouts.jsx";
+import AdminAds from "./adminScreens/AdminAds.jsx";
+import AdminSettings from "./adminScreens/AdminSettings.jsx";
+
 import NotFound from "./screens/NotFound.jsx";
 
 // Push notifications hook
@@ -39,8 +53,8 @@ import usePushNotifications from "./hooks/usePushNotifications";
 
 // ==================== ROUTES (Uduua only) ====================
 const router = createBrowserRouter([
-  {path: "/uduua", element: <UduuaScreen />},
-  {path: "*", element: <NotFound />},
+  { path: "/uduua", element: <UduuaScreen /> },
+  { path: "*", element: <NotFound /> },
   {
     path: "/",
     element: <UduuaLayout />,
@@ -58,14 +72,34 @@ const router = createBrowserRouter([
       { path: "shop/orders/:id/confirm", element: <UduuaConfirmOrder /> },
       { path: "shop/payment-verify", element: <UduuaPaymentVerify /> },
       { path: "shop/payment/:id", element: <UduuaPaymentPage /> },
-      { path: "apply-seller", element: <UduuaApplySeller /> },
+      { path: "seller/apply", element: <UduuaApplySeller /> },
+      { path: "apply/seller", element: <UduuaApplySeller /> },
       { path: "seller/add-product", element: <UduuaAddProduct /> },
+      { path: "seller/edit-product/:id", element: <UduuaEditProduct /> },
       { path: "seller/dashboard", element: <UduuaSellerDashboard /> },
       { path: "seller/products", element: <UduuaSellerProducts /> },
       { path: "seller/orders", element: <UduuaSellerOrders /> },
       { path: "seller/wallet", element: <UduuaSellerWallet /> },
-      { path: "seller/payment-history", element: <UduuaSellerPaymentHistory /> },
+      {
+        path: "seller/payment-history",
+        element: <UduuaSellerPaymentHistory />,
+      },
       { path: "services", element: <UduuaServices /> },
+    ],
+  },
+
+  { path: "/admin/login", element: <AdminLogin /> },
+  {
+    path: "admin",
+    element: <AdminLayout />,
+    children: [
+      { path: "dashboard", element: <AdminDashboard /> },
+      { path: "products", element: <AdminProducts /> },
+      { path: "sellers", element: <AdminSellers /> },
+      { path: "reports", element: <AdminReports /> },
+      { path: "payouts", element: <AdminPayouts /> },
+      { path: "ads", element: <AdminAds /> },
+      { path: "settings", element: <AdminSettings /> },
     ],
   },
 ]);
@@ -91,7 +125,23 @@ if ("serviceWorker" in navigator) {
 // Wrapper to activate web‑push subscription
 const AppWithNotifications = () => {
   usePushNotifications();
-  return <RouterProvider router={router} />;
+  return (
+    <>
+      <RouterProvider router={router} />
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
+    </>
+  );
 };
 
 createRoot(document.getElementById("root")).render(
@@ -102,5 +152,5 @@ createRoot(document.getElementById("root")).render(
         <Analytics />
       </GoogleOAuthProvider>
     </Provider>
-  </StrictMode>
+  </StrictMode>,
 );

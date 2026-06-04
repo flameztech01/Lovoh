@@ -17,6 +17,7 @@ import {
   approveProduct,
   rejectProduct,
   getAllProductsAdmin,
+  searchProducts,
 } from '../controllers/productController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { protectAdmin } from '../middleware/adminAuthMiddleware.js';
@@ -66,6 +67,7 @@ router.get('/categories', getCategories);
 router.get('/brands', getBrands);
 router.get('/:id', getProductById);
 router.get('/:id/reviews', getProductReviews);
+router.get('/search', searchProducts);
 
 // ==================== SELLER ROUTES (Protected) ====================
 router.get('/seller/my-products', protect, getSellerProducts);

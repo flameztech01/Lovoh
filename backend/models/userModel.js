@@ -86,6 +86,26 @@ const userSchema = mongoose.Schema(
       enum: ["google", "local", "email"],
       default: "local",
     },
+    
+    // ==================== LOGIN SECURITY FIELDS ====================
+    loginAttempts: {
+      type: Number,
+      default: 0,
+    },
+    lockUntil: {
+      type: Date,
+      default: null,
+    },
+    lastLoginAt: {
+      type: Date,
+      default: null,
+    },
+    passwordChangedAt: {
+      type: Date,
+      default: null,
+    },
+    
+    // OTP fields
     otp: {
       type: String,
       default: null,
@@ -102,6 +122,8 @@ const userSchema = mongoose.Schema(
       type: Date,
       default: null,
     },
+    
+    // Paystack fields
     paystackSubaccountCode: { type: String, default: "" },
     paystackRecipientCode: { type: String, default: "" },
     paystackAccountDetails: {
@@ -176,7 +198,7 @@ const userSchema = mongoose.Schema(
     },
     hasPaystackAccount: { type: Boolean, default: false },
 
-    // ---------- NEW CONTRIBUTOR FIELDS ----------
+    // Contributor fields
     biizzed_contributor: {
       type: Boolean,
       default: false,
@@ -188,9 +210,9 @@ const userSchema = mongoose.Schema(
         default: "not_applied",
       },
       queryLetter: { type: String, default: "" },
-      publishedWorks: [{ type: String }], // URLs of best published works (2-3)
+      publishedWorks: [{ type: String }],
       briefBio: { type: String, default: "" },
-      resume: { type: String, default: "" }, // file URL or path
+      resume: { type: String, default: "" },
       adminNotes: { type: String, default: "" },
       submittedAt: { type: Date },
       reviewedAt: { type: Date },
@@ -209,6 +231,35 @@ userSchema.index(
     partialFilterExpression: { isVerified: false },
   }
 );
+
+// Method to check if account is locked
+userSchema.methods.isLocked = function () {
+  return this.lockUntil && this.lockUntil > new Date();
+};
+
+// Method to get remaining lock time in minutes
+userSchema.methods.getLockTimeRemaining = function () {
+  if (!this.lockUntil || this.lockUntil <= new Date()) return 0;
+  return Math.ceil((this.lockUntil - new Date()) / 60000);
+};
+
+// Method to reset login attempts
+userSchema.methods.resetLoginAttempts = function () {
+  this.loginAttempts = 0;
+  this.lockUntil = null;
+  return this.save();
+};
+
+// Method to increment login attempts
+userSchema.methods.incrementLoginAttempts = async function (maxAttempts, lockoutMinutes) {
+  this.loginAttempts = (this.loginAttempts || 0) + 1;
+  
+  if (this.loginAttempts >= maxAttempts) {
+    this.lockUntil = new Date(Date.now() + lockoutMinutes * 60 * 1000);
+  }
+  
+  return this.save();
+};
 
 // Encrypt password before saving
 userSchema.pre("save", async function (next) {
@@ -354,8 +405,6 @@ userSchema.methods.getCartItemCount = function () {
   if (!this.cart || this.cart.length === 0) return 0;
   return this.cart.reduce((count, item) => count + (item.quantity || 0), 0);
 };
-
-// Add these pre-save hooks to your userSchema in userModel.js:
 
 // Auto-update followersCount before saving
 userSchema.pre('save', function(next) {

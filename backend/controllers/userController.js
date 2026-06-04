@@ -1,8 +1,9 @@
-// controllers/userController.js - Complete with all settings features
+// controllers/userController.js
 import express from "express";
 import mongoose from "mongoose";
 import userMessage from "../models/userMessageModel.js";
 import User from "../models/userModel.js";
+import UduuaSettings from "../models/uduuaSettingsModel.js";
 import asyncHandler from "express-async-handler";
 import generateUserToken from "../utils/generateUserToken.js";
 import { OAuth2Client } from "google-auth-library";
@@ -125,6 +126,13 @@ const googleAuth = asyncHandler(async (req, res) => {
       );
     }
 
+    // Check if account is locked
+    if (user.isLocked && user.isLocked()) {
+      const minutesLeft = user.getLockTimeRemaining();
+      res.status(403);
+      throw new Error(`Account locked. Try again in ${minutesLeft} minutes.`);
+    }
+
     if (!user.googleId) {
       user.googleId = googleId;
     }
@@ -138,6 +146,9 @@ const googleAuth = asyncHandler(async (req, res) => {
     }
 
     user.isVerified = true;
+    user.loginAttempts = 0;
+    user.lockUntil = null;
+    user.lastLoginAt = new Date();
     await user.save();
   }
 
@@ -169,6 +180,11 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new Error("Name, username, email, and password are required");
   }
 
+  // Get security settings
+  const settings = await UduuaSettings.findOne();
+  const REQUIRE_EMAIL_VERIFICATION = settings?.security?.requireEmailVerification ?? true;
+  const OTP_EXPIRY_MINUTES = settings?.security?.otpExpiryMinutes || 10;
+
   const existingUser = await User.findOne({ $or: [{ email }, { username }] });
 
   if (existingUser) {
@@ -184,22 +200,25 @@ const registerUser = asyncHandler(async (req, res) => {
     existingUser.password = password;
     existingUser.phone = phone || "";
     existingUser.otp = generateOTP();
-    existingUser.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+    existingUser.otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
     await existingUser.save();
 
-    sendOTPEmail(existingUser.email, existingUser.otp).catch((err) =>
-      console.error("OTP email error:", err),
-    );
+    if (REQUIRE_EMAIL_VERIFICATION) {
+      sendOTPEmail(existingUser.email, existingUser.otp).catch((err) =>
+        console.error("OTP email error:", err),
+      );
+    }
 
     return res.status(200).json({
-      message:
-        "An unverified account already exists. A new OTP has been sent to your email.",
+      message: REQUIRE_EMAIL_VERIFICATION
+        ? "An unverified account already exists. A new OTP has been sent to your email."
+        : "Account updated successfully. You can now log in.",
       email: existingUser.email,
     });
   }
 
   const otp = generateOTP();
-  const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+  const otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
 
   const user = await User.create({
     name,
@@ -207,18 +226,22 @@ const registerUser = asyncHandler(async (req, res) => {
     email,
     password,
     phone: phone || "",
-    isVerified: false,
+    isVerified: !REQUIRE_EMAIL_VERIFICATION,
     authMethod: "email",
-    otp,
-    otpExpiry,
+    otp: REQUIRE_EMAIL_VERIFICATION ? otp : undefined,
+    otpExpiry: REQUIRE_EMAIL_VERIFICATION ? otpExpiry : undefined,
   });
 
-  sendOTPEmail(user.email, otp).catch((err) =>
-    console.error("OTP email error:", err),
-  );
+  if (REQUIRE_EMAIL_VERIFICATION) {
+    sendOTPEmail(user.email, otp).catch((err) =>
+      console.error("OTP email error:", err),
+    );
+  }
 
   res.status(201).json({
-    message: "Registration successful. Please check your email for the OTP.",
+    message: REQUIRE_EMAIL_VERIFICATION
+      ? "Registration successful. Please check your email for the OTP."
+      : "Registration successful. You can now log in.",
     email: user.email,
   });
 });
@@ -280,6 +303,9 @@ const verifyEmail = asyncHandler(async (req, res) => {
 const resendOTP = asyncHandler(async (req, res) => {
   const { email } = req.body;
 
+  const settings = await UduuaSettings.findOne();
+  const OTP_EXPIRY_MINUTES = settings?.security?.otpExpiryMinutes || 10;
+
   const user = await User.findOne({ email });
   if (!user) {
     res.status(404);
@@ -293,7 +319,7 @@ const resendOTP = asyncHandler(async (req, res) => {
 
   const otp = generateOTP();
   user.otp = otp;
-  user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+  user.otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
   await user.save();
 
   sendOTPEmail(user.email, otp).catch((err) =>
@@ -317,12 +343,26 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new Error("Email and password are required");
   }
 
+  // Get security settings
+  const settings = await UduuaSettings.findOne();
+  const MAX_LOGIN_ATTEMPTS = settings?.security?.maxLoginAttempts || 5;
+  const LOCKOUT_MINUTES = settings?.security?.lockoutMinutes || 30;
+
   const user = await User.findOne({ email });
+  
   if (!user) {
     res.status(401);
     throw new Error("Invalid email or password");
   }
 
+  // Check if account is locked
+  if (user.lockUntil && user.lockUntil > new Date()) {
+    const minutesLeft = Math.ceil((user.lockUntil - new Date()) / 60000);
+    res.status(403);
+    throw new Error(`Account locked. Too many failed attempts. Try again in ${minutesLeft} minutes.`);
+  }
+
+  // Check if user is Google auth user
   if (!user.password || user.password.startsWith("google-auth-")) {
     res.status(401);
     throw new Error(
@@ -335,11 +375,31 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new Error("Email not verified. Please verify first.");
   }
 
-  const isMatch = await bcrypt.compare(password, user.password);
+  const isMatch = await user.matchPassword(password);
+  
   if (!isMatch) {
+    // Increment login attempts
+    user.loginAttempts = (user.loginAttempts || 0) + 1;
+    
+    // Check if max attempts reached
+    if (user.loginAttempts >= MAX_LOGIN_ATTEMPTS) {
+      user.lockUntil = new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000);
+      await user.save();
+      res.status(403);
+      throw new Error(`Too many failed attempts. Account locked for ${LOCKOUT_MINUTES} minutes.`);
+    }
+    
+    const remainingAttempts = MAX_LOGIN_ATTEMPTS - user.loginAttempts;
+    await user.save();
     res.status(401);
-    throw new Error("Invalid email or password");
+    throw new Error(`Invalid email or password. ${remainingAttempts} ${remainingAttempts === 1 ? 'attempt' : 'attempts'} remaining.`);
   }
+
+  // Reset login attempts on successful login
+  user.loginAttempts = 0;
+  user.lockUntil = null;
+  user.lastLoginAt = new Date();
+  await user.save();
 
   const token = generateUserToken(res, user._id);
 
@@ -366,9 +426,13 @@ const changePassword = asyncHandler(async (req, res) => {
     throw new Error("Current password and new password are required");
   }
 
-  if (newPassword.length < 6) {
+  // Get security settings
+  const settings = await UduuaSettings.findOne();
+  const MIN_PASSWORD_LENGTH = settings?.security?.minPasswordLength || 6;
+
+  if (newPassword.length < MIN_PASSWORD_LENGTH) {
     res.status(400);
-    throw new Error("New password must be at least 6 characters");
+    throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
   }
 
   const user = await User.findById(req.user._id);
@@ -387,7 +451,7 @@ const changePassword = asyncHandler(async (req, res) => {
   }
 
   // Verify current password
-  const isMatch = await bcrypt.compare(currentPassword, user.password);
+  const isMatch = await user.matchPassword(currentPassword);
   if (!isMatch) {
     res.status(401);
     throw new Error("Current password is incorrect");
@@ -395,6 +459,7 @@ const changePassword = asyncHandler(async (req, res) => {
 
   // Update password (pre-save hook will hash it)
   user.password = newPassword;
+  user.passwordChangedAt = new Date();
   await user.save();
 
   res.status(200).json({
@@ -801,6 +866,10 @@ const forgotPassword = asyncHandler(async (req, res) => {
     throw new Error("Email is required");
   }
 
+  // Get security settings
+  const settings = await UduuaSettings.findOne();
+  const RESET_TOKEN_EXPIRY = settings?.security?.resetTokenExpiry || 10; // minutes
+
   const user = await User.findOne({ email });
 
   if (!user) {
@@ -819,7 +888,7 @@ const forgotPassword = asyncHandler(async (req, res) => {
 
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
   user.resetPasswordOtp = otp;
-  user.resetPasswordExpiry = new Date(Date.now() + 10 * 60 * 1000);
+  user.resetPasswordExpiry = new Date(Date.now() + RESET_TOKEN_EXPIRY * 60 * 1000);
   await user.save();
 
   sendPasswordResetEmail(user.email, otp).catch((err) =>
@@ -840,9 +909,13 @@ const resetPassword = asyncHandler(async (req, res) => {
     throw new Error("Email, OTP, and new password are required");
   }
 
-  if (newPassword.length < 6) {
+  // Get security settings
+  const settings = await UduuaSettings.findOne();
+  const MIN_PASSWORD_LENGTH = settings?.security?.minPasswordLength || 6;
+
+  if (newPassword.length < MIN_PASSWORD_LENGTH) {
     res.status(400);
-    throw new Error("Password must be at least 6 characters");
+    throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
   }
 
   const user = await User.findOne({ email });
@@ -864,6 +937,7 @@ const resetPassword = asyncHandler(async (req, res) => {
   user.password = newPassword;
   user.resetPasswordOtp = undefined;
   user.resetPasswordExpiry = undefined;
+  user.passwordChangedAt = new Date();
   await user.save();
 
   res

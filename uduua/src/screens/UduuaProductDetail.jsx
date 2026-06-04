@@ -24,6 +24,10 @@ import {
   FaHeadset,
   FaTruck,
   FaPercentage,
+  FaFlag,
+  FaExclamationTriangle,
+  FaTimesCircle,
+  FaImage,
 } from "react-icons/fa";
 import {
   useGetProductByIdQuery,
@@ -31,8 +35,10 @@ import {
   useCreateProductReviewMutation,
   useMarkReviewHelpfulMutation,
   useMarkReviewNotHelpfulMutation,
+  useGetProductsQuery,
 } from "../slices/productApiSlice";
 import { useAddToCartMutation, useGetCartSummaryQuery } from "../slices/orderApiSlice";
+import { useReportProductMutation } from "../slices/reportApiSlice";
 import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import { format } from "date-fns";
@@ -49,15 +55,33 @@ const UduuaProductDetail = () => {
   const { data: reviewsData, refetch: refetchReviews } =
     useGetProductReviewsQuery({ id, limit: 5, sort: "newest" });
 
+  // Related products - based on same category
+  const { data: relatedProductsData } = useGetProductsQuery({
+    category: product?.category?.join?.(',') || product?.category,
+    limit: 4,
+    available: true,
+  });
+
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   const [activeTab, setActiveTab] = useState("description");
   const [showReviewForm, setShowReviewForm] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState("");
+  const [userOrders, setUserOrders] = useState([]);
   const [reviewForm, setReviewForm] = useState({
     rating: 5,
     title: "",
     comment: "",
   });
+  const [reportForm, setReportForm] = useState({
+    reportType: "fraud",
+    title: "",
+    description: "",
+    images: [],
+  });
+  const [reportImages, setReportImages] = useState([]);
+  const [reportImagePreviews, setReportImagePreviews] = useState([]);
 
   // Cart mutation and query
   const [addToCart, { isLoading: isAddingToCart }] = useAddToCartMutation();
@@ -71,6 +95,26 @@ const UduuaProductDetail = () => {
   const [markHelpful] = useMarkReviewHelpfulMutation();
   const [markNotHelpful] = useMarkReviewNotHelpfulMutation();
 
+  // Report mutation
+  const [reportProduct, { isLoading: isSubmittingReport }] = useReportProductMutation();
+
+  // Fetch user's orders for report
+  React.useEffect(() => {
+    const fetchUserOrders = async () => {
+      if (userInfo && showReportModal) {
+        // You'll need to add an endpoint to get user's orders for this product
+        // For now, we'll use a mock or you can implement a query
+        try {
+          // const orders = await getUserOrdersForProduct(product._id).unwrap();
+          // setUserOrders(orders);
+        } catch (error) {
+          console.error("Failed to fetch orders:", error);
+        }
+      }
+    };
+    fetchUserOrders();
+  }, [userInfo, showReportModal, product?._id]);
+
   const reviews = reviewsData?.reviews || [];
   const ratingDistribution = reviewsData?.ratingDistribution || {
     1: 0,
@@ -81,6 +125,7 @@ const UduuaProductDetail = () => {
   };
   const averageRating = product?.rating || 0;
   const totalReviews = product?.numReviews || 0;
+  const relatedProducts = relatedProductsData?.products || [];
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -231,6 +276,73 @@ const UduuaProductDetail = () => {
     }
   };
 
+  const handleReportImageUpload = (e) => {
+    const files = Array.from(e.target.files);
+    const newImages = [...reportImages, ...files];
+    
+    if (newImages.length > 5) {
+      toast.error("Maximum 5 images allowed");
+      return;
+    }
+
+    setReportImages(newImages);
+    
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setReportImagePreviews(prev => [...prev, reader.result]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeReportImage = (index) => {
+    setReportImages(prev => prev.filter((_, i) => i !== index));
+    setReportImagePreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSubmitReport = async (e) => {
+    e.preventDefault();
+
+    if (!userInfo) {
+      toast.error("Please login to report a product");
+      return;
+    }
+
+    if (!selectedOrderId) {
+      toast.error("Please select the order containing this product");
+      return;
+    }
+
+    if (!reportForm.title.trim() || !reportForm.description.trim()) {
+      toast.error("Please provide a title and description");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("productId", product._id);
+    formData.append("orderId", selectedOrderId);
+    formData.append("reportType", reportForm.reportType);
+    formData.append("title", reportForm.title);
+    formData.append("description", reportForm.description);
+    
+    reportImages.forEach(image => {
+      formData.append("images", image);
+    });
+
+    try {
+      await reportProduct(formData).unwrap();
+      toast.success("Report submitted successfully. Admin will investigate.");
+      setShowReportModal(false);
+      setReportForm({ reportType: "fraud", title: "", description: "", images: [] });
+      setReportImages([]);
+      setReportImagePreviews([]);
+      setSelectedOrderId("");
+    } catch (error) {
+      toast.error(error?.data?.message || "Failed to submit report");
+    }
+  };
+
   const handleMarkHelpful = async (reviewId) => {
     if (!userInfo) {
       toast.error("Please login to mark reviews as helpful");
@@ -265,6 +377,15 @@ const UduuaProductDetail = () => {
       />
     ));
   };
+
+  const reportTypes = [
+    { value: "fraud", label: "Fraud / Counterfeit", icon: FaExclamationTriangle, color: "red" },
+    { value: "damaged", label: "Damaged Product", icon: FaBox, color: "orange" },
+    { value: "wrong_item", label: "Wrong Item Received", icon: FaBox, color: "yellow" },
+    { value: "not_received", label: "Product Not Received", icon: FaBox, color: "purple" },
+    { value: "defective", label: "Defective Product", icon: FaBox, color: "blue" },
+    { value: "other", label: "Other Issue", icon: FaFlag, color: "gray" },
+  ];
 
   if (isLoading) {
     return (
@@ -340,7 +461,7 @@ const UduuaProductDetail = () => {
             </button>
             <span>/</span>
             <span className="text-gray-400 truncate max-w-[100px] sm:max-w-none">
-              {product.category || "General"}
+              {product.category?.[0] || product.category || "General"}
             </span>
             <span>/</span>
             <span className="text-gray-700 truncate max-w-[120px] sm:max-w-none">
@@ -412,12 +533,16 @@ const UduuaProductDetail = () => {
                   </span>
                 </div>
 
-                {/* Category */}
-                <div className="flex items-center gap-2 mb-1 sm:mb-2">
+                {/* Categories */}
+                <div className="flex flex-wrap items-center gap-2 mb-1 sm:mb-2">
                   <FaTag className="text-gray-400 text-xs" />
-                  <span className="text-xs sm:text-sm text-gray-500">
-                    {product.category || "General"}
-                  </span>
+                  <div className="flex flex-wrap gap-1">
+                    {(Array.isArray(product.category) ? product.category : [product.category]).map((cat, idx) => (
+                      <span key={idx} className="text-xs sm:text-sm text-gray-500">
+                        {cat}{idx < (Array.isArray(product.category) ? product.category.length - 1 : 0) && ","}
+                      </span>
+                    ))}
+                  </div>
                 </div>
 
                 <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2 sm:mb-3">
@@ -576,6 +701,15 @@ const UduuaProductDetail = () => {
                     Share
                   </button>
                 </div>
+
+                {/* Report Button */}
+                <button
+                  onClick={() => setShowReportModal(true)}
+                  className="w-full mt-3 py-2 border border-red-300 rounded-md text-xs sm:text-sm font-medium text-red-600 hover:bg-red-50 transition-colors flex items-center justify-center gap-1 sm:gap-2"
+                >
+                  <FaFlag className="text-xs" />
+                  Report this Product
+                </button>
               </div>
             </div>
 
@@ -953,8 +1087,238 @@ const UduuaProductDetail = () => {
               )}
             </div>
           </div>
+
+          {/* Related Products Section */}
+          {relatedProducts.length > 0 && (
+            <div className="mt-8 sm:mt-12">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4 sm:mb-6">
+                You May Also Like
+              </h2>
+              <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
+                {relatedProducts.slice(0, 4).map((relatedProduct) => (
+                  <Link
+                    key={relatedProduct._id}
+                    to={`/shop/product/${relatedProduct._id}`}
+                    className="group bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-all duration-300"
+                  >
+                    <div className="aspect-square overflow-hidden bg-gray-50">
+                      <img
+                        src={relatedProduct.images?.[0] || "/placeholder-product.jpg"}
+                        alt={relatedProduct.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    </div>
+                    <div className="p-3">
+                      <h3 className="font-medium text-gray-900 text-sm line-clamp-1">
+                        {relatedProduct.name}
+                      </h3>
+                      <p className="text-xs text-gray-500 mt-1 line-clamp-1">
+                        {relatedProduct.brandName}
+                      </p>
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="font-bold text-[#0043FC] text-sm">
+                          {formatPrice(relatedProduct.retailPrice || relatedProduct.price)}
+                        </span>
+                        {relatedProduct.discount > 0 && (
+                          <span className="text-[10px] text-red-500 bg-red-50 px-1 py-0.5 rounded">
+                            -{relatedProduct.discount}%
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 mt-1">
+                        <FaStar className="text-yellow-400 text-[10px]" />
+                        <span className="text-xs text-gray-600">
+                          {relatedProduct.rating?.toFixed(1) || "0.0"}
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          ({relatedProduct.numReviews || 0})
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Report Product Modal */}
+      {showReportModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                  <FaFlag className="text-red-500 text-xl" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Report Product</h2>
+                  <p className="text-sm text-gray-500">{product.name}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowReportModal(false);
+                  setReportForm({ reportType: "fraud", title: "", description: "", images: [] });
+                  setReportImages([]);
+                  setReportImagePreviews([]);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <FaTimesCircle className="text-xl" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitReport} className="space-y-4">
+              {/* Order Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Select Order <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={selectedOrderId}
+                  onChange={(e) => setSelectedOrderId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0043FC]"
+                  required
+                >
+                  <option value="">Select an order containing this product</option>
+                  {/* Map through user's orders here */}
+                  <option value="order1">Order #ORD001 - Placed on Jan 15, 2024</option>
+                  <option value="order2">Order #ORD002 - Placed on Feb 20, 2024</option>
+                </select>
+                <p className="text-xs text-gray-400 mt-1">
+                  Only delivered orders are eligible for reporting
+                </p>
+              </div>
+
+              {/* Report Type */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Report Type <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {reportTypes.map((type) => (
+                    <button
+                      key={type.value}
+                      type="button"
+                      onClick={() => setReportForm({ ...reportForm, reportType: type.value })}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        reportForm.reportType === type.value
+                          ? `bg-${type.color}-100 text-${type.color}-700 border-${type.color}-300`
+                          : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
+                      } border`}
+                    >
+                      <type.icon className="text-xs" />
+                      {type.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Title */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Report Title <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={reportForm.title}
+                  onChange={(e) => setReportForm({ ...reportForm, title: e.target.value })}
+                  placeholder="Brief title describing the issue"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0043FC]"
+                  required
+                />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={reportForm.description}
+                  onChange={(e) => setReportForm({ ...reportForm, description: e.target.value })}
+                  placeholder="Provide detailed information about the issue..."
+                  rows="4"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0043FC] resize-none"
+                  required
+                />
+              </div>
+
+              {/* Evidence Images */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Evidence Images (Max 5)
+                </label>
+                <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 text-center cursor-pointer hover:border-[#0043FC] transition-colors">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleReportImageUpload}
+                    className="hidden"
+                    id="reportImageUpload"
+                  />
+                  <label htmlFor="reportImageUpload" className="cursor-pointer block">
+                    <FaImage className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-gray-600">Click to upload evidence images</p>
+                    <p className="text-xs text-gray-400 mt-1">PNG, JPG (Max 5MB each)</p>
+                  </label>
+                </div>
+                
+                {/* Image Previews */}
+                {reportImagePreviews.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {reportImagePreviews.map((preview, index) => (
+                      <div key={index} className="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-200">
+                        <img src={preview} alt={`Evidence ${index + 1}`} className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeReportImage(index)}
+                          className="absolute top-0 right-0 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center text-[8px]"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <p className="text-xs text-yellow-800">
+                  <strong>Note:</strong> False reporting may result in account suspension. 
+                  Please only report genuine issues with this product.
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowReportModal(false);
+                    setReportForm({ reportType: "fraud", title: "", description: "", images: [] });
+                    setReportImages([]);
+                    setReportImagePreviews([]);
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingReport}
+                  className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {isSubmittingReport ? <FaSpinner className="animate-spin" /> : <FaFlag />}
+                  Submit Report
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 };

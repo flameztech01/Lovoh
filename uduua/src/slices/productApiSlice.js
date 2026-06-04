@@ -7,7 +7,7 @@ export const productApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
     // ==================== PUBLIC QUERIES ====================
     
-    // Get all products
+    // Get all products with filters
     getProducts: builder.query({
       query: (params) => ({
         url: PRODUCTS_URL,
@@ -21,6 +21,29 @@ export const productApiSlice = apiSlice.injectEndpoints({
           minPrice: params?.minPrice,
           maxPrice: params?.maxPrice,
           sort: params?.sort,
+          tags: params?.tags,
+          page: params?.page,
+          limit: params?.limit,
+        },
+      }),
+      providesTags: ['Product'],
+    }),
+
+    // Advanced search products with text search
+    searchProducts: builder.query({
+      query: (params) => ({
+        url: `${PRODUCTS_URL}/search`,
+        params: {
+          q: params?.q,
+          category: params?.category,
+          brand: params?.brand,
+          minPrice: params?.minPrice,
+          maxPrice: params?.maxPrice,
+          minRating: params?.minRating,
+          inStock: params?.inStock,
+          sort: params?.sort,
+          page: params?.page,
+          limit: params?.limit,
         },
       }),
       providesTags: ['Product'],
@@ -34,7 +57,7 @@ export const productApiSlice = apiSlice.injectEndpoints({
       providesTags: (result, error, id) => [{ type: 'Product', id }],
     }),
 
-    // Get product categories
+    // Get product categories (all unique categories from products)
     getCategories: builder.query({
       query: () => ({
         url: `${PRODUCTS_URL}/categories`,
@@ -75,7 +98,7 @@ export const productApiSlice = apiSlice.injectEndpoints({
 
     // ==================== SELLER MUTATIONS ====================
 
-    // Create product (seller only)
+    // Create product (seller only) - supports multiple categories and tags
     createProduct: builder.mutation({
       query: (data) => ({
         url: PRODUCTS_URL,
@@ -85,7 +108,7 @@ export const productApiSlice = apiSlice.injectEndpoints({
       invalidatesTags: ['Product', 'Category', 'Brand'],
     }),
 
-    // Update product (seller only)
+    // Update product (seller only) - supports multiple categories and tags
     updateProduct: builder.mutation({
       query: ({ id, data }) => ({
         url: `${PRODUCTS_URL}/${id}`,
@@ -233,6 +256,7 @@ export const productApiSlice = apiSlice.injectEndpoints({
 export const {
   // Public queries
   useGetProductsQuery,
+  useSearchProductsQuery,      // NEW: advanced search
   useGetProductByIdQuery,
   useGetCategoriesQuery,
   useGetBrandsQuery,

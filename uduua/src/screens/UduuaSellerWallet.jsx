@@ -8,7 +8,6 @@ import {
   FaHistory,
   FaSpinner,
   FaArrowLeft,
-  FaDownload,
   FaEye,
   FaCheckCircle,
   FaTimesCircle,
@@ -19,8 +18,13 @@ import {
   FaCopy,
   FaWhatsapp,
   FaTimes,
+  FaChevronRight,
+  FaUniversity, // Changed from FaBank to FaUniversity
+  FaArrowRight,
+  FaChartLine,
 } from 'react-icons/fa';
 import { useGetSellerBalanceQuery, useInitiateWithdrawalMutation } from '../slices/orderApiSlice';
+import { useGetSellerOrdersQuery } from '../slices/orderApiSlice';
 import { toast } from 'react-toastify';
 import ShopNavbar from '../components/ShopNavbar';
 import UduuaFooter from '../components/UduuaFooter';
@@ -34,18 +38,82 @@ const UduuaSellerWallet = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [selectedTimeframe, setSelectedTimeframe] = useState('all');
+  const [showBankModal, setShowBankModal] = useState(false);
 
-  const { data: balanceData, isLoading, refetch } = useGetSellerBalanceQuery(undefined, {
+  // Fetch seller balance
+  const { data: balanceData, isLoading: balanceLoading, refetch } = useGetSellerBalanceQuery(undefined, {
+    skip: !userInfo,
+  });
+  
+  // Fetch seller orders for transaction history
+  const { data: ordersData, isLoading: ordersLoading } = useGetSellerOrdersQuery({ 
+    page: 1, 
+    limit: 50,
+    status: 'all'
+  }, {
     skip: !userInfo,
   });
   
   const [initiateWithdrawal] = useInitiateWithdrawalMutation();
 
-  const availableBalance = balanceData?.availableBalance || 0;
-  const processingBalance = balanceData?.processingBalance || 0;
-  const completedBalance = balanceData?.completedBalance || 0;
-  const totalEarned = balanceData?.totalEarned || 0;
-  const transactions = balanceData?.orders || [];
+  // Extract earnings from completed/delivered orders
+  const getEarningsFromOrders = () => {
+    const orders = ordersData?.orders || [];
+    
+    // Filter completed/delivered orders that have seller payout amount
+    const completedOrders = orders.filter(order => 
+      order.deliveryStatus === 'delivered' && 
+      order.sellerPayoutAmount > 0 &&
+      order.buyerConfirmedDelivery === true
+    );
+    
+    // Calculate total earnings
+    const totalEarnings = completedOrders.reduce((sum, order) => sum + (order.sellerPayoutAmount || 0), 0);
+    
+    // Calculate pending earnings (orders delivered but not yet paid out)
+    const pendingEarnings = completedOrders
+      .filter(order => order.sellerPayoutStatus !== 'completed')
+      .reduce((sum, order) => sum + (order.sellerPayoutAmount || 0), 0);
+    
+    // Calculate completed payouts
+    const completedPayouts = completedOrders
+      .filter(order => order.sellerPayoutStatus === 'completed')
+      .reduce((sum, order) => sum + (order.sellerPayoutAmount || 0), 0);
+    
+    // Processing earnings (orders in transit/processing)
+    const processingOrders = orders.filter(order => 
+      order.deliveryStatus === 'in_transit' || 
+      order.deliveryStatus === 'processing' ||
+      order.deliveryStatus === 'dispatched'
+    );
+    const processingEarnings = processingOrders.reduce((sum, order) => sum + (order.sellerPayoutAmount || 0), 0);
+    
+    return {
+      availableBalance: pendingEarnings, // Available for withdrawal
+      processingBalance: processingEarnings,
+      completedBalance: completedPayouts,
+      totalEarned: totalEarnings,
+      transactions: orders
+        .filter(order => order.sellerPayoutAmount > 0)
+        .map(order => ({
+          id: order._id,
+          amount: order.sellerPayoutAmount,
+          orderTotal: order.totalPrice,
+          status: order.sellerPayoutStatus === 'completed' ? 'completed' : 
+                  order.deliveryStatus === 'delivered' ? 'pending' : 'processing',
+          createdAt: order.createdAt,
+          paidAt: order.sellerPayoutDate,
+        })),
+    };
+  };
+
+  const earnings = getEarningsFromOrders();
+  
+  const availableBalance = earnings.availableBalance;
+  const processingBalance = earnings.processingBalance;
+  const completedBalance = earnings.completedBalance;
+  const totalEarned = earnings.totalEarned;
+  const transactions = earnings.transactions;
 
   const formatPrice = (price) => {
     if (!price && price !== 0) return "₦0";
@@ -63,17 +131,6 @@ const UduuaSellerWallet = () => {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
-    });
-  };
-
-  const formatFullDate = (date) => {
-    if (!date) return 'N/A';
-    return new Date(date).toLocaleDateString('en-NG', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
     });
   };
 
@@ -133,17 +190,14 @@ const UduuaSellerWallet = () => {
   // Filter transactions by timeframe
   const getFilteredTransactions = () => {
     const now = new Date();
-    const oneWeekAgo = new Date(now.setDate(now.getDate() - 7));
-    const oneMonthAgo = new Date(now.setMonth(now.getMonth() - 1));
-    const threeMonthsAgo = new Date(now.setMonth(now.getMonth() - 3));
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     
     switch(selectedTimeframe) {
       case 'week':
-        return transactions.filter(t => new Date(t.createdAt) >= oneWeekAgo);
+        return transactions.filter(t => new Date(t.createdAt) >= sevenDaysAgo);
       case 'month':
-        return transactions.filter(t => new Date(t.createdAt) >= oneMonthAgo);
-      case 'quarter':
-        return transactions.filter(t => new Date(t.createdAt) >= threeMonthsAgo);
+        return transactions.filter(t => new Date(t.createdAt) >= thirtyDaysAgo);
       default:
         return transactions;
     }
@@ -151,6 +205,8 @@ const UduuaSellerWallet = () => {
 
   const filteredTransactions = getFilteredTransactions();
   const totalFilteredEarnings = filteredTransactions.reduce((sum, t) => sum + t.amount, 0);
+
+  const isLoading = balanceLoading || ordersLoading;
 
   if (isLoading) {
     return (
@@ -170,8 +226,8 @@ const UduuaSellerWallet = () => {
   return (
     <>
       <ShopNavbar />
-      <div className="min-h-screen bg-gray-50 pt-24 pb-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-gray-100 pt-24 pb-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
           <div className="mb-8">
             <button
@@ -181,114 +237,155 @@ const UduuaSellerWallet = () => {
               <FaArrowLeft className="text-sm group-hover:-translate-x-1 transition-transform" />
               <span className="text-sm">Back to Dashboard</span>
             </button>
+          </div>
+
+          {/* Main Balance Card - Bank Style */}
+          <div className="bg-gradient-to-br from-[#0043FC] to-[#002a9e] rounded-2xl shadow-xl mb-6 overflow-hidden">
+            <div className="p-6 sm:p-8">
+              {/* Card Header */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
+                    <FaWallet className="text-white text-xl" />
+                  </div>
+                  <div>
+                    <p className="text-white/70 text-xs uppercase tracking-wide">Available Balance</p>
+                    <p className="text-white text-3xl sm:text-4xl font-bold mt-1">
+                      {formatPrice(availableBalance)}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowWithdrawModal(true)}
+                  disabled={availableBalance === 0}
+                  className="px-5 py-2.5 bg-white text-[#0043FC] rounded-xl font-semibold text-sm hover:bg-gray-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg"
+                >
+                  <FaMoneyBillWave />
+                  Withdraw
+                </button>
+              </div>
+
+              {/* Card Details */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-white/20">
+                <div>
+                  <p className="text-white/60 text-xs">Total Earned</p>
+                  <p className="text-white text-lg font-semibold">{formatPrice(totalEarned)}</p>
+                </div>
+                <div>
+                  <p className="text-white/60 text-xs">Processing</p>
+                  <p className="text-white text-lg font-semibold">{formatPrice(processingBalance)}</p>
+                </div>
+                <div>
+                  <p className="text-white/60 text-xs">Completed Payouts</p>
+                  <p className="text-white text-lg font-semibold">{formatPrice(completedBalance)}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+            <button
+              onClick={() => setShowWithdrawModal(true)}
+              disabled={availableBalance === 0}
+              className="bg-white rounded-xl p-4 text-center border border-gray-200 hover:shadow-md transition-all disabled:opacity-50"
+            >
+              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                <FaMoneyBillWave className="text-green-600 text-lg" />
+              </div>
+              <p className="text-sm font-medium text-gray-700">Withdraw</p>
+              <p className="text-xs text-gray-400 mt-1">Min ₦1,000</p>
+            </button>
             
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-                  Wallet & Payouts
-                </h1>
-                <p className="text-gray-500 mt-1 text-sm">
-                  Manage your earnings and withdrawal requests
-                </p>
+            <button
+              onClick={() => navigate('/seller/orders')}
+              className="bg-white rounded-xl p-4 text-center border border-gray-200 hover:shadow-md transition-all"
+            >
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                <FaShoppingCart className="text-blue-600 text-lg" />
               </div>
-              <button
-                onClick={() => setShowWithdrawModal(true)}
-                disabled={availableBalance === 0}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0043FC] hover:bg-[#0038D4] text-white rounded-lg font-medium transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <FaMoneyBillWave className="text-sm" />
-                Withdraw Funds
-              </button>
-            </div>
+              <p className="text-sm font-medium text-gray-700">Orders</p>
+              <p className="text-xs text-gray-400 mt-1">View sales</p>
+            </button>
+            
+            <button
+              onClick={() => setShowBankModal(true)}
+              className="bg-white rounded-xl p-4 text-center border border-gray-200 hover:shadow-md transition-all"
+            >
+              <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                <FaUniversity className="text-purple-600 text-lg" />
+              </div>
+              <p className="text-sm font-medium text-gray-700">Bank Info</p>
+              <p className="text-xs text-gray-400 mt-1">View details</p>
+            </button>
+            
+            <button
+              onClick={copyBankDetails}
+              className="bg-white rounded-xl p-4 text-center border border-gray-200 hover:shadow-md transition-all"
+            >
+              <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                <FaCopy className="text-orange-600 text-lg" />
+              </div>
+              <p className="text-sm font-medium text-gray-700">Copy Details</p>
+              <p className="text-xs text-gray-400 mt-1">Account info</p>
+            </button>
           </div>
 
-          {/* Balance Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <div className="bg-gradient-to-r from-[#0043FC] to-[#0038D4] rounded-2xl shadow-lg p-6 text-white">
-              <div className="flex items-center justify-between mb-3">
-                <FaWallet className="text-2xl opacity-80" />
-                <span className="text-xs opacity-70">Available Balance</span>
-              </div>
-              <p className="text-3xl font-bold">{formatPrice(availableBalance)}</p>
-              <p className="text-sm opacity-80 mt-2">Ready to withdraw</p>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-              <div className="flex items-center justify-between mb-2">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <FaSpinner className="text-blue-600 text-lg" />
-                </div>
-                <span className="text-xs text-gray-400">Processing</span>
-              </div>
-              <p className="text-2xl font-bold text-gray-900">{formatPrice(processingBalance)}</p>
-              <p className="text-xs text-gray-500 mt-1">Pending confirmation</p>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-              <div className="flex items-center justify-between mb-2">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <FaCheckCircle className="text-green-600 text-lg" />
-                </div>
-                <span className="text-xs text-gray-400">Completed</span>
-              </div>
-              <p className="text-2xl font-bold text-gray-900">{formatPrice(completedBalance)}</p>
-              <p className="text-xs text-gray-500 mt-1">Successfully paid out</p>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-              <div className="flex items-center justify-between mb-2">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <FaMoneyBillWave className="text-purple-600 text-lg" />
-                </div>
-                <span className="text-xs text-gray-400">Total Earned</span>
-              </div>
-              <p className="text-2xl font-bold text-gray-900">{formatPrice(totalEarned)}</p>
-              <p className="text-xs text-gray-500 mt-1">Lifetime earnings</p>
-            </div>
-          </div>
-
-          {/* Withdrawal Info */}
-          <div className="bg-blue-50 rounded-xl border border-blue-200 p-4 mb-8">
+          {/* Withdrawal Info Banner */}
+          <div className="bg-amber-50 rounded-xl border border-amber-200 p-4 mb-8">
             <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                <FaWhatsapp className="text-blue-600" />
+              <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <FaWhatsapp className="text-amber-600 text-sm" />
               </div>
               <div className="flex-1">
-                <p className="text-sm font-semibold text-blue-800 mb-1">Withdrawal Information</p>
-                <p className="text-xs text-blue-700">
+                <p className="text-sm font-semibold text-amber-800 mb-1">Withdrawal Information</p>
+                <p className="text-xs text-amber-700">
                   Withdrawals are processed within 1-3 business days to your registered bank account.
-                  Minimum withdrawal amount is ₦1,000.
+                  Minimum withdrawal amount is ₦1,000. You earn <strong className="font-semibold">94%</strong> of each sale.
                 </p>
-                <button
-                  onClick={copyBankDetails}
-                  className="mt-2 inline-flex items-center gap-1 text-xs text-blue-700 hover:text-blue-800"
-                >
-                  <FaCopy className="text-[10px]" />
-                  {copied ? 'Copied!' : 'Copy bank details for reference'}
-                </button>
               </div>
             </div>
           </div>
 
           {/* Transaction History */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-200 bg-gray-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="px-5 py-4 border-b border-gray-200 bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
                 <FaHistory className="text-[#0043FC] text-sm" />
                 Transaction History
               </h2>
               
               <div className="flex gap-2">
-                <select
-                  value={selectedTimeframe}
-                  onChange={(e) => setSelectedTimeframe(e.target.value)}
-                  className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0043FC]"
+                <button
+                  onClick={() => setSelectedTimeframe('all')}
+                  className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
+                    selectedTimeframe === 'all' 
+                      ? 'bg-[#0043FC] text-white' 
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
                 >
-                  <option value="all">All Time</option>
-                  <option value="week">Last 7 Days</option>
-                  <option value="month">Last 30 Days</option>
-                  <option value="quarter">Last 90 Days</option>
-                </select>
+                  All
+                </button>
+                <button
+                  onClick={() => setSelectedTimeframe('month')}
+                  className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
+                    selectedTimeframe === 'month' 
+                      ? 'bg-[#0043FC] text-white' 
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  30 Days
+                </button>
+                <button
+                  onClick={() => setSelectedTimeframe('week')}
+                  className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
+                    selectedTimeframe === 'week' 
+                      ? 'bg-[#0043FC] text-white' 
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  7 Days
+                </button>
               </div>
             </div>
 
@@ -303,110 +400,70 @@ const UduuaSellerWallet = () => {
                     When you make sales, your earnings will appear here.
                   </p>
                   <Link
-                    to="/shop"
+                    to="/seller/products"
                     className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-[#0043FC] text-white rounded-lg text-sm font-medium hover:bg-[#0038D4] transition-colors"
                   >
-                    <FaShoppingCart className="text-sm" />
-                    Start Selling
+                    <FaPlus className="text-sm" />
+                    Add Products
                   </Link>
                 </div>
               ) : (
                 <>
                   {/* Summary for filtered period */}
                   <div className="mb-4 p-3 bg-gray-50 rounded-lg flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Total for period:</span>
+                    <span className="text-sm text-gray-600">Total earnings for period:</span>
                     <span className="text-lg font-bold text-[#0043FC]">{formatPrice(totalFilteredEarnings)}</span>
                   </div>
                   
-                  {/* Desktop Table */}
-                  <div className="hidden md:block overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-gray-50 border-b border-gray-200">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Order ID</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Amount</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Order Total</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Date</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {filteredTransactions.map((transaction) => {
-                          const status = getTransactionStatusBadge(transaction.status);
-                          const StatusIcon = status.icon;
-                          
-                          return (
-                            <tr key={transaction.id} className="hover:bg-gray-50 transition-colors">
-                              <td className="px-4 py-3">
-                                <span className="font-mono text-sm text-gray-900">#{transaction.id?.slice(-8)}</span>
-                              </td>
-                              <td className="px-4 py-3">
-                                <span className="font-semibold text-green-600">{formatPrice(transaction.amount)}</span>
-                              </td>
-                              <td className="px-4 py-3">
-                                <span className="text-sm text-gray-600">{formatPrice(transaction.orderTotal)}</span>
-                              </td>
-                              <td className="px-4 py-3">
-                                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${status.color}`}>
-                                  <StatusIcon className="text-xs" />
-                                  {status.label}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3">
-                                <div className="flex items-center gap-1 text-xs text-gray-500">
-                                  <FaCalendarAlt />
-                                  {formatDate(transaction.createdAt)}
-                                </div>
-                              </td>
-                              <td className="px-4 py-3">
-                                <Link
-                                  to={`/shop/orders/${transaction.id}`}
-                                  className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1"
-                                >
-                                  <FaEye className="text-xs" /> View Order
-                                </Link>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Mobile Cards */}
-                  <div className="md:hidden space-y-3">
+                  {/* Transaction List */}
+                  <div className="space-y-3">
                     {filteredTransactions.map((transaction) => {
                       const status = getTransactionStatusBadge(transaction.status);
                       const StatusIcon = status.icon;
                       
                       return (
-                        <div key={transaction.id} className="border border-gray-200 rounded-lg p-4">
-                          <div className="flex justify-between items-start mb-2">
-                            <span className="font-mono text-xs text-gray-500">#{transaction.id?.slice(-8)}</span>
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${status.color}`}>
-                              <StatusIcon className="text-[10px]" />
-                              {status.label}
-                            </span>
+                        <div
+                          key={transaction.id}
+                          className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer"
+                          onClick={() => navigate(`/shop/orders/${transaction.id}`)}
+                        >
+                          <div className="flex items-center gap-3 flex-1">
+                            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                              {transaction.status === 'completed' ? (
+                                <FaCheckCircle className="text-green-500 text-lg" />
+                              ) : transaction.status === 'processing' ? (
+                                <FaSpinner className="text-blue-500 text-lg animate-spin" />
+                              ) : (
+                                <FaClock className="text-yellow-500 text-lg" />
+                              )}
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex flex-wrap items-center gap-2 mb-1">
+                                <span className="font-mono text-xs text-gray-500">
+                                  #{transaction.id?.slice(-8)}
+                                </span>
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${status.color}`}>
+                                  <StatusIcon className="text-[10px]" />
+                                  {status.label}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-3 text-xs text-gray-400">
+                                <span className="flex items-center gap-1">
+                                  <FaCalendarAlt className="text-[10px]" />
+                                  {formatDate(transaction.createdAt)}
+                                </span>
+                              </div>
+                            </div>
                           </div>
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm text-gray-500">Your Earnings:</span>
-                            <span className="text-lg font-semibold text-green-600">{formatPrice(transaction.amount)}</span>
+                          <div className="text-right">
+                            <p className="text-base font-bold text-green-600">
+                              {formatPrice(transaction.amount)}
+                            </p>
+                            <p className="text-xs text-gray-400">
+                              Order: {formatPrice(transaction.orderTotal)}
+                            </p>
                           </div>
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm text-gray-500">Order Total:</span>
-                            <span className="text-sm text-gray-700">{formatPrice(transaction.orderTotal)}</span>
-                          </div>
-                          <div className="flex justify-between items-center mb-3">
-                            <span className="text-sm text-gray-500">Date:</span>
-                            <span className="text-xs text-gray-500">{formatDate(transaction.createdAt)}</span>
-                          </div>
-                          <Link
-                            to={`/shop/orders/${transaction.id}`}
-                            className="w-full inline-flex items-center justify-center gap-1 py-2 bg-gray-50 text-blue-600 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors"
-                          >
-                            <FaEye className="text-xs" /> View Order Details
-                          </Link>
+                          <FaChevronRight className="text-gray-300 ml-2 text-sm" />
                         </div>
                       );
                     })}
@@ -416,25 +473,25 @@ const UduuaSellerWallet = () => {
             </div>
           </div>
 
-          {/* FAQ Section */}
-          <div className="mt-8 bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <h3 className="text-base font-semibold text-gray-900 mb-3">Frequently Asked Questions</h3>
-            <div className="space-y-3">
+          {/* FAQ Section - Simple */}
+          <div className="mt-6 bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">Quick FAQs</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <p className="text-sm font-medium text-gray-800">How long does withdrawal take?</p>
-                <p className="text-xs text-gray-500 mt-1">Withdrawals are processed within 1-3 business days after request.</p>
+                <p className="text-xs font-medium text-gray-800">Withdrawal time?</p>
+                <p className="text-xs text-gray-500">1-3 business days</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-800">What's the minimum withdrawal amount?</p>
-                <p className="text-xs text-gray-500 mt-1">The minimum withdrawal amount is ₦1,000.</p>
+                <p className="text-xs font-medium text-gray-800">Minimum withdrawal?</p>
+                <p className="text-xs text-gray-500">₦1,000</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-800">How are earnings calculated?</p>
-                <p className="text-xs text-gray-500 mt-1">You earn 94% of each sale. The platform takes 6% as service fee.</p>
+                <p className="text-xs font-medium text-gray-800">Your commission?</p>
+                <p className="text-xs text-gray-500">94% of each sale</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-800">When do earnings become available for withdrawal?</p>
-                <p className="text-xs text-gray-500 mt-1">Earnings become available after the customer confirms delivery of their order.</p>
+                <p className="text-xs font-medium text-gray-800">When available?</p>
+                <p className="text-xs text-gray-500">After customer confirms delivery</p>
               </div>
             </div>
           </div>
@@ -456,9 +513,9 @@ const UduuaSellerWallet = () => {
             </div>
             
             <div className="space-y-4">
-              <div className="bg-gray-50 rounded-lg p-3 text-center">
-                <p className="text-sm text-gray-500">Available Balance</p>
-                <p className="text-2xl font-bold text-[#0043FC]">{formatPrice(availableBalance)}</p>
+              <div className="bg-gradient-to-r from-[#0043FC] to-[#0038D4] rounded-lg p-4 text-center">
+                <p className="text-white/80 text-sm">Available Balance</p>
+                <p className="text-white text-3xl font-bold">{formatPrice(availableBalance)}</p>
               </div>
               
               <div>
@@ -477,10 +534,9 @@ const UduuaSellerWallet = () => {
                 <p className="text-xs text-gray-500 mt-1">Minimum: ₦1,000 | Maximum: {formatPrice(availableBalance)}</p>
               </div>
               
-              <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
-                <p className="text-xs text-yellow-800">
+              <div className="bg-amber-50 rounded-lg p-3 border border-amber-200">
+                <p className="text-xs text-amber-800">
                   <strong>Note:</strong> Withdrawals are processed to your registered bank account within 1-3 business days.
-                  Please ensure your bank details are correct.
                 </p>
               </div>
             </div>
@@ -501,6 +557,45 @@ const UduuaSellerWallet = () => {
                 Withdraw
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bank Info Modal */}
+      {showBankModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Bank Information</h3>
+              <button
+                onClick={() => setShowBankModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <FaTimes />
+              </button>
+            </div>
+            
+            <div className="space-y-3">
+              <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                <span className="text-sm text-gray-500">Bank Name:</span>
+                <span className="text-sm font-medium text-gray-800">OPay Digital Bank</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                <span className="text-sm text-gray-500">Account Name:</span>
+                <span className="text-sm font-medium text-gray-800">Lovoh</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                <span className="text-sm text-gray-500">Account Number:</span>
+                <span className="text-sm font-medium text-gray-800">8123456789</span>
+              </div>
+            </div>
+            
+            <button
+              onClick={copyBankDetails}
+              className="w-full mt-6 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
+            >
+              <FaCopy /> Copy Bank Details
+            </button>
           </div>
         </div>
       )}

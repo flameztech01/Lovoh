@@ -5,11 +5,26 @@ import Product from '../models/productModel.js';
 import Order from '../models/orderModel.js';
 import ProductReport from '../models/productReportModel.js';
 import UduuaAccountDetails from '../models/uduuaAccountDetailsModel.js';
+import UduuaSettings from '../models/uduuaSettingsModel.js';
 import { v2 as cloudinary } from 'cloudinary';
 import axios from 'axios';
 
-const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
 const PAYSTACK_BASE_URL = 'https://api.paystack.co';
+
+// Helper function to get Paystack secret key from settings
+const getPaystackSecretKey = async () => {
+  const settings = await UduuaSettings.findOne();
+  if (!settings || !settings.payment.paystackEnabled) {
+    throw new Error('Paystack payments are currently disabled');
+  }
+  return settings.payment.paystackSecretKey;
+};
+
+// Helper function to get platform fee percentage
+const getPlatformFeePercentage = async () => {
+  const settings = await UduuaSettings.findOne();
+  return settings?.payment?.platformFeePercentage || 6;
+};
 
 // Fallback bank mapping for common banks (used when Paystack API fails)
 const FALLBACK_BANKS = {
@@ -44,6 +59,7 @@ const getBankNameFromCode = async (bankCode) => {
   }
   
   try {
+    const PAYSTACK_SECRET_KEY = await getPaystackSecretKey();
     const bankResponse = await axios.get(`${PAYSTACK_BASE_URL}/bank`, {
       headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
       params: { country: 'nigeria', perPage: 100 }
@@ -300,6 +316,19 @@ const approveSeller = asyncHandler(async (req, res) => {
     throw new Error('Application is not pending');
   }
 
+  // Get Paystack secret key from settings
+  let PAYSTACK_SECRET_KEY;
+  try {
+    PAYSTACK_SECRET_KEY = await getPaystackSecretKey();
+  } catch (error) {
+    console.error('Paystack not configured:', error.message);
+    // Continue without Paystack setup - can be done later
+    PAYSTACK_SECRET_KEY = null;
+  }
+
+  // Get platform fee percentage
+  const platformFeePercentage = await getPlatformFeePercentage();
+
   // Ensure bank name is set
   let bankName = user.sellerApplication.bankName;
   if (!bankName && user.sellerApplication.bankCode) {
@@ -311,65 +340,70 @@ const approveSeller = asyncHandler(async (req, res) => {
   let subaccountCode = '';
   let recipientCode = '';
 
-  try {
-    // Create Paystack subaccount for split payments
-    const subaccountResponse = await axios.post(
-      `${PAYSTACK_BASE_URL}/subaccount`,
-      {
-        business_name: user.sellerApplication.businessName,
-        settlement_bank: user.sellerApplication.bankCode,
-        account_number: user.sellerApplication.bankAccountNumber,
-        percentage_charge: 6,
-        description: `Seller: ${user.sellerApplication.businessEmail}`,
-      },
-      { headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`, 'Content-Type': 'application/json' } }
-    );
+  // Only attempt Paystack setup if secret key is available
+  if (PAYSTACK_SECRET_KEY) {
+    try {
+      // Create Paystack subaccount for split payments
+      const subaccountResponse = await axios.post(
+        `${PAYSTACK_BASE_URL}/subaccount`,
+        {
+          business_name: user.sellerApplication.businessName,
+          settlement_bank: user.sellerApplication.bankCode,
+          account_number: user.sellerApplication.bankAccountNumber,
+          percentage_charge: platformFeePercentage,
+          description: `Seller: ${user.sellerApplication.businessEmail}`,
+        },
+        { headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`, 'Content-Type': 'application/json' } }
+      );
 
-    subaccountCode = subaccountResponse.data.data.subaccount_code;
+      subaccountCode = subaccountResponse.data.data.subaccount_code;
 
-    // Create transfer recipient for payouts
-    const recipientResponse = await axios.post(
-      `${PAYSTACK_BASE_URL}/transferrecipient`,
-      {
-        type: 'nuban',
-        name: user.sellerApplication.businessName,
-        account_number: user.sellerApplication.bankAccountNumber,
-        bank_code: user.sellerApplication.bankCode,
-        currency: 'NGN',
-      },
-      { headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`, 'Content-Type': 'application/json' } }
-    );
+      // Create transfer recipient for payouts
+      const recipientResponse = await axios.post(
+        `${PAYSTACK_BASE_URL}/transferrecipient`,
+        {
+          type: 'nuban',
+          name: user.sellerApplication.businessName,
+          account_number: user.sellerApplication.bankAccountNumber,
+          bank_code: user.sellerApplication.bankCode,
+          currency: 'NGN',
+        },
+        { headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`, 'Content-Type': 'application/json' } }
+      );
 
-    recipientCode = recipientResponse.data.data.recipient_code;
+      recipientCode = recipientResponse.data.data.recipient_code;
 
-    // Save account details to UduuaAccountDetails
-    await UduuaAccountDetails.create({
-      user: user._id,
-      paystackSubaccountCode: subaccountCode,
-      paystackRecipientCode: recipientCode,
-      bankName: bankName,
-      bankCode: user.sellerApplication.bankCode,
-      accountNumber: user.sellerApplication.bankAccountNumber,
-      accountName: user.sellerApplication.bankAccountName,
-      businessName: user.sellerApplication.businessName,
-      businessEmail: user.sellerApplication.businessEmail,
-      businessPhone: user.sellerApplication.businessPhone,
-      whatsappPhone: user.sellerApplication.whatsappPhone,
-      callingPhone: user.sellerApplication.callingPhone,
-      businessAddress: user.sellerApplication.businessAddress,
-      cacCertificate: user.sellerApplication.cacCertificate,
-      governmentId: user.sellerApplication.governmentId,
-      taxIdentificationNumber: user.sellerApplication.taxIdentificationNumber,
-      proofOfAddress: user.sellerApplication.proofOfAddress,
-      brandLogo: user.sellerApplication.brandLogo,
-      profileImage: user.sellerApplication.profileImage,
-      isVerified: true,
-      verifiedAt: new Date(),
-    });
+      // Save account details to UduuaAccountDetails
+      await UduuaAccountDetails.create({
+        user: user._id,
+        paystackSubaccountCode: subaccountCode,
+        paystackRecipientCode: recipientCode,
+        bankName: bankName,
+        bankCode: user.sellerApplication.bankCode,
+        accountNumber: user.sellerApplication.bankAccountNumber,
+        accountName: user.sellerApplication.bankAccountName,
+        businessName: user.sellerApplication.businessName,
+        businessEmail: user.sellerApplication.businessEmail,
+        businessPhone: user.sellerApplication.businessPhone,
+        whatsappPhone: user.sellerApplication.whatsappPhone,
+        callingPhone: user.sellerApplication.callingPhone,
+        businessAddress: user.sellerApplication.businessAddress,
+        cacCertificate: user.sellerApplication.cacCertificate,
+        governmentId: user.sellerApplication.governmentId,
+        taxIdentificationNumber: user.sellerApplication.taxIdentificationNumber,
+        proofOfAddress: user.sellerApplication.proofOfAddress,
+        brandLogo: user.sellerApplication.brandLogo,
+        profileImage: user.sellerApplication.profileImage,
+        isVerified: true,
+        verifiedAt: new Date(),
+      });
 
-  } catch (error) {
-    console.error('Paystack setup error:', error.response?.data || error.message);
-    // Continue with approval even if Paystack fails - can be retried later
+    } catch (error) {
+      console.error('Paystack setup error:', error.response?.data || error.message);
+      // Continue with approval even if Paystack fails - can be retried later
+    }
+  } else {
+    console.warn('Paystack not configured. Seller approved without Paystack setup.');
   }
 
   // Update user
@@ -385,8 +419,8 @@ const approveSeller = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     message: 'Seller application approved successfully',
-    subaccountCode,
-    recipientCode,
+    subaccountCode: subaccountCode || 'Paystack setup pending',
+    recipientCode: recipientCode || 'Paystack setup pending',
     bankDetails: {
       bankName: user.sellerApplication.bankName,
       bankCode: user.sellerApplication.bankCode,
@@ -450,6 +484,15 @@ const updateBankAccount = asyncHandler(async (req, res) => {
     throw new Error('All bank account fields are required');
   }
 
+  // Get Paystack secret key from settings
+  let PAYSTACK_SECRET_KEY;
+  try {
+    PAYSTACK_SECRET_KEY = await getPaystackSecretKey();
+  } catch (error) {
+    res.status(400);
+    throw new Error('Paystack not configured. Please contact admin.');
+  }
+
   // Get bank name from bank code
   const bankName = await getBankNameFromCode(bankCode);
 
@@ -459,7 +502,7 @@ const updateBankAccount = asyncHandler(async (req, res) => {
       `${PAYSTACK_BASE_URL}/transferrecipient`,
       {
         type: 'nuban',
-        name: user.sellerApplication.businessName,
+        name: user.sellerApplication?.businessName || user.name,
         account_number: bankAccountNumber,
         bank_code: bankCode,
         currency: 'NGN',
@@ -488,6 +531,9 @@ const updateBankAccount = asyncHandler(async (req, res) => {
   }
 
   // Update user
+  if (!user.sellerApplication) {
+    user.sellerApplication = {};
+  }
   user.sellerApplication.bankAccountName = bankAccountName;
   user.sellerApplication.bankAccountNumber = bankAccountNumber;
   user.sellerApplication.bankCode = bankCode;

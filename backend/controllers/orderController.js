@@ -3,15 +3,52 @@ import asyncHandler from "express-async-handler";
 import Order from "../models/orderModel.js";
 import Product from "../models/productModel.js";
 import User from "../models/userModel.js";
+import UduuaSettings from "../models/uduuaSettingsModel.js";
 import { v2 as cloudinary } from "cloudinary";
 import axios from "axios";
 import crypto from "crypto";
 
-const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
 const PAYSTACK_BASE_URL = "https://api.paystack.co";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:9000";
-const PLATFORM_PERCENTAGE = 6;
-const SELLER_PERCENTAGE = 94;
+
+// Helper function to get Paystack secret key from settings
+const getPaystackSecretKey = async () => {
+  const settings = await UduuaSettings.findOne();
+  if (!settings || !settings.payment.paystackEnabled) {
+    throw new Error("Paystack payments are currently disabled");
+  }
+  return settings.payment.paystackSecretKey;
+};
+
+// Helper function to get platform percentages
+const getPlatformPercentages = async () => {
+  const settings = await UduuaSettings.findOne();
+  return {
+    platformPercentage: settings?.payment?.platformFeePercentage || 6,
+    sellerPercentage: settings?.payment?.sellerPayoutPercentage || 94,
+  };
+};
+
+// Helper function to get minimum withdrawal amount
+const getMinimumWithdrawal = async () => {
+  const settings = await UduuaSettings.findOne();
+  return settings?.payment?.minimumWithdrawal || 10000;
+};
+
+// Helper function to check if payment method is enabled
+const isPaymentMethodEnabled = async (paymentMethod) => {
+  const settings = await UduuaSettings.findOne();
+  if (paymentMethod === "paystack") {
+    return settings?.payment?.paystackEnabled ?? true;
+  }
+  if (paymentMethod === "ondelivery") {
+    return settings?.payment?.payOnDeliveryEnabled ?? true;
+  }
+  if (paymentMethod === "payonline") {
+    return settings?.payment?.payOnlineEnabled ?? true;
+  }
+  return true;
+};
 
 // ==================== CART CONTROLLERS ====================
 
@@ -240,6 +277,19 @@ const getCartSummary = asyncHandler(async (req, res) => {
 // ==================== PAYSTACK HELPERS ====================
 
 const initializePaystackTransaction = async (orders, user, customerEmail) => {
+  const settings = await UduuaSettings.findOne();
+  
+  if (!settings || !settings.payment.paystackEnabled) {
+    throw new Error("Paystack payments are currently disabled");
+  }
+  
+  const PAYSTACK_SECRET_KEY = settings.payment.paystackSecretKey;
+  const PLATFORM_PERCENTAGE = settings.payment.platformFeePercentage || 6;
+  
+  if (!PAYSTACK_SECRET_KEY) {
+    throw new Error("Paystack secret key not configured. Please contact admin.");
+  }
+  
   const totalAmount = orders.reduce((sum, order) => sum + order.totalPrice, 0);
   const amount = Math.round(totalAmount * 100);
 
@@ -307,6 +357,23 @@ const initializePaystackTransaction = async (orders, user, customerEmail) => {
 
 const getBankList = asyncHandler(async (req, res) => {
   try {
+    const settings = await UduuaSettings.findOne();
+    const PAYSTACK_SECRET_KEY = settings?.payment?.paystackSecretKey;
+    
+    if (!PAYSTACK_SECRET_KEY) {
+      // Return fallback banks if no key is configured
+      const fallbackBanks = [
+        { name: "Access Bank", code: "044", type: "nuban" },
+        { name: "Guaranty Trust Bank", code: "058", type: "nuban" },
+        { name: "First Bank of Nigeria", code: "011", type: "nuban" },
+        { name: "United Bank for Africa", code: "033", type: "nuban" },
+        { name: "Zenith Bank", code: "057", type: "nuban" },
+        { name: "Fidelity Bank", code: "070", type: "nuban" },
+        { name: "OPay Digital Bank", code: "999992", type: "nuban" },
+      ];
+      return res.json(fallbackBanks);
+    }
+    
     const response = await axios.get(`${PAYSTACK_BASE_URL}/bank`, {
       headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
       params: { country: "nigeria", perPage: 100 },
@@ -335,6 +402,13 @@ const resolveBankAccount = asyncHandler(async (req, res) => {
   }
 
   try {
+    const settings = await UduuaSettings.findOne();
+    const PAYSTACK_SECRET_KEY = settings?.payment?.paystackSecretKey;
+    
+    if (!PAYSTACK_SECRET_KEY) {
+      throw new Error("Paystack not configured");
+    }
+    
     const response = await axios.get(`${PAYSTACK_BASE_URL}/bank/resolve`, {
       headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
       params: { account_number: accountNumber, bank_code: bankCode },
@@ -358,6 +432,13 @@ const resolveBankAccount = asyncHandler(async (req, res) => {
 const reinitializePayment = asyncHandler(async (req, res) => {
   const { orderId, paymentMethod } = req.body;
   const userId = req.user._id;
+
+  // Check if payment method is enabled
+  const isEnabled = await isPaymentMethodEnabled(paymentMethod);
+  if (!isEnabled) {
+    res.status(400);
+    throw new Error(`${paymentMethod} payments are currently disabled`);
+  }
 
   const order = await Order.findById(orderId);
 
@@ -420,6 +501,14 @@ const checkoutCart = asyncHandler(async (req, res) => {
   let notes = req.body.notes || "";
   let customerEmail = req.body.email;
 
+  // Get settings
+  const settings = await UduuaSettings.findOne();
+  const PLATFORM_PERCENTAGE = settings?.payment?.platformFeePercentage || 6;
+  const SELLER_PERCENTAGE = settings?.payment?.sellerPayoutPercentage || 94;
+  const shippingFee = settings?.store?.shippingFee || 3000;
+  const freeShippingThreshold = settings?.store?.freeShippingThreshold || 50000;
+  const maxQuantityPerOrder = settings?.store?.maxQuantityPerOrder || 50;
+
   if (typeof shippingAddress === "string") {
     try {
       shippingAddress = JSON.parse(shippingAddress);
@@ -453,6 +542,13 @@ const checkoutCart = asyncHandler(async (req, res) => {
   ) {
     res.status(400);
     throw new Error("Valid payment method is required");
+  }
+
+  // Check if payment method is enabled
+  const isEnabled = await isPaymentMethodEnabled(paymentMethod);
+  if (!isEnabled) {
+    res.status(400);
+    throw new Error(`${paymentMethod} payments are currently disabled`);
   }
 
   if (paymentMethod === "paystack") {
@@ -498,6 +594,13 @@ const checkoutCart = asyncHandler(async (req, res) => {
       );
     }
 
+    if (cartItem.quantity > maxQuantityPerOrder) {
+      res.status(400);
+      throw new Error(
+        `Maximum ${maxQuantityPerOrder} units allowed per order for ${product.name}`,
+      );
+    }
+
     const sellerId =
       product.seller?._id?.toString() ||
       product.seller?.toString() ||
@@ -536,7 +639,12 @@ const checkoutCart = asyncHandler(async (req, res) => {
     throw new Error("No valid items in cart");
   }
 
-  const shippingPrice = 0;
+  // Calculate shipping (free if above threshold)
+  let shippingPrice = 0;
+  if (itemsPrice < freeShippingThreshold) {
+    shippingPrice = shippingFee;
+  }
+  
   const taxPrice = 0;
   const totalPrice = itemsPrice + shippingPrice + taxPrice;
 
@@ -644,6 +752,14 @@ const createOrder = asyncHandler(async (req, res) => {
   let notes = req.body.notes || "";
   let customerEmail = req.body.email;
 
+  // Get settings
+  const settings = await UduuaSettings.findOne();
+  const PLATFORM_PERCENTAGE = settings?.payment?.platformFeePercentage || 6;
+  const SELLER_PERCENTAGE = settings?.payment?.sellerPayoutPercentage || 94;
+  const shippingFee = settings?.store?.shippingFee || 3000;
+  const freeShippingThreshold = settings?.store?.freeShippingThreshold || 50000;
+  const maxQuantityPerOrder = settings?.store?.maxQuantityPerOrder || 50;
+
   if (typeof orderItems === "string") {
     try {
       orderItems = JSON.parse(orderItems);
@@ -678,6 +794,13 @@ const createOrder = asyncHandler(async (req, res) => {
   ) {
     res.status(400);
     throw new Error("Valid payment method is required");
+  }
+
+  // Check if payment method is enabled
+  const isEnabled = await isPaymentMethodEnabled(paymentMethod);
+  if (!isEnabled) {
+    res.status(400);
+    throw new Error(`${paymentMethod} payments are currently disabled`);
   }
 
   if (paymentMethod === "onsite" && !req.file) {
@@ -716,6 +839,13 @@ const createOrder = asyncHandler(async (req, res) => {
       );
     }
 
+    if (item.quantity > maxQuantityPerOrder) {
+      res.status(400);
+      throw new Error(
+        `Maximum ${maxQuantityPerOrder} units allowed per order for ${product.name}`,
+      );
+    }
+
     let itemPrice = product.retailPrice;
     if (product.discount && product.discount > 0) {
       const now = new Date();
@@ -749,7 +879,12 @@ const createOrder = asyncHandler(async (req, res) => {
     itemsPrice += itemTotal;
   }
 
-  const shippingPrice = 0;
+  // Calculate shipping (free if above threshold)
+  let shippingPrice = 0;
+  if (itemsPrice < freeShippingThreshold) {
+    shippingPrice = shippingFee;
+  }
+  
   const taxPrice = 0;
   const totalPrice = itemsPrice + shippingPrice + taxPrice;
 
@@ -909,6 +1044,13 @@ const verifyPayment = asyncHandler(async (req, res) => {
   }
 
   try {
+    const settings = await UduuaSettings.findOne();
+    const PAYSTACK_SECRET_KEY = settings?.payment?.paystackSecretKey;
+    
+    if (!PAYSTACK_SECRET_KEY) {
+      throw new Error("Paystack not configured");
+    }
+    
     const response = await axios.get(
       `${PAYSTACK_BASE_URL}/transaction/verify/${reference}`,
       {
@@ -968,6 +1110,14 @@ const verifyPayment = asyncHandler(async (req, res) => {
 // @route   POST /api/orders/paystack-webhook
 // @access  Public
 const paystackWebhook = asyncHandler(async (req, res) => {
+  const settings = await UduuaSettings.findOne();
+  const PAYSTACK_SECRET_KEY = settings?.payment?.paystackSecretKey;
+  
+  if (!PAYSTACK_SECRET_KEY) {
+    res.status(401);
+    throw new Error("Paystack not configured");
+  }
+  
   const hash = crypto
     .createHmac("sha512", PAYSTACK_SECRET_KEY)
     .update(JSON.stringify(req.body))
@@ -1096,9 +1246,6 @@ const confirmDelivery = asyncHandler(async (req, res) => {
   order.buyerConfirmedDelivery = true;
   order.buyerConfirmedAt = new Date();
 
-  // DON'T set status to 'completed' - use 'delivered' instead
-  // REMOVE this line: order.status = 'completed';
-  
   // If you want to mark as delivered, set the appropriate fields
   if (order.deliveryStatus === 'delivered') {
     order.isDelivered = true;
@@ -1357,9 +1504,18 @@ const initiateWithdrawal = asyncHandler(async (req, res) => {
   const { amount, bankCode, accountNumber, accountName } = req.body;
   const sellerId = req.user._id;
 
-  if (!amount || amount < 1000) {
+  const MINIMUM_WITHDRAWAL = await getMinimumWithdrawal();
+  const settings = await UduuaSettings.findOne();
+  const PAYSTACK_SECRET_KEY = settings?.payment?.paystackSecretKey;
+
+  if (!PAYSTACK_SECRET_KEY) {
     res.status(400);
-    throw new Error("Minimum withdrawal amount is ₦1,000");
+    throw new Error("Paystack not configured for withdrawals");
+  }
+
+  if (!amount || amount < MINIMUM_WITHDRAWAL) {
+    res.status(400);
+    throw new Error(`Minimum withdrawal amount is ₦${MINIMUM_WITHDRAWAL.toLocaleString()}`);
   }
 
   if (!bankCode || !accountNumber || !accountName) {
@@ -1382,7 +1538,7 @@ const initiateWithdrawal = asyncHandler(async (req, res) => {
 
   if (amount > availableBalance) {
     res.status(400);
-    throw new Error(`Insufficient balance. Available: ₦${availableBalance}`);
+    throw new Error(`Insufficient balance. Available: ₦${availableBalance.toLocaleString()}`);
   }
 
   // Create transfer recipient

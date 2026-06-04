@@ -8,6 +8,11 @@ import { v2 as cloudinary } from 'cloudinary';
 // @desc    Get ads for a specific page and placement
 // @route   GET /api/ads
 // @access  Public
+// controllers/adsController.js - Updated getAds function
+
+// @desc    Get ads for a specific page and placement
+// @route   GET /api/ads
+// @access  Public
 const getAds = asyncHandler(async (req, res) => {
   const { page, placement, limit = 10 } = req.query;
   
@@ -27,7 +32,12 @@ const getAds = asyncHandler(async (req, res) => {
     supportsVideo: req.query.supportsVideo === 'true',
   };
 
+  // Only get ads for the specific page/site
   let ads = await Ad.getAdsForPlacement(page, placement, cardConfig);
+  
+  // Additional filter to ensure only ads for this specific page are shown
+  // (in case the model method doesn't filter properly)
+  ads = ads.filter(ad => ad.pages && ad.pages.includes(page));
 
   // Apply limit
   ads = ads.slice(0, parseInt(limit));

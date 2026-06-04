@@ -1,6 +1,6 @@
-// screens/UduuaAddProduct.jsx
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+// screens/UduuaEditProduct.jsx
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
 import {
@@ -15,22 +15,27 @@ import {
   FaTruck,
   FaMoneyBill,
   FaPercent,
-  FaCalendarAlt,
   FaInfoCircle,
-  FaCheckCircle,
-  FaTimesCircle,
   FaTimes,
-  FaHashtag
+  FaHashtag,
+  FaSave,
+  FaImage
 } from 'react-icons/fa';
-import { useCreateProductMutation } from '../slices/productApiSlice';
+import { 
+  useGetProductByIdQuery, 
+  useUpdateProductMutation 
+} from '../slices/productApiSlice';
 import { useGetSellerApplicationStatusQuery } from '../slices/sellerApiSlice';
 import ShopNavbar from '../components/ShopNavbar';
 import UduuaFooter from '../components/UduuaFooter';
 
-const UduuaAddProduct = () => {
+const UduuaEditProduct = () => {
   const navigate = useNavigate();
+  const { id } = useParams();
   const { userInfo } = useSelector((state) => state.auth);
-  const [createProduct, { isLoading }] = useCreateProductMutation();
+  
+  const { data: product, isLoading: isLoadingProduct } = useGetProductByIdQuery(id);
+  const [updateProduct, { isLoading: isUpdating }] = useUpdateProductMutation();
   
   // Check if user is an approved seller
   const { data: applicationStatus, isLoading: isLoadingStatus } = useGetSellerApplicationStatusQuery(undefined, {
@@ -45,7 +50,7 @@ const UduuaAddProduct = () => {
     description: '',
     retailPrice: '',
     bulkPrice: '',
-    category: [], // Changed to array
+    category: [], // Ensure it's always an array
     status: 'New',
     quantityAvailable: '',
     minOrderAmount: '60000',
@@ -54,6 +59,7 @@ const UduuaAddProduct = () => {
     discount: '',
     discountStartDate: '',
     discountEndDate: '',
+    isAvailable: true,
   });
 
   const [tags, setTags] = useState([]);
@@ -61,7 +67,9 @@ const UduuaAddProduct = () => {
   const [categoryInput, setCategoryInput] = useState('');
   const [customCategories, setCustomCategories] = useState([]);
   const [images, setImages] = useState([]);
+  const [existingImages, setExistingImages] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
+  const [imagesToKeep, setImagesToKeep] = useState([]);
   const [errors, setErrors] = useState({});
 
   // Predefined categories
@@ -75,14 +83,66 @@ const UduuaAddProduct = () => {
 
   const statusOptions = ['New', 'Trending', 'Bulk Available', 'Shoppers Favourite', 'Limited', 'Featured'];
 
+  // Load product data when available
+  useEffect(() => {
+    if (product) {
+      // Check if user owns this product
+      if (product.seller?._id !== userInfo?._id && !userInfo?.isAdmin) {
+        toast.error('You are not authorized to edit this product');
+        navigate('/shop');
+        return;
+      }
+
+      // Handle categories - ensure it's an array
+      let productCategories = product.category || [];
+      if (typeof productCategories === 'string') {
+        productCategories = productCategories.split(',').map(c => c.trim()).filter(c => c);
+      }
+      if (!Array.isArray(productCategories)) {
+        productCategories = [];
+      }
+
+      // Handle tags - ensure it's an array
+      let productTags = product.tags || [];
+      if (typeof productTags === 'string') {
+        productTags = productTags.split(',').map(t => t.trim().toLowerCase()).filter(t => t);
+      }
+      if (!Array.isArray(productTags)) {
+        productTags = [];
+      }
+
+      setFormData({
+        name: product.name || '',
+        brandName: product.brandName || '',
+        description: product.description || '',
+        retailPrice: product.retailPrice || '',
+        bulkPrice: product.bulkPrice || '',
+        category: productCategories,
+        status: product.status || 'New',
+        quantityAvailable: product.quantityAvailable || '',
+        minOrderAmount: product.minOrderAmount || '60000',
+        payOnDelivery: product.deliveryOptions?.payOnDelivery ?? true,
+        payOnline: product.deliveryOptions?.payOnline ?? true,
+        discount: product.discount || '',
+        discountStartDate: product.discountStartDate ? product.discountStartDate.split('T')[0] : '',
+        discountEndDate: product.discountEndDate ? product.discountEndDate.split('T')[0] : '',
+        isAvailable: product.isAvailable ?? true,
+      });
+
+      setTags(productTags);
+      setExistingImages(product.images || []);
+      setImagesToKeep(product.images || []);
+    }
+  }, [product, userInfo, navigate]);
+
   // Redirect if not logged in or not an approved seller
   if (!userInfo) {
-    navigate('/shop/login', { state: { from: '/uduua/seller/add-product' } });
+    navigate('/shop/login', { state: { from: `/uduua/seller/edit-product/${id}` } });
     return null;
   }
 
   if (!isLoadingStatus && !isApprovedSeller) {
-    toast.error('You must be an approved seller to add products');
+    toast.error('You must be an approved seller to edit products');
     navigate('/shop');
     return null;
   }
@@ -174,11 +234,12 @@ const UduuaAddProduct = () => {
     }
   };
 
+  // Image management
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files);
-    const newImages = [...images, ...files];
+    const totalImages = existingImages.length + images.length + files.length;
     
-    if (newImages.length > 5) {
+    if (totalImages > 5) {
       toast.error('Maximum 5 images allowed');
       return;
     }
@@ -191,9 +252,9 @@ const UduuaAddProduct = () => {
       }
     }
 
-    setImages(newImages);
+    setImages(prev => [...prev, ...files]);
     
-    // Create previews
+    // Create previews for new images
     files.forEach(file => {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -203,7 +264,13 @@ const UduuaAddProduct = () => {
     });
   };
 
-  const removeImage = (index) => {
+  const removeExistingImage = (index) => {
+    const imageToRemove = existingImages[index];
+    setExistingImages(prev => prev.filter((_, i) => i !== index));
+    setImagesToKeep(prev => prev.filter(img => img !== imageToRemove));
+  };
+
+  const removeNewImage = (index) => {
     setImages(prev => prev.filter((_, i) => i !== index));
     setImagePreviews(prev => prev.filter((_, i) => i !== index));
   };
@@ -225,7 +292,9 @@ const UduuaAddProduct = () => {
     if (!formData.quantityAvailable || parseInt(formData.quantityAvailable) <= 0) {
       newErrors.quantityAvailable = 'Valid quantity is required';
     }
-    if (images.length === 0) newErrors.images = 'At least one product image is required';
+    if (existingImages.length === 0 && images.length === 0) {
+      newErrors.images = 'At least one product image is required';
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -256,23 +325,65 @@ const UduuaAddProduct = () => {
     submitData.append('minOrderAmount', formData.minOrderAmount);
     submitData.append('payOnDelivery', formData.payOnDelivery);
     submitData.append('payOnline', formData.payOnline);
+    submitData.append('isAvailable', formData.isAvailable);
     
     if (formData.discount) submitData.append('discount', formData.discount);
     if (formData.discountStartDate) submitData.append('discountStartDate', formData.discountStartDate);
     if (formData.discountEndDate) submitData.append('discountEndDate', formData.discountEndDate);
     
+    // Add images to keep
+    imagesToKeep.forEach(image => {
+      submitData.append('keepImages', image);
+    });
+    
+    // Add new images
     images.forEach(image => {
       submitData.append('images', image);
     });
 
     try {
-      await createProduct(submitData).unwrap();
-      toast.success('Product submitted for approval! It will be visible once approved.');
+      await updateProduct({ id, data: submitData }).unwrap();
+      toast.success('Product updated successfully! It will be reviewed by admin.');
       navigate('/shop');
     } catch (error) {
-      toast.error(error?.data?.message || 'Failed to add product');
+      toast.error(error?.data?.message || 'Failed to update product');
     }
   };
+
+  if (isLoadingProduct || isLoadingStatus) {
+    return (
+      <>
+        <ShopNavbar />
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <FaSpinner className="animate-spin text-4xl text-[#0043FC] mx-auto mb-4" />
+            <p className="text-gray-600">Loading product...</p>
+          </div>
+        </div>
+        <UduuaFooter />
+      </>
+    );
+  }
+
+  if (!product) {
+    return (
+      <>
+        <ShopNavbar />
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-gray-600">Product not found</p>
+            <button
+              onClick={() => navigate('/shop')}
+              className="mt-4 px-4 py-2 bg-[#0043FC] text-white rounded-lg"
+            >
+              Back to Shop
+            </button>
+          </div>
+        </div>
+        <UduuaFooter />
+      </>
+    );
+  }
 
   return (
     <>
@@ -289,24 +400,24 @@ const UduuaAddProduct = () => {
             </button>
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-[#0043FC]/10 rounded-full flex items-center justify-center">
-                <FaPlus className="text-[#0043FC] text-xl" />
+                <FaSave className="text-[#0043FC] text-xl" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Add New Product</h1>
-                <p className="text-sm text-gray-500">Fill in the details to list your product</p>
+                <h1 className="text-2xl font-bold text-gray-900">Edit Product</h1>
+                <p className="text-sm text-gray-500">Update your product information</p>
               </div>
             </div>
           </div>
 
-          {/* Approval Info Banner */}
+          {/* Re-approval Info Banner */}
           <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-xl p-4">
             <div className="flex items-start gap-3">
               <FaInfoCircle className="text-yellow-600 text-lg mt-0.5" />
               <div>
-                <p className="text-sm font-semibold text-yellow-800">Product Approval Required</p>
+                <p className="text-sm font-semibold text-yellow-800">Re-approval Required</p>
                 <p className="text-sm text-yellow-700">
-                  Your product will be reviewed by our admin team before appearing on the marketplace. 
-                  This usually takes 1-2 business days.
+                  Any significant changes to your product will require admin re-approval 
+                  before it appears on the marketplace.
                 </p>
               </div>
             </div>
@@ -383,7 +494,7 @@ const UduuaAddProduct = () => {
               </h2>
 
               {/* Selected Categories */}
-              {formData.category.length > 0 && (
+              {formData.category && formData.category.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-3">
                   {formData.category.map((cat, index) => (
                     <span
@@ -447,27 +558,6 @@ const UduuaAddProduct = () => {
                 </div>
                 <p className="text-xs text-gray-400 mt-1">Press Enter or click Add to add category</p>
               </div>
-
-              {/* Custom Categories Suggestions */}
-              {customCategories.length > 0 && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Previously used custom categories
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {customCategories.map(cat => (
-                      <button
-                        key={cat}
-                        type="button"
-                        onClick={() => selectPredefinedCategory(cat)}
-                        className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition-colors"
-                      >
-                        {cat}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Tags */}
@@ -519,24 +609,44 @@ const UduuaAddProduct = () => {
               </div>
             </div>
 
-            {/* Status */}
+            {/* Status & Availability */}
             <div className="mt-8 pt-6 border-t border-gray-200 space-y-5">
               <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 <FaTag className="text-[#0043FC]" />
                 Product Status
               </h2>
 
-              <div>
-                <select
-                  name="status"
-                  value={formData.status}
-                  onChange={handleInputChange}
-                  className="w-full md:w-64 px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0043FC]"
-                >
-                  {statusOptions.map(opt => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Product Badge
+                  </label>
+                  <select
+                    name="status"
+                    value={formData.status}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0043FC]"
+                  >
+                    {statusOptions.map(opt => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Availability
+                  </label>
+                  <select
+                    name="isAvailable"
+                    value={formData.isAvailable}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0043FC]"
+                  >
+                    <option value={true}>In Stock</option>
+                    <option value={false}>Out of Stock</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -713,10 +823,34 @@ const UduuaAddProduct = () => {
             {/* Product Images */}
             <div className="mt-8 pt-6 border-t border-gray-200 space-y-5">
               <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <FaUpload className="text-[#0043FC]" />
+                <FaImage className="text-[#0043FC]" />
                 Product Images *
               </h2>
 
+              {/* Existing Images */}
+              {existingImages.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Current Images
+                  </label>
+                  <div className="flex flex-wrap gap-3">
+                    {existingImages.map((image, index) => (
+                      <div key={index} className="relative w-24 h-24 rounded-lg overflow-hidden border border-gray-200">
+                        <img src={image} alt={`Product ${index + 1}`} className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeExistingImage(index)}
+                          className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                        >
+                          <FaTrashAlt className="text-[8px]" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* New Images Upload */}
               <div className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
                 errors.images ? 'border-red-500' : 'border-gray-300 hover:border-[#0043FC]'
               }`}>
@@ -730,27 +864,32 @@ const UduuaAddProduct = () => {
                 />
                 <label htmlFor="imageUpload" className="cursor-pointer block">
                   <FaUpload className="w-10 h-10 text-gray-400 mx-auto mb-3" />
-                  <p className="text-sm text-gray-600">Click to upload product images</p>
-                  <p className="text-xs text-gray-400 mt-1">PNG, JPG (Max 5MB each, up to 5 images)</p>
+                  <p className="text-sm text-gray-600">Click to add more images</p>
+                  <p className="text-xs text-gray-400 mt-1">PNG, JPG (Max 5MB each, max 5 total images)</p>
                 </label>
               </div>
               {errors.images && <p className="mt-1 text-xs text-red-500">{errors.images}</p>}
 
-              {/* Image Previews */}
+              {/* New Image Previews */}
               {imagePreviews.length > 0 && (
-                <div className="flex flex-wrap gap-3 mt-4">
-                  {imagePreviews.map((preview, index) => (
-                    <div key={index} className="relative w-24 h-24 rounded-lg overflow-hidden border border-gray-200">
-                      <img src={preview} alt={`Preview ${index + 1}`} className="w-full h-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => removeImage(index)}
-                        className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
-                      >
-                        <FaTrashAlt className="text-[8px]" />
-                      </button>
-                    </div>
-                  ))}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    New Images
+                  </label>
+                  <div className="flex flex-wrap gap-3">
+                    {imagePreviews.map((preview, index) => (
+                      <div key={index} className="relative w-24 h-24 rounded-lg overflow-hidden border border-gray-200">
+                        <img src={preview} alt={`New Preview ${index + 1}`} className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeNewImage(index)}
+                          className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                        >
+                          <FaTrashAlt className="text-[8px]" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -767,22 +906,22 @@ const UduuaAddProduct = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isUpdating}
                   className="flex-1 px-6 py-2.5 bg-[#0043FC] text-white rounded-lg font-medium hover:bg-[#0038D4] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  {isLoading ? (
+                  {isUpdating ? (
                     <>
-                      <FaSpinner className="animate-spin" /> Submitting...
+                      <FaSpinner className="animate-spin" /> Updating...
                     </>
                   ) : (
                     <>
-                      <FaPlus /> Add Product
+                      <FaSave /> Update Product
                     </>
                   )}
                 </button>
               </div>
               <p className="text-xs text-gray-400 text-center mt-4">
-                Products will be reviewed by admin before appearing on the marketplace
+                Products with significant changes will be reviewed by admin before reappearing
               </p>
             </div>
           </form>
@@ -793,4 +932,4 @@ const UduuaAddProduct = () => {
   );
 };
 
-export default UduuaAddProduct;
+export default UduuaEditProduct;

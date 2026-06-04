@@ -11,6 +11,9 @@ import {
   getAllReports,
   updateReportStatus,
   getReportById,
+  getReportStats,
+  deleteReport,
+  bulkUpdateReportStatus,
 } from '../controllers/productReportController.js';
 
 const router = express.Router();
@@ -36,10 +39,33 @@ const uploadReportImages = multer({
   limits: { fileSize: 5 * 1024 * 1024 },
 }).array('images', 5);
 
-// ==================== REPORT ROUTES ====================
+// ==================== PUBLIC / USER REPORT ROUTES ====================
+// Report a product (user must be logged in and have purchased the product)
 router.post('/product', protect, uploadReportImages, reportProduct);
+
+// Get seller's own reports (seller only)
 router.get('/seller', protect, getSellerReports);
+
+// ==================== ADMIN REPORT ROUTES ====================
+// Get all reports with pagination and filters
 router.get('/admin', protectAdmin, getAllReports);
+
+// Get report statistics for dashboard
+router.get('/admin/stats', protectAdmin, getReportStats);
+
+// Get single report by ID
+router.get('/admin/:reportId', protectAdmin, getReportById);
+
+// Update report status (investigating, resolved, dismissed)
+router.put('/admin/:reportId/status', protectAdmin, updateReportStatus);
+
+// Delete a report
+router.delete('/admin/:reportId', protectAdmin, deleteReport);
+
+// Bulk update report status
+router.put('/admin/bulk-update', protectAdmin, bulkUpdateReportStatus);
+
+// Legacy route (keeping for backward compatibility)
 router.get('/:reportId', protectAdmin, getReportById);
 router.put('/:reportId/status', protectAdmin, updateReportStatus);
 

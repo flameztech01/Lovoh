@@ -10,36 +10,79 @@ import { v2 as cloudinary } from 'cloudinary';
 // @desc    Get all products
 // @route   GET /api/products
 // @access  Public
+// controllers/productController.js - Updated getProducts
+
+// @desc    Get all products with advanced search
+// @route   GET /api/products
+// @access  Public
 const getProducts = asyncHandler(async (req, res) => {
-  const { category, search, available, status, brand, minPrice, maxPrice, sort, sellerId } = req.query;
+  const { 
+    category, 
+    search, 
+    available, 
+    status, 
+    brand, 
+    minPrice, 
+    maxPrice, 
+    sort, 
+    sellerId,
+    tags,
+    page = 1, 
+    limit = 20 
+  } = req.query;
 
   let query = { isApproved: true, isActive: true };
 
-  if (category) query.category = category;
+  // Category filter (supports multiple categories)
+  if (category) {
+    const categories = Array.isArray(category) ? category : category.split(',');
+    query.category = { $in: categories };
+  }
+
+  // Status filter
   if (status) query.status = status;
-  if (brand) query.brandName = { $regex: brand, $options: 'i' };
+
+  // Brand filter
+  if (brand) {
+    const brands = Array.isArray(brand) ? brand : brand.split(',');
+    query.brandName = { $in: brands.map(b => b.toUpperCase()) };
+  }
+
+  // Seller filter
   if (sellerId) query.seller = sellerId;
 
+  // Tags filter
+  if (tags) {
+    const tagArray = Array.isArray(tags) ? tags : tags.split(',');
+    query.tags = { $in: tagArray.map(t => t.toLowerCase()) };
+  }
+
+  // Advanced search - searches name, brandName, description, category, tags
   if (search) {
     query.$or = [
       { name: { $regex: search, $options: 'i' } },
       { brandName: { $regex: search, $options: 'i' } },
       { description: { $regex: search, $options: 'i' } },
+      { category: { $in: [new RegExp(search, 'i')] } },
+      { tags: { $in: [new RegExp(search, 'i')] } },
     ];
   }
 
+  // Price filter
   if (minPrice || maxPrice) {
     query.retailPrice = {};
     if (minPrice) query.retailPrice.$gte = Number(minPrice);
     if (maxPrice) query.retailPrice.$lte = Number(maxPrice);
   }
 
+  // Availability filter
   if (available === 'true') {
     query.isAvailable = true;
     query.isSoldOut = false;
     query.quantityAvailable = { $gt: 0 };
   }
 
+  // Sorting
   let sortOptions = { createdAt: -1 };
   if (sort) {
     switch (sort) {
@@ -55,7 +98,11 @@ const getProducts = asyncHandler(async (req, res) => {
 
   const products = await Product.find(query)
     .sort(sortOptions)
-    .populate('seller', 'name businessName brandLogo sellerMetrics');
+    .populate('seller', 'name businessName brandLogo sellerMetrics')
+    .limit(limit * 1)
+    .skip((page - 1) * limit);
+
+  const total = await Product.countDocuments(query);
 
   const productsWithData = products.map(product => {
     const productObj = product.toObject();
@@ -64,7 +111,12 @@ const getProducts = asyncHandler(async (req, res) => {
     return productObj;
   });
 
-  res.json(productsWithData);
+  res.json({
+    products: productsWithData,
+    page: Number(page),
+    pages: Math.ceil(total / limit),
+    total,
+  });
 });
 
 // @desc    Get single product
@@ -111,6 +163,8 @@ const getBrands = asyncHandler(async (req, res) => {
 
 // ==================== SELLER PRODUCT CONTROLLERS ====================
 
+// controllers/productController.js - Updated createProduct
+
 // @desc    Create product (Seller only)
 // @route   POST /api/products
 // @access  Private (Seller)
@@ -118,6 +172,16 @@ const createProduct = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
 
   if (!user.isSeller || user.sellerStatus !== 'approved') {
+    // Delete any uploaded images if seller not approved
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        try {
+          await cloudinary.uploader.destroy(file.filename);
+        } catch (err) {
+          console.error('Error deleting file:', err);
+        }
+      }
+    }
     res.status(403);
     throw new Error('Only approved sellers can create products');
   }
@@ -128,7 +192,7 @@ const createProduct = asyncHandler(async (req, res) => {
     description,
     retailPrice,
     bulkPrice,
-    category,
+    category,        // Can be string or array
     status,
     quantityAvailable,
     minOrderAmount,
@@ -138,9 +202,22 @@ const createProduct = asyncHandler(async (req, res) => {
     discount,
     discountStartDate,
     discountEndDate,
+    tags,            // New: optional tags array for better search
   } = req.body;
 
-  if (!name || !brandName || !description || !retailPrice || !category || !quantityAvailable) {
+  // Parse categories - support both string and array
+  let categories = [];
+  if (category) {
+    if (Array.isArray(category)) {
+      categories = category.filter(c => c && c.trim()).map(c => c.trim());
+    } else if (typeof category === 'string') {
+      // Handle comma-separated categories
+      categories = category.split(',').map(c => c.trim()).filter(c => c);
+    }
+  }
+
+  // Validation
+  if (!name || !brandName || !description || !retailPrice || categories.length === 0 || !quantityAvailable) {
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
         try {
@@ -151,7 +228,7 @@ const createProduct = asyncHandler(async (req, res) => {
       }
     }
     res.status(400);
-    throw new Error('Please provide all required fields');
+    throw new Error('Please provide all required fields: name, brandName, description, retailPrice, at least one category, and quantityAvailable');
   }
 
   if (Number(retailPrice) <= Number(bulkPrice || 0)) {
@@ -159,6 +236,7 @@ const createProduct = asyncHandler(async (req, res) => {
     throw new Error('Retail price must be greater than bulk price');
   }
 
+  // Parse bulk pricing
   let parsedBulkPricing = [];
   if (bulkPricing) {
     try {
@@ -169,6 +247,17 @@ const createProduct = asyncHandler(async (req, res) => {
     }
   }
 
+  // Parse tags
+  let parsedTags = [];
+  if (tags) {
+    if (Array.isArray(tags)) {
+      parsedTags = tags.filter(t => t && t.trim()).map(t => t.trim().toLowerCase());
+    } else if (typeof tags === 'string') {
+      parsedTags = tags.split(',').map(t => t.trim().toLowerCase()).filter(t => t);
+    }
+  }
+
+  // Handle images
   const images = req.files && req.files.length > 0 ? req.files.map((file) => file.path) : [];
 
   if (images.length === 0) {
@@ -176,19 +265,21 @@ const createProduct = asyncHandler(async (req, res) => {
     throw new Error('At least one product image is required');
   }
 
+  // Create product
   const product = await Product.create({
     name: name.trim(),
     brandName: brandName.trim().toUpperCase(),
     description: description.trim(),
     retailPrice: Number(retailPrice),
     bulkPrice: Number(bulkPrice || 0),
-    category,
+    category: categories,
     status: status || 'New',
     images,
     quantityAvailable: Number(quantityAvailable),
     quantitySold: 0,
     minOrderAmount: minOrderAmount ? Number(minOrderAmount) : 60000,
     bulkPricing: parsedBulkPricing,
+    tags: parsedTags,
     isAvailable: true,
     isSoldOut: false,
     seller: req.user._id,
@@ -206,10 +297,19 @@ const createProduct = asyncHandler(async (req, res) => {
     createdBy: req.user._id,
   });
 
+  // Update seller metrics
   user.sellerMetrics.totalProducts += 1;
   await user.save();
 
-  res.status(201).json(product);
+  const productObj = product.toObject();
+  productObj.bulkSavings = product.getBulkSavings();
+  productObj.discountedPrice = product.getDiscountedPrice();
+
+  res.status(201).json({
+    success: true,
+    message: 'Product created successfully. Awaiting admin approval.',
+    product: productObj,
+  });
 });
 
 // @desc    Get seller's products
@@ -237,6 +337,8 @@ const getSellerProducts = asyncHandler(async (req, res) => {
   });
 });
 
+// controllers/productController.js - Updated updateProduct
+
 // @desc    Update product (Seller only)
 // @route   PUT /api/products/:id
 // @access  Private (Seller)
@@ -259,7 +361,7 @@ const updateProduct = asyncHandler(async (req, res) => {
     description,
     retailPrice,
     bulkPrice,
-    category,
+    category,        // Can be string or array
     status,
     quantityAvailable,
     minOrderAmount,
@@ -271,6 +373,7 @@ const updateProduct = asyncHandler(async (req, res) => {
     discountEndDate,
     isAvailable,
     keepImages,
+    tags,            // New: tags for better search
   } = req.body;
 
   if (retailPrice && bulkPrice && Number(retailPrice) <= Number(bulkPrice)) {
@@ -278,6 +381,17 @@ const updateProduct = asyncHandler(async (req, res) => {
     throw new Error('Retail price must be greater than bulk price');
   }
 
+  // Parse categories
+  let categories = [];
+  if (category) {
+    if (Array.isArray(category)) {
+      categories = category.filter(c => c && c.trim()).map(c => c.trim());
+    } else if (typeof category === 'string') {
+      categories = category.split(',').map(c => c.trim()).filter(c => c);
+    }
+  }
+
+  // Parse bulk pricing
   let parsedBulkPricing = product.bulkPricing;
   if (bulkPricing !== undefined) {
     try {
@@ -288,6 +402,17 @@ const updateProduct = asyncHandler(async (req, res) => {
     }
   }
 
+  // Parse tags
+  let parsedTags = product.tags || [];
+  if (tags !== undefined) {
+    if (Array.isArray(tags)) {
+      parsedTags = tags.filter(t => t && t.trim()).map(t => t.trim().toLowerCase());
+    } else if (typeof tags === 'string') {
+      parsedTags = tags.split(',').map(t => t.trim().toLowerCase()).filter(t => t);
+    }
+  }
+
+  // Handle images
   let updatedImages = product.images;
 
   if (req.files && req.files.length > 0) {
@@ -298,6 +423,7 @@ const updateProduct = asyncHandler(async (req, res) => {
       imagesToKeep = Array.isArray(keepImages) ? keepImages : [keepImages];
     }
 
+    // Delete removed images from Cloudinary
     for (const oldImage of product.images) {
       if (!imagesToKeep.includes(oldImage)) {
         try {
@@ -312,17 +438,19 @@ const updateProduct = asyncHandler(async (req, res) => {
     updatedImages = [...imagesToKeep, ...newImages];
   }
 
+  // Update fields
   if (name) product.name = name.trim();
   if (brandName) product.brandName = brandName.trim().toUpperCase();
   if (description) product.description = description.trim();
   if (retailPrice) product.retailPrice = Number(retailPrice);
   if (bulkPrice) product.bulkPrice = Number(bulkPrice);
-  if (category) product.category = category;
+  if (categories.length > 0) product.category = categories;
   if (status) product.status = status;
   product.images = updatedImages;
   if (quantityAvailable !== undefined) product.quantityAvailable = Number(quantityAvailable);
   if (minOrderAmount !== undefined) product.minOrderAmount = Number(minOrderAmount);
   if (bulkPricing !== undefined) product.bulkPricing = parsedBulkPricing;
+  if (tags !== undefined) product.tags = parsedTags;
   if (isAvailable !== undefined) product.isAvailable = isAvailable === 'true' || isAvailable === true;
   if (payOnDelivery !== undefined) product.deliveryOptions.payOnDelivery = payOnDelivery === 'true' || payOnDelivery === true;
   if (payOnline !== undefined) product.deliveryOptions.payOnline = payOnline === 'true' || payOnline === true;
@@ -330,11 +458,14 @@ const updateProduct = asyncHandler(async (req, res) => {
   if (discountStartDate !== undefined) product.discountStartDate = discountStartDate ? new Date(discountStartDate) : null;
   if (discountEndDate !== undefined) product.discountEndDate = discountEndDate ? new Date(discountEndDate) : null;
 
-  const significantChanges = name || description || retailPrice || bulkPrice || updatedImages !== product.images;
+  // Check for significant changes that require re-approval
+  const significantChanges = name || description || retailPrice || bulkPrice || 
+                            categories.length > 0 || updatedImages !== product.images;
   if (significantChanges) {
     product.isApproved = false;
   }
 
+  // Update sold out status
   if (product.quantityAvailable <= 0) {
     product.isSoldOut = true;
     product.isAvailable = false;
@@ -347,7 +478,11 @@ const updateProduct = asyncHandler(async (req, res) => {
   productObj.bulkSavings = updatedProduct.getBulkSavings();
   productObj.discountedPrice = updatedProduct.getDiscountedPrice();
 
-  res.json(productObj);
+  res.json({
+    success: true,
+    message: 'Product updated successfully',
+    product: productObj,
+  });
 });
 
 // @desc    Delete product (Seller only)
@@ -699,6 +834,122 @@ const deleteProductReview = asyncHandler(async (req, res) => {
   });
 });
 
+// controllers/productController.js - Add this new endpoint
+
+// @desc    Advanced search products with text search
+// @route   GET /api/products/search
+// @access  Public
+const searchProducts = asyncHandler(async (req, res) => {
+  const { 
+    q,           // search query
+    category,
+    brand,
+    minPrice,
+    maxPrice,
+    minRating,
+    inStock,
+    sort,
+    page = 1, 
+    limit = 20 
+  } = req.query;
+
+  let query = { isApproved: true, isActive: true };
+
+  // Text search on indexed fields
+  if (q && q.trim()) {
+    // Use text search if available
+    query.$text = { $search: q.trim() };
+    
+    // Alternative: regex search on multiple fields
+    // query.$or = [
+    //   { name: { $regex: q, $options: 'i' } },
+    //   { brandName: { $regex: q, $options: 'i' } },
+    //   { description: { $regex: q, $options: 'i' } },
+    //   { category: { $in: [new RegExp(q, 'i')] } },
+    //   { tags: { $in: [new RegExp(q, 'i')] } },
+    // ];
+  }
+
+  // Category filter (multiple)
+  if (category) {
+    const categories = Array.isArray(category) ? category : category.split(',');
+    query.category = { $in: categories };
+  }
+
+  // Brand filter (multiple)
+  if (brand) {
+    const brands = Array.isArray(brand) ? brand : brand.split(',');
+    query.brandName = { $in: brands.map(b => b.toUpperCase()) };
+  }
+
+  // Price range
+  if (minPrice || maxPrice) {
+    query.retailPrice = {};
+    if (minPrice) query.retailPrice.$gte = Number(minPrice);
+    if (maxPrice) query.retailPrice.$lte = Number(maxPrice);
+  }
+
+  // Minimum rating
+  if (minRating) {
+    query.rating = { $gte: Number(minRating) };
+  }
+
+  // In stock filter
+  if (inStock === 'true') {
+    query.isAvailable = true;
+    query.isSoldOut = false;
+    query.quantityAvailable = { $gt: 0 };
+  }
+
+  // Sorting with text score if text search is used
+  let sortOptions = {};
+  if (q && q.trim()) {
+    sortOptions = { score: { $meta: "textScore" }, createdAt: -1 };
+  } else if (sort) {
+    switch (sort) {
+      case 'price-asc': sortOptions = { retailPrice: 1 }; break;
+      case 'price-desc': sortOptions = { retailPrice: -1 }; break;
+      case 'name-asc': sortOptions = { name: 1 }; break;
+      case 'name-desc': sortOptions = { name: -1 }; break;
+      case 'popular': sortOptions = { quantitySold: -1 }; break;
+      case 'rating': sortOptions = { rating: -1 }; break;
+      default: sortOptions = { createdAt: -1 };
+    }
+  } else {
+    sortOptions = { createdAt: -1 };
+  }
+
+  let productsQuery = Product.find(query)
+    .populate('seller', 'name businessName brandLogo');
+
+  // Add text score projection if text search is used
+  if (q && q.trim()) {
+    productsQuery = productsQuery.select({ score: { $meta: "textScore" } });
+  }
+
+  const products = await productsQuery
+    .sort(sortOptions)
+    .limit(limit * 1)
+    .skip((page - 1) * limit);
+
+  const total = await Product.countDocuments(query);
+
+  const productsWithData = products.map(product => {
+    const productObj = product.toObject();
+    productObj.bulkSavings = product.getBulkSavings();
+    productObj.discountedPrice = product.getDiscountedPrice();
+    return productObj;
+  });
+
+  res.json({
+    products: productsWithData,
+    searchTerm: q || null,
+    page: Number(page),
+    pages: Math.ceil(total / limit),
+    total,
+  });
+});
+
 export {
   // Public
   getProducts,
@@ -720,4 +971,5 @@ export {
   createProductReview,
   updateProductReview,
   deleteProductReview,
+  searchProducts
 };

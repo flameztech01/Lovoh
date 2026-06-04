@@ -12,7 +12,9 @@ import {
   FaSpinner,
   FaEnvelope,
   FaLock,
-  FaShoppingBag
+  FaShoppingBag,
+  FaExclamationTriangle,
+  FaClock
 } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { GoogleLogin } from '@react-oauth/google';
@@ -37,6 +39,8 @@ const UduuaLogin = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState('');
+  const [isLocked, setIsLocked] = useState(false);
+  const [lockTimeRemaining, setLockTimeRemaining] = useState(0);
   
   // Forgot password modal state
   const [showModal, setShowModal] = useState(false);
@@ -62,6 +66,7 @@ const UduuaLogin = () => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     if (loginError) setLoginError('');
+    if (isLocked) setIsLocked(false);
   };
 
   const handleEmailLogin = async (e) => {
@@ -90,7 +95,50 @@ const UduuaLogin = () => {
     } catch (err) {
       const errorMessage = err?.data?.message || err?.message || 'Login failed. Check your credentials.';
       setLoginError(errorMessage);
-      toast.error(errorMessage);
+      
+      // Check for lockout message
+      if (errorMessage.toLowerCase().includes('locked') || errorMessage.toLowerCase().includes('too many failed attempts')) {
+        setIsLocked(true);
+        
+        // Extract lock time from message (e.g., "30 minutes")
+        const match = errorMessage.match(/(\d+)\s*minutes?/i);
+        if (match) {
+          setLockTimeRemaining(parseInt(match[1]));
+          
+          // Start countdown timer
+          let timeLeft = parseInt(match[1]);
+          const timer = setInterval(() => {
+            timeLeft--;
+            setLockTimeRemaining(timeLeft);
+            if (timeLeft <= 0) {
+              clearInterval(timer);
+              setIsLocked(false);
+              setLockTimeRemaining(0);
+              toast.info('Account unlocked. You can now try logging in again.', { autoClose: 5000 });
+            }
+          }, 60000);
+          
+          // Store timer to clean up
+          window._lockTimer = timer;
+        }
+      }
+      
+      // Display appropriate toast based on error type
+      if (errorMessage.toLowerCase().includes('attempts remaining')) {
+        toast.error(errorMessage, { autoClose: 8000 });
+      } else if (errorMessage.toLowerCase().includes('locked')) {
+        toast.error(errorMessage, { autoClose: 10000 });
+      } else if (errorMessage.toLowerCase().includes('google')) {
+        toast.error(
+          <div className="flex flex-col gap-1">
+            <span className="font-semibold">Google Account Detected</span>
+            <span className="text-sm">This email uses Google Sign-In. Please log in with Google instead.</span>
+          </div>,
+          { autoClose: 5000 }
+        );
+      } else {
+        toast.error(errorMessage);
+      }
     }
   };
 
@@ -104,6 +152,12 @@ const UduuaLogin = () => {
       navigate(redirect, { replace: true });
     } catch (err) {
       const errorMessage = err?.data?.message || 'Google login failed. Try signing up.';
+      
+      // Check for lockout
+      if (errorMessage.toLowerCase().includes('locked')) {
+        setIsLocked(true);
+      }
+      
       toast.error(errorMessage);
     }
   };
@@ -171,7 +225,46 @@ const UduuaLogin = () => {
     setResetError('');
   };
 
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (window._lockTimer) {
+        clearInterval(window._lockTimer);
+      }
+    };
+  }, []);
+
   const isLoading = emailLoading || googleLoading;
+
+  // Render lock message if account is locked
+  const renderLockMessage = () => {
+    if (!isLocked && !loginError?.toLowerCase().includes('locked')) return null;
+    
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <FaExclamationTriangle className="text-red-500 text-sm" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-red-800">Account Temporarily Locked</p>
+            <p className="text-sm text-red-700 mt-1">
+              Too many failed login attempts.
+              {lockTimeRemaining > 0 && (
+                <span className="block mt-1 font-medium">
+                  <FaClock className="inline mr-1 text-xs" />
+                  Try again in {lockTimeRemaining} minute{lockTimeRemaining !== 1 ? 's' : ''}
+                </span>
+              )}
+            </p>
+            <p className="text-xs text-red-600 mt-2">
+              Forgot your password? Use the "Forgot Password" link below to reset it.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="fixed inset-0 w-full h-full bg-white flex overflow-hidden">
@@ -254,6 +347,9 @@ const UduuaLogin = () => {
                 <p className="text-gray-500 text-xs mt-1">Sign in to your account</p>
               </div>
 
+              {/* Lock Message */}
+              {renderLockMessage()}
+
               {/* Login Card */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 sm:p-6">
                 <form onSubmit={handleEmailLogin} className="space-y-4">
@@ -267,9 +363,10 @@ const UduuaLogin = () => {
                         value={formData.email}
                         onChange={handleChange}
                         required
+                        disabled={isLocked}
                         placeholder="you@example.com"
-                        className={`w-full pl-10 pr-3 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 ${
-                          loginError ? 'border-red-300' : 'border-gray-200'
+                        className={`w-full pl-10 pr-3 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 disabled:bg-gray-100 disabled:cursor-not-allowed ${
+                          loginError && !isLocked ? 'border-red-300' : 'border-gray-200'
                         }`}
                       />
                     </div>
@@ -285,15 +382,17 @@ const UduuaLogin = () => {
                         value={formData.password}
                         onChange={handleChange}
                         required
+                        disabled={isLocked}
                         placeholder="••••••••"
-                        className={`w-full pl-10 pr-10 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 ${
-                          loginError ? 'border-red-300' : 'border-gray-200'
+                        className={`w-full pl-10 pr-10 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 disabled:bg-gray-100 disabled:cursor-not-allowed ${
+                          loginError && !isLocked ? 'border-red-300' : 'border-gray-200'
                         }`}
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        disabled={isLocked}
                       >
                         {showPassword ? <FaEyeSlash className="text-sm" /> : <FaEye className="text-sm" />}
                       </button>
@@ -304,13 +403,14 @@ const UduuaLogin = () => {
                     <button
                       type="button"
                       onClick={() => setShowModal(true)}
-                      className="text-xs text-gray-600 hover:text-gray-900 hover:underline"
+                      disabled={isLocked}
+                      className="text-xs text-gray-600 hover:text-gray-900 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Forgot password?
                     </button>
                   </div>
 
-                  {loginError && (
+                  {loginError && !isLocked && (
                     <div className="bg-red-50 border border-red-200 rounded-lg p-3">
                       <p className="text-red-600 text-xs">{loginError}</p>
                     </div>
@@ -318,11 +418,11 @@ const UduuaLogin = () => {
 
                   <button
                     type="submit"
-                    disabled={isLoading}
-                    className="w-full py-2.5 bg-gray-900 text-white rounded-xl font-medium text-sm hover:bg-gray-800 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                    disabled={isLoading || isLocked}
+                    className="w-full py-2.5 bg-gray-900 text-white rounded-xl font-medium text-sm hover:bg-gray-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {emailLoading ? <FaSpinner className="animate-spin" /> : null}
-                    {emailLoading ? 'Signing in...' : 'Sign In'}
+                    {emailLoading ? 'Signing in...' : isLocked ? 'Account Locked' : 'Sign In'}
                   </button>
                 </form>
 

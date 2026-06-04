@@ -46,8 +46,10 @@ const UduuaProducts = () => {
     skip: !userInfo,
   });
 
+  // FIX: productsData is an object with products array, not the array itself
+  const allProducts = productsData?.products || [];
+  
   // Filter products to only show approved ones
-  const allProducts = productsData || [];
   const products = allProducts.filter(product => product.isApproved !== false);
 
   const categories = categoriesData || [];
@@ -147,7 +149,8 @@ const UduuaProducts = () => {
 
     if (selectedCategory) {
       filtered = filtered.filter(product => 
-        product.category === selectedCategory
+        product.category === selectedCategory || 
+        (Array.isArray(product.category) && product.category.includes(selectedCategory))
       );
     }
 
@@ -483,7 +486,7 @@ const UduuaProducts = () => {
                               <div className="flex items-center gap-1 mb-1">
                                 <FaTag className="text-[#0043FC] text-[8px]" />
                                 <span className="text-[10px] text-gray-400 truncate">
-                                  {product.category || "General"}
+                                  {Array.isArray(product.category) ? product.category[0] : product.category || "General"}
                                 </span>
                               </div>
 
@@ -609,7 +612,7 @@ const UduuaProducts = () => {
                                       {product.name}
                                     </h3>
                                     <p className="text-xs text-gray-500 mt-1 line-clamp-1">
-                                      {product.brandName || "GENERIC"} • {product.category || "General"}
+                                      {product.brandName || "GENERIC"} • {Array.isArray(product.category) ? product.category[0] : product.category || "General"}
                                     </p>
                                   </div>
                                   <div className="text-right">

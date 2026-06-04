@@ -5,7 +5,18 @@ import { ToastContainer } from 'react-toastify'
 const App = () => {
   return (
     <div className='App'>
-      <ToastContainer position='bottom-right' />
+            <ToastContainer 
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
       <Outlet />
     </div>
   )

@@ -85,12 +85,14 @@ const productSchema = mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      index: true,
     },
     brandName: {
       type: String,
       required: true,
       trim: true,
       uppercase: true,
+      index: true,
     },
     description: {
       type: String,
@@ -106,10 +108,14 @@ const productSchema = mongoose.Schema(
       required: true,
       default: 0,
     },
-    category: {
-      type: String,
-      required: true,
-    },
+    // UPDATED: category is now an array of strings
+    category: [
+      {
+        type: String,
+        required: true,
+        trim: true,
+      }
+    ],
     status: {
       type: String,
       enum: ['New', 'Trending', 'Bulk Available', 'Shoppers Favourite', 'Limited', 'Featured'],
@@ -143,6 +149,13 @@ const productSchema = mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    tags: [
+      {
+        type: String,
+        trim: true,
+        lowercase: true,
+      }
+    ],
     // Review fields
     reviews: [reviewSchema],
     rating: {
@@ -172,7 +185,7 @@ const productSchema = mongoose.Schema(
     },
     isApproved: {
       type: Boolean,
-      default: false, // Admin approval required
+      default: false,
     },
     approvedAt: {
       type: Date,
@@ -206,14 +219,21 @@ const productSchema = mongoose.Schema(
   }
 );
 
+// ==================== INDEXES ====================
+productSchema.index({ name: 'text', brandName: 'text', description: 'text', tags: 'text', category: 'text' });
+productSchema.index({ category: 1 });
+productSchema.index({ brandName: 1 });
+productSchema.index({ retailPrice: 1 });
+productSchema.index({ createdAt: -1 });
+productSchema.index({ quantitySold: -1 });
+productSchema.index({ rating: -1 });
+
 // ==================== VIRTUALS ====================
 
-// Virtual for checking if product can be ordered
 productSchema.virtual('canOrder').get(function () {
   return this.isAvailable && !this.isSoldOut && this.quantityAvailable > 0;
 });
 
-// Virtual for helpful count
 productSchema.virtual('helpfulCount').get(function () {
   if (!this.reviews) return 0;
   return this.reviews.reduce((total, review) => total + (review.helpful?.length || 0), 0);
@@ -221,7 +241,6 @@ productSchema.virtual('helpfulCount').get(function () {
 
 // ==================== METHODS ====================
 
-// Method to calculate discounted price (MOVED HERE from fields)
 productSchema.methods.getDiscountedPrice = function() {
   if (this.discount && this.discount > 0) {
     const now = new Date();
@@ -236,7 +255,6 @@ productSchema.methods.getDiscountedPrice = function() {
   return this.retailPrice;
 };
 
-// Method to calculate price based on quantity
 productSchema.methods.calculatePrice = function (quantity) {
   const bulkTier = this.bulkPricing?.find(
     (tier) => quantity >= tier.minQuantity && (!tier.maxQuantity || quantity <= tier.maxQuantity)
@@ -253,18 +271,15 @@ productSchema.methods.calculatePrice = function (quantity) {
   return this.retailPrice;
 };
 
-// Method to get total price for a quantity
 productSchema.methods.getTotalPrice = function (quantity) {
   return this.calculatePrice(quantity) * quantity;
 };
 
-// Method to check if order meets minimum amount
 productSchema.methods.meetsMinOrder = function (quantity) {
   const totalPrice = this.getTotalPrice(quantity);
   return totalPrice >= this.minOrderAmount;
 };
 
-// Method to get display price based on quantity
 productSchema.methods.getDisplayPrice = function (quantity = 1) {
   if (quantity >= 2 && this.bulkPrice) {
     return this.bulkPrice;
@@ -272,7 +287,6 @@ productSchema.methods.getDisplayPrice = function (quantity = 1) {
   return this.retailPrice;
 };
 
-// Method to calculate savings percentage (bulk vs retail)
 productSchema.methods.getBulkSavings = function () {
   if (this.retailPrice > this.bulkPrice && this.bulkPrice > 0) {
     return Math.round(((this.retailPrice - this.bulkPrice) / this.retailPrice) * 100);
@@ -280,7 +294,6 @@ productSchema.methods.getBulkSavings = function () {
   return 0;
 };
 
-// Method to update rating distribution and average
 productSchema.methods.updateRatingStats = function () {
   const distribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
   let totalRating = 0;
@@ -297,7 +310,6 @@ productSchema.methods.updateRatingStats = function () {
   return this;
 };
 
-// Method to check if user has purchased this product
 productSchema.methods.hasUserPurchased = async function (userId) {
   const Order = mongoose.model('Order');
   const order = await Order.findOne({
@@ -309,14 +321,12 @@ productSchema.methods.hasUserPurchased = async function (userId) {
   return !!order;
 };
 
-// Method to get user's existing review
 productSchema.methods.getUserReview = function (userId) {
   return this.reviews.find(
     (review) => review.user.toString() === userId.toString()
   );
 };
 
-// Method to check if user can review
 productSchema.methods.canUserReview = async function (userId) {
   const existingReview = this.getUserReview(userId);
   if (existingReview) return false;
