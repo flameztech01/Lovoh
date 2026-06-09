@@ -9,7 +9,7 @@ import {
 } from 'react-icons/fa';
 import { useSelector, useDispatch } from 'react-redux';
 import { useGetMyCustomFormsQuery } from '../slices/customFormApiSlice';
-import { logout, clearAllAuth } from '../slices/authSlice';
+import { logout, clearAllAuth } from '../slices/authslice';
 
 const CustomFormSidebar = () => {
   const location = useLocation();
