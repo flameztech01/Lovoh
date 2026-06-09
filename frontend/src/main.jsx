@@ -1,7 +1,7 @@
-// main.jsx – Main LovohCreate website (no sub‑brands, redirects to subdomains)
+// main.jsx – Main LovoCreate website
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { Provider } from "react-redux";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { Analytics } from "@vercel/analytics/react";
@@ -37,64 +37,6 @@ import CustomFormAnalytics from "./screens/CustomFormAnalytics.jsx";
 import CustomFormTemplates from "./screens/CustomFormTemplates.jsx";
 import CustomFormTeam from "./screens/CustomFormTeam.jsx";
 
-// Admin (protected)
-import PrivateRoute from "./adminComponents/Privateroute.jsx";
-import Adminauth from "./adminScreen/Adminauth.jsx";
-import AdminDashboard from "./adminScreen/AdminDashboard.jsx";
-import Viewmessage from "./adminScreen/Viewmessage.jsx";
-import AdminProducts from "./adminScreen/AdminProducts.jsx";
-import AdminProductDetail from "./adminScreen/AdminProductDetail.jsx";
-import AdminAddProduct from "./adminScreen/AdminAddProduct.jsx";
-import AdminEditProduct from "./adminScreen/AdminEditProduct.jsx";
-import AdminOrders from "./adminScreen/AdminOrders.jsx";
-import AdminMagazines from "./adminScreen/AdminMagazines.jsx";
-import AdminAddMagazine from "./adminScreen/AdminAddMagazine.jsx";
-import AdminMagazineDetail from "./adminScreen/AdminMagazineDetail.jsx";
-import AdminEditMagazine from "./adminScreen/AdminEditMagazine.jsx";
-import AdminArticles from "./adminScreen/AdminArticles.jsx";
-import AdminAddArticle from "./adminScreen/AdminAddArticle.jsx";
-import AdminEditArticle from "./adminScreen/AdminEditArticle.jsx";
-import AdminEvents from "./adminScreen/AdminEvents.jsx";
-import AdminAddEvent from "./adminScreen/AdminAddEvent.jsx";
-import AdminEditEvent from "./adminScreen/AdminEditEvent.jsx";
-import AdminEventDetail from "./adminScreen/AdminEventDetail.jsx";
-import AdminEventRegistration from "./adminScreen/AdminEventRegistration.jsx";
-import AdminForms from "./adminScreen/AdminForms.jsx";
-import AdminAds from "./adminScreen/AdminAds.jsx";
-import AdminAddAd from "./adminScreen/AdminAddAd.jsx";
-import AdminEditAd from "./adminScreen/AdminEditAd.jsx";
-import AdminAdDetail from "./adminScreen/AdminAdDetail.jsx";
-import AdminVideos from "./adminScreen/AdminVideos.jsx";
-import AdminAddVideos from "./adminScreen/AdminAddVideos.jsx";
-import AdminEditVideo from "./adminScreen/AdminEditVideo.jsx";
-import AdminSellers from "./adminScreen/AdminSellers.jsx";
-import AdminSellerDetail from "./adminScreen/AdminSellerDetail.jsx";
-
-// No sub‑brand routes or push notifications on the main site (optional)
-// import usePushNotifications from "./hooks/usePushNotifications";
-
-// ==================== SUBDOMAIN REDIRECTS ====================
-const SUBDOMAIN_MAP = {
-  "/biizzed": "https://biizzed.lovohcreate.com",
-  "/uduua": "https://uduua.lovohcreate.com",
-  "/events": "https://eventroom.lovohcreate.com",
-};
-
-// Component that redirects to the corresponding subdomain
-const RedirectToSubdomain = () => {
-  const pathname = window.location.pathname;
-  for (const [path, subdomainUrl] of Object.entries(SUBDOMAIN_MAP)) {
-    if (pathname === path || pathname.startsWith(`${path}/`)) {
-      // Preserve the rest of the path
-      const rest = pathname.slice(path.length);
-      window.location.href = `${subdomainUrl}${rest}${window.location.search}${window.location.hash}`;
-      return null;
-    }
-  }
-  // Fallback – should not happen
-  return <Navigate to="/" replace />;
-};
-
 // ==================== ROUTER ====================
 const router = createBrowserRouter([
   {
@@ -127,65 +69,16 @@ const router = createBrowserRouter([
       { path: "custom-form/templates", element: <CustomFormTemplates /> },
       { path: "custom-form/team", element: <CustomFormTeam /> },
 
-      // Admin login (unprotected)
-      { path: "admin/login", element: <Adminauth /> },
-
-      // Protected admin section
-      {
-        path: "admin",
-        element: <PrivateRoute />,
-        children: [
-          { path: "dashboard", element: <AdminDashboard /> },
-          { path: "message", element: <AdminDashboard /> },
-          { path: "messages/:id", element: <Viewmessage /> },
-          { path: "products", element: <AdminProducts /> },
-          { path: "products/:id", element: <AdminProductDetail /> },
-          { path: "products/new", element: <AdminAddProduct /> },
-          { path: "products/edit/:id", element: <AdminEditProduct /> },
-          { path: "orders", element: <AdminOrders /> },
-          { path: "magazines", element: <AdminMagazines /> },
-          { path: "magazines/new", element: <AdminAddMagazine /> },
-          { path: "magazines/:id", element: <AdminMagazineDetail /> },
-          { path: "magazines/edit/:id", element: <AdminEditMagazine /> },
-          { path: "articles", element: <AdminArticles /> },
-          { path: "articles/new", element: <AdminAddArticle /> },
-          { path: "articles/edit/:id", element: <AdminEditArticle /> },
-          { path: "events", element: <AdminEvents /> },
-          { path: "events/new", element: <AdminAddEvent /> },
-          { path: "events/edit/:id", element: <AdminEditEvent /> },
-          { path: "events/:id", element: <AdminEventDetail /> },
-          { path: "events/:id/registrations", element: <AdminEventRegistration /> },
-          { path: "forms", element: <AdminForms /> },
-          { path: "ads", element: <AdminAds /> },
-          { path: "ads/new", element: <AdminAddAd /> },
-          { path: "ads/edit/:id", element: <AdminEditAd /> },
-          { path: "ads/:id", element: <AdminAdDetail /> },
-          { path: "videos", element: <AdminVideos /> },
-          { path: "videos/new", element: <AdminAddVideos /> },
-          { path: "videos/edit/:id", element: <AdminEditVideo /> },
-          { path: "sellers", element: <AdminSellers /> },
-          { path: "sellers/:id", element: <AdminSellerDetail /> },
-        ],
-      },
-
-      // Redirect sub‑brand paths to their subdomains
-      { path: "biizzed/*", element: <RedirectToSubdomain /> },
-      { path: "uduua/*", element: <RedirectToSubdomain /> },
-      { path: "events/*", element: <RedirectToSubdomain /> },
-
       // 404 – catch all unmatched routes
       { path: "*", element: <NotFound /> },
     ],
   },
 ]);
 
-// Google OAuth client ID (only needed if main site uses Google login)
+// Google OAuth client ID
 const GOOGLE_CLIENT_ID =
   import.meta.env.VITE_GOOGLE_CLIENT_ID ||
   "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
-
-// No service worker / push notifications on the main marketing site (optional)
-// if ("serviceWorker" in navigator) { ... }
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
