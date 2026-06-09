@@ -2,24 +2,7 @@
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/index.html"
-    }
-  ],
-  "redirects": [
-    {
-      "source": "/biizzed(.*)",
-      "destination": "https://biizzed.lovohcreate.com$1",
-      "permanent": true
-    },
-    {
-      "source": "/uduua(.*)",
-      "destination": "https://uduua.lovohcreate.com$1",
-      "permanent": true
-    },
-    {
-      "source": "/events(.*)",
-      "destination": "https://eventroom.lovohcreate.com$1",
-      "permanent": true
+      "destination": "/"
     }
   ]
 }
