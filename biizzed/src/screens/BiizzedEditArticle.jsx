@@ -1,4 +1,4 @@
-// screens/BiizzedEditArticle.jsx – Premium design with brand colors & active states
+// screens/BiizzedEditArticle.jsx – Mobile-optimized premium design
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -18,7 +18,7 @@ const BiizzedEditArticle = () => {
   const editorRef = useRef(null);
   const titleInputRef = useRef(null);
 
-  const { data: article, isLoading, error, refetch } = useGetArticleByIdQuery(id);
+  const { data: article, isLoading, error } = useGetArticleByIdQuery(id);
   const [updateArticle, { isLoading: isUpdating }] = useUpdateArticleMutation();
 
   const [formData, setFormData] = useState({
@@ -46,7 +46,6 @@ const BiizzedEditArticle = () => {
   const [imagePlacementMode, setImagePlacementMode] = useState('manual');
   const [showModeSelector, setShowModeSelector] = useState(false);
   const [showCustomCategory, setShowCustomCategory] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [wordCount, setWordCount] = useState(0);
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
@@ -62,8 +61,8 @@ const BiizzedEditArticle = () => {
 
   // Validation functions
   const validateTitle = (title) => {
-    if (!title || title.trim().length === 0) return 'Title is required';
-    if (title.trim().length < 5) return 'Title must be at least 5 characters';
+    if (!title || title.trim().length === 0) return 'Title required';
+    if (title.trim().length < 5) return 'Min 5 characters';
     return null;
   };
 
@@ -71,42 +70,23 @@ const BiizzedEditArticle = () => {
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = contentText || '';
     const cleanText = tempDiv.textContent || '';
-    if (!contentText || cleanText.trim().length === 0) return 'Content is required';
-    if (cleanText.trim().length < 50) return 'Content must be at least 50 characters';
+    if (!contentText || cleanText.trim().length === 0) return 'Content required';
+    if (cleanText.trim().length < 50) return 'Min 50 characters';
     return null;
   };
 
   const validateCategory = (category, customCategory) => {
-    if (!category) return 'Category is required';
+    if (!category) return 'Category required';
     if (category === 'Others' && (!customCategory || customCategory.trim().length === 0)) {
-      return 'Please enter a custom category';
+      return 'Enter custom category';
     }
     return null;
   };
 
-  const validateImages = (imageList) => {
-    if (imageList.length === 0) return 'At least one image is required';
+  const validateImages = () => {
+    const totalImages = existingImages.length + newImages.length;
+    if (totalImages === 0) return 'At least one image required';
     return null;
-  };
-
-  const validateAll = () => {
-    const titleError = validateTitle(formData.title);
-    const categoryError = validateCategory(formData.category, formData.customCategory);
-    const imagesError = validateImages([...existingImages, ...newImages]);
-    let contentError = null;
-    
-    if (!formData.comingSoon) {
-      contentError = validateContent(content);
-    }
-    
-    setErrors({
-      title: titleError,
-      content: contentError,
-      category: categoryError,
-      images: imagesError,
-    });
-    
-    return !titleError && !contentError && !categoryError && !imagesError;
   };
 
   // Update word count
@@ -163,21 +143,16 @@ const BiizzedEditArticle = () => {
         status: article.status || 'draft',
       });
       
-      if (isCustomCategory) {
-        setShowCustomCategory(true);
-      }
+      if (isCustomCategory) setShowCustomCategory(true);
       
       setContent(article.content || '');
       setExistingImages(article.images || []);
       setKeepImages(article.images || []);
-      
-      // Set editor content
       editorRef.current.innerHTML = article.content || '';
       setIsEditorInitialized(true);
     }
   }, [article, isEditorInitialized]);
 
-  // Real-time validation on blur
   const handleBlur = (field) => {
     setTouched(prev => ({ ...prev, [field]: true }));
     
@@ -192,7 +167,7 @@ const BiizzedEditArticle = () => {
         setErrors(prev => ({ ...prev, category: validateCategory(formData.category, formData.customCategory) }));
         break;
       case 'images':
-        setErrors(prev => ({ ...prev, images: validateImages([...existingImages, ...newImages]) }));
+        setErrors(prev => ({ ...prev, images: validateImages() }));
         break;
       default:
         break;
@@ -279,7 +254,7 @@ const BiizzedEditArticle = () => {
 
   const insertImageAtCursor = (imageUrl) => {
     if (!editorRef.current || formData.comingSoon) {
-      toast.error('Click in the editor first');
+      toast.error('Tap in the editor first');
       return;
     }
     
@@ -291,23 +266,23 @@ const BiizzedEditArticle = () => {
     const savedSelection = saveSelection();
     
     const container = document.createElement('div');
-    container.className = 'relative my-6 group';
+    container.className = 'relative my-3 group';
     container.setAttribute('contenteditable', 'false');
     
     const img = document.createElement('img');
     img.src = imageUrl;
-    img.className = 'w-full rounded-2xl shadow-lg';
-    img.style.maxHeight = '500px';
+    img.className = 'w-full rounded-xl shadow-md';
+    img.style.maxHeight = '300px';
     img.style.objectFit = 'cover';
     
     const deleteBtn = document.createElement('button');
-    deleteBtn.className = 'absolute top-3 right-3 w-9 h-9 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:shadow-lg z-10';
-    deleteBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>';
+    deleteBtn.className = 'absolute top-2 right-2 w-7 h-7 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all z-10';
+    deleteBtn.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>';
     deleteBtn.onclick = (e) => {
       e.stopPropagation();
       container.remove();
       setContent(editorRef.current.innerHTML);
-      toast.success('Image removed from article');
+      toast.success('Image removed');
     };
     
     container.appendChild(img);
@@ -324,7 +299,7 @@ const BiizzedEditArticle = () => {
     
     setContent(editorRef.current.innerHTML);
     setTimeout(() => restoreSelection(savedSelection), 10);
-    toast.success('Image added to your story');
+    toast.success('Image added');
   };
 
   const handleEditorInput = (e) => {
@@ -348,7 +323,6 @@ const BiizzedEditArticle = () => {
       [name]: type === 'checkbox' ? checked : value,
     }));
     
-    // Clear errors when fields are updated
     if (name === 'title' && errors.title) {
       setErrors(prev => ({ ...prev, title: null }));
     }
@@ -359,9 +333,9 @@ const BiizzedEditArticle = () => {
 
   const handleImageSelect = (e) => {
     const files = Array.from(e.target.files);
-    const remainingSlots = 5 - (existingImages.length - removedImages.length + newImages.length);
+    const remainingSlots = 5 - (existingImages.length + newImages.length);
     if (files.length > remainingSlots) {
-      toast.error(`Max 5 images total. You can add ${remainingSlots} more.`);
+      toast.error(`Max 5 images. ${remainingSlots} left`);
       return;
     }
     
@@ -369,7 +343,7 @@ const BiizzedEditArticle = () => {
     const newPrevs = [];
     for (const file of files) {
       if (!file.type.startsWith('image/')) {
-        toast.error(`${file.name} is not an image`);
+        toast.error(`${file.name} not an image`);
         continue;
       }
       if (file.size > 5 * 1024 * 1024) { 
@@ -382,9 +356,8 @@ const BiizzedEditArticle = () => {
         newPrevs.push(reader.result);
         if (newPrevs.length === newImgs.length) {
           setNewImagePreviews(prev => [...prev, ...newPrevs]);
-          toast.info(`${newImgs.length} image(s) added. Click to insert into editor.`);
-          // Clear images error when images are added
-          if (errors.images && [...existingImages, ...newImgs].length > 0) {
+          toast.info(`${newImgs.length} image(s) added`);
+          if (errors.images && (existingImages.length + newImgs.length) > 0) {
             setErrors(prev => ({ ...prev, images: null }));
           }
         }
@@ -401,9 +374,8 @@ const BiizzedEditArticle = () => {
     setExistingImages(prev => prev.filter((_, i) => i !== index));
     toast.success('Image removed');
     
-    // Update images error
     if (existingImages.length === 1 && newImages.length === 0) {
-      setErrors(prev => ({ ...prev, images: 'At least one image is required' }));
+      setErrors(prev => ({ ...prev, images: 'At least one image required' }));
     }
   };
 
@@ -412,50 +384,28 @@ const BiizzedEditArticle = () => {
     setNewImagePreviews(prev => prev.filter((_, i) => i !== index));
     toast.success('Image removed');
     
-    // Update images error
     if (existingImages.length === 0 && newImages.length === 1) {
-      setErrors(prev => ({ ...prev, images: 'At least one image is required' }));
+      setErrors(prev => ({ ...prev, images: 'At least one image required' }));
     }
   };
 
   const handleSubmit = async () => {
-    // Mark all fields as touched
-    setTouched({
-      title: true,
-      content: true,
-      category: true,
-      images: true,
-    });
+    setTouched({ title: true, content: true, category: true, images: true });
     
     const finalCategory = getFinalCategory();
-    
-    // Validate all fields
     const titleError = validateTitle(formData.title);
     const contentError = !formData.comingSoon ? validateContent(content) : null;
     const categoryError = validateCategory(formData.category, formData.customCategory);
-    const imagesError = validateImages([...existingImages, ...newImages]);
+    const imagesError = validateImages();
     
-    setErrors({
-      title: titleError,
-      content: contentError,
-      category: categoryError,
-      images: imagesError,
-    });
+    setErrors({ title: titleError, content: contentError, category: categoryError, images: imagesError });
     
-    // If any errors, show toast and scroll to first error
     if (titleError || contentError || categoryError || imagesError) {
       if (titleError) toast.error(titleError);
       else if (contentError) toast.error(contentError);
       else if (categoryError) toast.error(categoryError);
       else if (imagesError) toast.error(imagesError);
-      
       scrollToError();
-      return;
-    }
-    
-    const totalImages = existingImages.length + newImages.length;
-    if (totalImages === 0) {
-      toast.error('Add at least one image');
       return;
     }
 
@@ -471,43 +421,34 @@ const BiizzedEditArticle = () => {
     newImages.forEach(img => fd.append('images', img));
 
     try {
-      const result = await updateArticle({ id, data: fd }).unwrap();
-      if (result) {
-        toast.success(formData.comingSoon ? '✨ Article updated as "Coming Soon"!' : '🎉 Article updated successfully!');
-        navigate('/profile?tab=articles');
-      }
+      await updateArticle({ id, data: fd }).unwrap();
+      toast.success(formData.comingSoon ? 'Updated as "Coming Soon"!' : 'Article updated!');
+      navigate('/profile?tab=articles');
     } catch (error) {
-      toast.error(error?.data?.message || 'Failed to update article. Please try again.');
+      toast.error(error?.data?.message || 'Failed to update');
     }
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
-        <BiizzedArticlesNavbar />
-        <div className="flex items-center justify-center min-h-[80vh]">
-          <div className="text-center">
-            <FiLoader className="animate-spin text-3xl text-[#1B3766] mx-auto mb-3" />
-            <p className="text-gray-500 text-sm">Loading your article...</p>
-          </div>
-        </div>
-        <BiizzedBottomBar />
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <FiLoader className="animate-spin text-2xl text-[#1B3766]" />
       </div>
     );
   }
 
   if (error || !article) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
+      <div className="min-h-screen bg-gray-50">
         <BiizzedArticlesNavbar />
-        <div className="flex items-center justify-center min-h-[80vh] px-6">
-          <div className="text-center max-w-sm">
-            <div className="w-24 h-24 bg-gradient-to-br from-red-400 to-red-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
-              <FiXCircle className="text-3xl text-white" />
+        <div className="flex items-center justify-center min-h-[80vh] px-4">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <FiXCircle className="text-2xl text-red-500" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Article not found</h2>
-            <p className="text-gray-500 text-sm mb-8">The article you're looking for doesn't exist or you don't have permission to edit it.</p>
-            <button onClick={() => navigate('/profile?tab=articles')} className="w-full py-4 bg-gradient-to-r from-[#1B3766] to-[#142952] text-white rounded-xl font-medium hover:shadow-lg">
+            <h2 className="text-xl font-bold mb-1">Not found</h2>
+            <p className="text-gray-500 text-xs mb-6">Article doesn't exist or no permission</p>
+            <button onClick={() => navigate('/profile?tab=articles')} className="w-full py-3 bg-gradient-to-r from-[#1B3766] to-[#142952] text-white rounded-lg text-sm font-medium">
               Back to Profile
             </button>
           </div>
@@ -521,106 +462,91 @@ const BiizzedEditArticle = () => {
   const canAddMore = totalImages < 5;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
+    <div className="min-h-screen bg-gray-50">
       <BiizzedArticlesNavbar />
       
-      <div className="max-w-4xl mx-auto px-5 py-6 pb-32">
-        {/* Elegant Header */}
-        <div className="flex items-center justify-between mb-8 sticky top-0 bg-white/80 backdrop-blur-md py-4 z-20 rounded-2xl px-4 shadow-sm">
-          <button onClick={() => navigate('/profile?tab=articles')} className="text-gray-600 hover:text-[#1B3766] transition-all group">
-            <FiArrowLeft className="text-xl group-hover:-translate-x-1 transition-transform" />
+      <div className="px-3 py-3 pb-28">
+        {/* Compact Header */}
+        <div className="flex items-center justify-between mb-4 sticky top-0 bg-gray-50/95 backdrop-blur-sm py-2 z-20">
+          <button onClick={() => navigate('/profile?tab=articles')} className="text-gray-600">
+            <FiArrowLeft className="text-lg" />
           </button>
           
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-2">
             {!formData.comingSoon && (
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-full">
-                <FiCheckCircle className="text-sm text-green-500" />
-                <span className="text-xs font-medium text-gray-600">{wordCount} words</span>
+              <div className="flex items-center gap-1 px-2 py-1 bg-white rounded-full shadow-sm">
+                <FiCheckCircle className="text-xs text-green-500" />
+                <span className="text-[10px] font-medium text-gray-500">{wordCount}</span>
               </div>
             )}
             
             <button 
               onClick={handleSubmit} 
               disabled={isUpdating}
-              className="px-6 py-2.5 bg-gradient-to-r from-[#1B3766] to-[#142952] text-white rounded-full text-sm font-medium hover:shadow-lg transition-all disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-1.5 bg-gradient-to-r from-[#1B3766] to-[#142952] text-white rounded-full text-xs font-medium flex items-center gap-1"
             >
-              {isUpdating ? (
-                <>
-                  <FiLoader className="animate-spin" />
-                  Updating...
-                </>
-              ) : (
-                <>
-                  <FiSave />
-                  Update
-                </>
-              )}
+              {isUpdating ? <FiLoader className="animate-spin text-xs" /> : <FiSave className="text-xs" />}
+              <span>Save</span>
             </button>
           </div>
         </div>
 
-        {/* Coming Soon Toggle - Premium */}
-        <div className="mb-6 bg-gradient-to-r from-amber-50 to-yellow-50 rounded-2xl p-5 border border-amber-200">
-          <label className="flex items-center gap-4 cursor-pointer">
+        {/* Coming Soon Toggle */}
+        <div className="mb-3 bg-amber-50 rounded-xl p-3 border border-amber-200">
+          <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
               name="comingSoon"
               checked={formData.comingSoon}
               onChange={handleChange}
-              className="w-5 h-5 text-[#1B3766] rounded focus:ring-2 focus:ring-[#1B3766]"
+              className="w-4 h-4 text-[#1B3766] rounded"
             />
             <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <FiClock className="text-[#1B3766] text-base" />
-                <span className="font-semibold text-gray-800">Coming Soon Mode</span>
+              <div className="flex items-center gap-1">
+                <FiClock className="text-[#1B3766] text-xs" />
+                <span className="font-semibold text-gray-800 text-xs">Coming Soon</span>
               </div>
-              <p className="text-sm text-gray-600 mt-1">
-                {formData.comingSoon
-                  ? "Article will be shown as 'Coming Soon'. Content can be added later."
-                  : "Full content required (min 50 characters). Article will be published or saved as draft."}
+              <p className="text-[10px] text-gray-600 mt-0.5">
+                {formData.comingSoon ? "Content hidden until ready" : "Full content required (min 50 chars)"}
               </p>
             </div>
           </label>
         </div>
 
-        {/* Mode selector - if not coming soon */}
+        {/* Mode selector */}
         {!formData.comingSoon && showModeSelector && newImagePreviews.length === 0 && (
-          <div className="mb-8 p-1.5 bg-gray-100/80 backdrop-blur rounded-2xl inline-flex w-full max-w-md">
+          <div className="mb-3 p-1 bg-gray-100 rounded-xl inline-flex w-full">
             <button
               onClick={() => { setImagePlacementMode('manual'); setShowModeSelector(false); }}
-              className={`flex-1 py-3 px-5 rounded-xl text-sm font-medium transition-all ${
-                imagePlacementMode === 'manual' 
-                  ? 'bg-white shadow-md text-[#1B3766]' 
-                  : 'text-gray-500 hover:text-gray-700'
+              className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${
+                imagePlacementMode === 'manual' ? 'bg-white shadow text-[#1B3766]' : 'text-gray-500'
               }`}
             >
-              <FiMove className="inline mr-2" /> Manual placement
+              <FiMove className="inline mr-1 text-xs" /> Manual
             </button>
             <button
               onClick={() => { setImagePlacementMode('auto'); setShowModeSelector(false); }}
-              className={`flex-1 py-3 px-5 rounded-xl text-sm font-medium transition-all ${
-                imagePlacementMode === 'auto' 
-                  ? 'bg-white shadow-md text-[#1B3766]' 
-                  : 'text-gray-500 hover:text-gray-700'
+              className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${
+                imagePlacementMode === 'auto' ? 'bg-white shadow text-[#1B3766]' : 'text-gray-500'
               }`}
             >
-              <FiGrid className="inline mr-2" /> Auto placement
+              <FiGrid className="inline mr-1 text-xs" /> Auto
             </button>
           </div>
         )}
 
         {/* Mode indicator */}
         {!formData.comingSoon && !showModeSelector && newImagePreviews.length > 0 && (
-          <div className="mb-4 flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-            <div className="flex items-center gap-2">
-              <FiMove className="text-[#1B3766] text-sm" />
-              <span className="text-xs text-gray-700">Manual mode: Click any new image to insert at cursor</span>
+          <div className="mb-3 flex items-center justify-between p-2 bg-blue-50 rounded-lg">
+            <div className="flex items-center gap-1">
+              <FiMove className="text-[#1B3766] text-xs" />
+              <span className="text-[10px] text-gray-600">Tap new image to insert</span>
             </div>
           </div>
         )}
 
-        {/* Title input with error handling */}
-        <div className="mb-6">
+        {/* Title */}
+        <div className="mb-3">
           <input
             ref={titleInputRef}
             type="text"
@@ -628,210 +554,151 @@ const BiizzedEditArticle = () => {
             value={formData.title}
             onChange={handleChange}
             onBlur={() => handleBlur('title')}
-            placeholder="Edit your title..."
-            className={`w-full text-4xl md:text-5xl lg:text-6xl font-bold border-0 outline-none placeholder:text-gray-300 p-0 focus:ring-0 bg-transparent ${
-              touched.title && errors.title ? 'text-red-500 placeholder:text-red-200' : ''
+            placeholder="Title"
+            className={`w-full text-2xl font-bold border-0 outline-none placeholder:text-gray-300 p-0 bg-transparent ${
+              touched.title && errors.title ? 'text-red-500' : ''
             }`}
           />
           {touched.title && errors.title && (
-            <div className="flex items-center gap-1 mt-2 text-red-500 text-sm">
-              <FiAlertCircle className="text-xs" />
+            <div className="flex items-center gap-1 mt-1 text-red-500 text-[10px]">
+              <FiAlertCircle className="text-[10px]" />
               <span>{errors.title}</span>
             </div>
           )}
         </div>
 
         {/* Excerpt */}
-        <div className="mb-8">
+        <div className="mb-3">
           <textarea
             name="excerpt"
             value={formData.excerpt}
             onChange={handleChange}
-            placeholder="Edit your excerpt..."
-            rows={2}
-            className="w-full text-gray-500 text-lg border-0 outline-none placeholder:text-gray-300 resize-none p-0 bg-transparent"
+            placeholder="Excerpt..."
+            rows={1}
+            className="w-full text-gray-500 text-sm border-0 outline-none placeholder:text-gray-300 resize-none p-0 bg-transparent"
           />
         </div>
 
-        {/* Premium Toolbar - Only if not coming soon */}
+        {/* Toolbar */}
         {!formData.comingSoon && (
-          <div className="sticky top-20 bg-white/90 backdrop-blur-md border border-gray-100 rounded-2xl p-2 mb-8 z-10 shadow-sm">
-            <div className="flex flex-wrap gap-1">
-              <div className="relative group">
-                <button onMouseDown={(e) => { e.preventDefault(); formatText('bold'); }} className={`p-2.5 rounded-xl transition-all ${activeFormats.bold ? 'bg-[#1B3766] text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}>
-                  <FiBold className="text-lg" />
-                </button>
-                <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                  Bold (Ctrl + B)
-                </span>
-              </div>
+          <div className="sticky top-12 bg-white rounded-xl border border-gray-100 p-1 mb-3 shadow-sm">
+            <div className="flex flex-wrap gap-0.5">
+              <button onMouseDown={(e) => { e.preventDefault(); formatText('bold'); }} className={`p-1.5 rounded-lg transition-all ${activeFormats.bold ? 'bg-[#1B3766] text-white' : 'text-gray-600'}`}>
+                <FiBold className="text-sm" />
+              </button>
+              <button onMouseDown={(e) => { e.preventDefault(); formatText('italic'); }} className={`p-1.5 rounded-lg ${activeFormats.italic ? 'bg-[#1B3766] text-white' : 'text-gray-600'}`}>
+                <FiItalic className="text-sm" />
+              </button>
+              <button onMouseDown={(e) => { e.preventDefault(); formatText('underline'); }} className={`p-1.5 rounded-lg ${activeFormats.underline ? 'bg-[#1B3766] text-white' : 'text-gray-600'}`}>
+                <FiUnderline className="text-sm" />
+              </button>
               
-              <div className="relative group">
-                <button onMouseDown={(e) => { e.preventDefault(); formatText('italic'); }} className={`p-2.5 rounded-xl transition-all ${activeFormats.italic ? 'bg-[#1B3766] text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}>
-                  <FiItalic className="text-lg" />
-                </button>
-                <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                  Italic (Ctrl + I)
-                </span>
-              </div>
+              <div className="w-px h-5 bg-gray-200 mx-0.5 self-center" />
               
-              <div className="relative group">
-                <button onMouseDown={(e) => { e.preventDefault(); formatText('underline'); }} className={`p-2.5 rounded-xl transition-all ${activeFormats.underline ? 'bg-[#1B3766] text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}>
-                  <FiUnderline className="text-lg" />
-                </button>
-                <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                  Underline (Ctrl + U)
-                </span>
-              </div>
+              <button onMouseDown={(e) => { e.preventDefault(); formatText('justifyLeft'); }} className={`p-1.5 rounded-lg ${activeFormats.justifyLeft ? 'bg-[#1B3766] text-white' : 'text-gray-600'}`}>
+                <FiAlignLeft className="text-sm" />
+              </button>
+              <button onMouseDown={(e) => { e.preventDefault(); formatText('justifyCenter'); }} className={`p-1.5 rounded-lg ${activeFormats.justifyCenter ? 'bg-[#1B3766] text-white' : 'text-gray-600'}`}>
+                <FiAlignCenter className="text-sm" />
+              </button>
+              <button onMouseDown={(e) => { e.preventDefault(); formatText('justifyRight'); }} className={`p-1.5 rounded-lg ${activeFormats.justifyRight ? 'bg-[#1B3766] text-white' : 'text-gray-600'}`}>
+                <FiAlignRight className="text-sm" />
+              </button>
               
-              <div className="w-px h-7 bg-gray-200 mx-1 self-center" />
+              <div className="w-px h-5 bg-gray-200 mx-0.5 self-center" />
               
-              <div className="relative group">
-                <button onMouseDown={(e) => { e.preventDefault(); formatText('justifyLeft'); }} className={`p-2.5 rounded-xl transition-all ${activeFormats.justifyLeft ? 'bg-[#1B3766] text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}>
-                  <FiAlignLeft className="text-lg" />
-                </button>
-                <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                  Align Left
-                </span>
-              </div>
+              <button onMouseDown={(e) => { e.preventDefault(); formatText('insertUnorderedList'); }} className={`p-1.5 rounded-lg ${activeFormats.insertUnorderedList ? 'bg-[#1B3766] text-white' : 'text-gray-600'}`}>
+                <FiList className="text-sm" />
+              </button>
+              <button onMouseDown={(e) => { e.preventDefault(); formatText('insertOrderedList'); }} className={`p-1.5 rounded-lg ${activeFormats.insertOrderedList ? 'bg-[#1B3766] text-white' : 'text-gray-600'}`}>
+                <FiHash className="text-sm" />
+              </button>
               
-              <div className="relative group">
-                <button onMouseDown={(e) => { e.preventDefault(); formatText('justifyCenter'); }} className={`p-2.5 rounded-xl transition-all ${activeFormats.justifyCenter ? 'bg-[#1B3766] text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}>
-                  <FiAlignCenter className="text-lg" />
-                </button>
-                <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                  Align Center
-                </span>
-              </div>
+              <div className="w-px h-5 bg-gray-200 mx-0.5 self-center" />
               
-              <div className="relative group">
-                <button onMouseDown={(e) => { e.preventDefault(); formatText('justifyRight'); }} className={`p-2.5 rounded-xl transition-all ${activeFormats.justifyRight ? 'bg-[#1B3766] text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}>
-                  <FiAlignRight className="text-lg" />
-                </button>
-                <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                  Align Right
-                </span>
-              </div>
+              <button onMouseDown={(e) => { e.preventDefault(); insertLink(); }} className="p-1.5 rounded-lg text-gray-600">
+                <FiLink className="text-sm" />
+              </button>
               
-              <div className="w-px h-7 bg-gray-200 mx-1 self-center" />
-              
-              <div className="relative group">
-                <button onMouseDown={(e) => { e.preventDefault(); formatText('insertUnorderedList'); }} className={`p-2.5 rounded-xl transition-all ${activeFormats.insertUnorderedList ? 'bg-[#1B3766] text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}>
-                  <FiList className="text-lg" />
-                </button>
-                <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                  Bullet List
-                </span>
-              </div>
-              
-              <div className="relative group">
-                <button onMouseDown={(e) => { e.preventDefault(); formatText('insertOrderedList'); }} className={`p-2.5 rounded-xl transition-all ${activeFormats.insertOrderedList ? 'bg-[#1B3766] text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}>
-                  <FiHash className="text-lg" />
-                </button>
-                <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                  Numbered List
-                </span>
-              </div>
-              
-              <div className="w-px h-7 bg-gray-200 mx-1 self-center" />
-              
-              <div className="relative group">
-                <button onMouseDown={(e) => { e.preventDefault(); insertLink(); }} className="p-2.5 rounded-xl text-gray-600 hover:bg-gray-100 transition-all">
-                  <FiLink className="text-lg" />
-                </button>
-                <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                  Insert Link (Ctrl + K)
-                </span>
-              </div>
-              
-              <div className="relative group">
-                <button onMouseDown={(e) => { e.preventDefault(); setPreviewMode(!previewMode); }} className={`p-2.5 rounded-xl transition-all ml-auto ${previewMode ? 'bg-[#1B3766] text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}>
-                  <FiEye className="text-lg" />
-                </button>
-                <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                  {previewMode ? 'Edit Mode' : 'Preview Mode'}
-                </span>
-              </div>
+              <button onMouseDown={(e) => { e.preventDefault(); setPreviewMode(!previewMode); }} className={`p-1.5 rounded-lg ml-auto ${previewMode ? 'bg-[#1B3766] text-white' : 'text-gray-600'}`}>
+                <FiEye className="text-sm" />
+              </button>
             </div>
           </div>
         )}
 
-        {/* Editor content with error handling */}
+        {/* Editor */}
         {!formData.comingSoon ? (
           previewMode ? (
-            <div className="bg-white rounded-2xl p-8 shadow-sm min-h-[500px]">
-              <div className="prose prose-lg max-w-none" dangerouslySetInnerHTML={{ __html: content || '<p class="text-gray-300 italic">Start writing...</p>' }} />
+            <div className="bg-white rounded-xl p-3 shadow-sm min-h-[300px]">
+              <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: content || '<p class="text-gray-300 text-sm">Start writing...</p>' }} />
             </div>
           ) : (
-            <div className={`bg-white rounded-2xl p-8 shadow-sm min-h-[500px] transition-shadow hover:shadow-md ${touched.content && errors.content ? 'ring-2 ring-red-500' : ''}`}>
+            <div className={`bg-white rounded-xl p-3 shadow-sm min-h-[300px] ${touched.content && errors.content ? 'ring-1 ring-red-500' : ''}`}>
               <div
                 ref={editorRef}
                 contentEditable
                 suppressContentEditableWarning
                 data-placeholder="Edit your story..."
-                className="focus:outline-none prose prose-lg max-w-none text-gray-800 leading-relaxed min-h-[400px]"
+                className="focus:outline-none prose prose-sm max-w-none text-gray-700 leading-relaxed min-h-[280px] text-sm"
                 onInput={handleEditorInput}
                 onBlur={() => handleBlur('content')}
               />
               {touched.content && errors.content && (
-                <div className="flex items-center gap-1 mt-3 text-red-500 text-sm">
-                  <FiAlertCircle className="text-xs" />
+                <div className="flex items-center gap-1 mt-2 text-red-500 text-[10px]">
+                  <FiAlertCircle className="text-[10px]" />
                   <span>{errors.content}</span>
                 </div>
               )}
             </div>
           )
         ) : (
-          <div className="bg-gray-50 rounded-2xl p-12 text-center border-2 border-dashed border-gray-200">
-            <FiClock className="text-4xl text-[#1B3766] mx-auto mb-3" />
-            <p className="text-gray-500 font-medium">Content editing is disabled in "Coming Soon" mode</p>
-            <p className="text-sm text-gray-400 mt-1">Uncheck "Coming Soon Mode" to edit the full content</p>
+          <div className="bg-gray-100 rounded-xl p-6 text-center">
+            <FiClock className="text-2xl text-[#1B3766] mx-auto mb-2" />
+            <p className="text-xs text-gray-500">Content editing disabled</p>
+            <p className="text-[10px] text-gray-400 mt-1">Uncheck "Coming Soon" to edit</p>
           </div>
         )}
 
-        {/* Images Management with error handling */}
-        <div className="mt-12 pt-8 border-t-2 border-gray-100" data-images-section>
-          <div className="flex items-center justify-between mb-6">
+        {/* Images Section */}
+        <div className="mt-4 pt-3" data-images-section>
+          <div className="flex items-center justify-between mb-2">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <FiImage className="text-[#1B3766]" /> Visuals
+              <h3 className="text-sm font-semibold flex items-center gap-1">
+                <FiImage className="text-[#1B3766] text-xs" /> Images
               </h3>
-              <p className="text-sm text-gray-400 mt-1">{totalImages}/5 images • First image is cover photo</p>
+              <p className="text-[10px] text-gray-400">{totalImages}/5 • First is cover</p>
             </div>
             {!formData.comingSoon && newImagePreviews.length > 0 && (
-              <span className="text-xs text-[#1B3766] bg-blue-50 px-3 py-1.5 rounded-full">
-                Click any new image to insert
-              </span>
+              <span className="text-[9px] text-[#1B3766] bg-blue-50 px-2 py-0.5 rounded-full">Tap to insert</span>
             )}
           </div>
 
           {errors.images && touched.images && (
-            <div className="flex items-center gap-1 mb-3 text-red-500 text-sm">
-              <FiAlertCircle className="text-xs" />
+            <div className="flex items-center gap-1 mb-2 text-red-500 text-[10px]">
+              <FiAlertCircle className="text-[10px]" />
               <span>{errors.images}</span>
             </div>
           )}
 
           {/* Existing images */}
           {existingImages.length > 0 && (
-            <div className="mb-6">
-              <p className="text-sm font-medium text-gray-700 mb-3">Current Images</p>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="mb-3">
+              <p className="text-[10px] font-medium text-gray-500 mb-1.5">Current</p>
+              <div className="grid grid-cols-3 gap-2">
                 {existingImages.map((url, idx) => (
-                  <div key={idx} className="relative group rounded-xl overflow-hidden bg-gray-100 shadow-sm hover:shadow-xl transition-all">
+                  <div key={idx} className="relative group rounded-lg overflow-hidden bg-gray-100">
                     <img src={url} alt="" className="w-full aspect-square object-cover" />
-                    
                     {idx === 0 && (
-                      <div className="absolute top-2 left-2 px-2 py-1 bg-gradient-to-r from-[#1B3766] to-[#142952] text-white text-[10px] font-medium rounded-full shadow-lg">
+                      <div className="absolute top-1 left-1 px-1 py-0.5 bg-gradient-to-r from-[#1B3766] to-[#142952] text-white text-[8px] font-medium rounded shadow">
                         Cover
                       </div>
                     )}
-                    
                     <button
                       onClick={() => removeExistingImage(idx)}
-                      className="absolute top-2 right-2 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center hover:bg-red-600 transition-all shadow-lg"
+                      className="absolute top-1 right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center"
                     >
-                      <FiTrash2 className="w-3.5 h-3.5 text-white" />
+                      <FiTrash2 className="w-2.5 h-2.5 text-white" />
                     </button>
                   </div>
                 ))}
@@ -839,96 +706,71 @@ const BiizzedEditArticle = () => {
             </div>
           )}
 
-          {/* New images previews */}
+          {/* New images */}
           {newImagePreviews.length > 0 && (
-            <div className="mb-6">
-              <p className="text-sm font-medium text-gray-700 mb-3">New Images to Add</p>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="mb-3">
+              <p className="text-[10px] font-medium text-gray-500 mb-1.5">New</p>
+              <div className="grid grid-cols-3 gap-2">
                 {newImagePreviews.map((preview, idx) => (
                   <div 
                     key={idx} 
-                    className="relative group rounded-xl overflow-hidden bg-gray-100 shadow-sm hover:shadow-xl transition-all cursor-pointer"
+                    className="relative group rounded-lg overflow-hidden bg-gray-100 cursor-pointer"
                     onClick={() => !formData.comingSoon && insertImageAtCursor(preview)}
                   >
-                    <img src={preview} alt="" className="w-full aspect-square object-cover transition-transform group-hover:scale-105" />
-                    
+                    <img src={preview} alt="" className="w-full aspect-square object-cover" />
                     {existingImages.length === 0 && idx === 0 && (
-                      <div className="absolute top-2 left-2 px-2 py-1 bg-gradient-to-r from-[#1B3766] to-[#142952] text-white text-[10px] font-medium rounded-full shadow-lg">
+                      <div className="absolute top-1 left-1 px-1 py-0.5 bg-gradient-to-r from-[#1B3766] to-[#142952] text-white text-[8px] font-medium rounded shadow">
                         Cover
                       </div>
                     )}
-                    
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeNewImage(idx);
-                      }}
-                      className="absolute top-2 right-2 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center hover:bg-red-600 transition-all shadow-lg"
+                      onClick={(e) => { e.stopPropagation(); removeNewImage(idx); }}
+                      className="absolute top-1 right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center"
                     >
-                      <FiTrash2 className="w-3.5 h-3.5 text-white" />
+                      <FiTrash2 className="w-2.5 h-2.5 text-white" />
                     </button>
-                    
                     {!formData.comingSoon && (
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center">
-                        <span className="text-white text-xs font-medium bg-black/60 px-2 py-1 rounded-full">
-                          Click to Insert
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                        <span className="text-white text-[8px] font-medium bg-black/60 px-1.5 py-0.5 rounded-full">
+                          Insert
                         </span>
                       </div>
                     )}
                   </div>
                 ))}
               </div>
-              {!formData.comingSoon && (
-                <p className="text-xs text-gray-400 mt-3 text-center">
-                  💡 Tip: Click any new image above to insert it at your cursor position
-                </p>
-              )}
             </div>
           )}
 
-          {/* Add more images */}
+          {/* Add images */}
           {canAddMore && (
             <label className="block cursor-pointer">
-              <div className={`border-2 border-dashed rounded-2xl p-10 text-center transition-all group ${
-                errors.images && touched.images && totalImages === 0
-                  ? 'border-red-300 bg-red-50/30'
-                  : 'border-gray-200 hover:border-[#1B3766] hover:bg-blue-50/30'
-              }`}>
-                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-3 transition-all ${
-                  errors.images && touched.images && totalImages === 0
-                    ? 'bg-red-100'
-                    : 'bg-gradient-to-br from-gray-100 to-gray-200 group-hover:from-blue-50 group-hover:to-indigo-50'
-                }`}>
-                  <FiPlus className={`text-2xl ${
-                    errors.images && touched.images && totalImages === 0
-                      ? 'text-red-400'
-                      : 'text-gray-400 group-hover:text-[#1B3766]'
-                  }`} />
-                </div>
-                <p className="text-gray-500 font-medium">Add images</p>
-                <p className="text-xs text-gray-400 mt-1">PNG, JPG up to 5MB each</p>
+              <div className="border-2 border-dashed border-gray-200 rounded-xl p-3 text-center hover:border-[#1B3766] transition-all">
+                <FiPlus className="text-lg text-gray-400 mx-auto mb-0.5" />
+                <p className="text-xs text-gray-500">Add images</p>
+                <p className="text-[9px] text-gray-400">PNG, JPG up to 5MB</p>
                 <input type="file" accept="image/*" multiple onChange={handleImageSelect} className="hidden" />
               </div>
             </label>
           )}
         </div>
 
-        {/* Category with custom option and error handling */}
-        <div className="mt-8 pt-4 space-y-5" data-category-section>
-          <div className={`bg-white rounded-2xl p-6 shadow-sm border ${touched.category && errors.category ? 'border-red-300' : 'border-gray-100'}`}>
-            <label className="block text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-              <FiTag className="text-[#1B3766]" /> Category
+        {/* Category */}
+        <div className="mt-4 space-y-3" data-category-section>
+          <div className={`bg-white rounded-xl p-3 shadow-sm border ${touched.category && errors.category ? 'border-red-300' : 'border-gray-100'}`}>
+            <label className="block text-xs font-semibold text-gray-700 mb-2 flex items-center gap-1">
+              <FiTag className="text-[#1B3766] text-xs" /> Category
             </label>
             
             {touched.category && errors.category && (
-              <div className="flex items-center gap-1 mb-3 text-red-500 text-sm">
-                <FiAlertCircle className="text-xs" />
+              <div className="flex items-center gap-1 mb-2 text-red-500 text-[10px]">
+                <FiAlertCircle className="text-[10px]" />
                 <span>{errors.category}</span>
               </div>
             )}
             
             {!showCustomCategory ? (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1.5">
                 {defaultCategories.map(cat => (
                   <button
                     key={cat}
@@ -941,14 +783,12 @@ const BiizzedEditArticle = () => {
                         setFormData(prev => ({ ...prev, category: cat, customCategory: '' }));
                         setShowCustomCategory(false);
                       }
-                      if (errors.category) {
-                        setErrors(prev => ({ ...prev, category: null }));
-                      }
+                      if (errors.category) setErrors(prev => ({ ...prev, category: null }));
                     }}
-                    className={`px-4 py-2 rounded-full text-sm transition-all ${
+                    className={`px-2.5 py-1 rounded-full text-[11px] transition-all ${
                       formData.category === cat && cat !== 'Others'
-                        ? 'bg-gradient-to-r from-[#1B3766] to-[#142952] text-white shadow-md'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        ? 'bg-gradient-to-r from-[#1B3766] to-[#142952] text-white'
+                        : 'bg-gray-100 text-gray-700'
                     }`}
                   >
                     {cat}
@@ -956,160 +796,119 @@ const BiizzedEditArticle = () => {
                 ))}
               </div>
             ) : (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={formData.customCategory}
-                    onChange={(e) => {
-                      setFormData(prev => ({ ...prev, customCategory: e.target.value, category: 'Others' }));
-                      if (errors.category && e.target.value.trim().length > 0) {
-                        setErrors(prev => ({ ...prev, category: null }));
-                      }
-                    }}
-                    onBlur={() => handleBlur('category')}
-                    placeholder="Enter your custom category"
-                    className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
-                    autoFocus
-                  />
-                  <button
-                    onClick={() => {
-                      setShowCustomCategory(false);
-                      setFormData(prev => ({ ...prev, category: '', customCategory: '' }));
-                    }}
-                    className="px-4 py-2.5 text-gray-500 hover:text-gray-700"
-                  >
-                    Cancel
-                  </button>
-                </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={formData.customCategory}
+                  onChange={(e) => {
+                    setFormData(prev => ({ ...prev, customCategory: e.target.value, category: 'Others' }));
+                    if (errors.category && e.target.value.trim().length > 0) {
+                      setErrors(prev => ({ ...prev, category: null }));
+                    }
+                  }}
+                  onBlur={() => handleBlur('category')}
+                  placeholder="Custom category"
+                  className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-sm"
+                  autoFocus
+                />
+                <button
+                  onClick={() => {
+                    setShowCustomCategory(false);
+                    setFormData(prev => ({ ...prev, category: '', customCategory: '' }));
+                  }}
+                  className="px-3 py-1.5 text-xs text-gray-500"
+                >
+                  Cancel
+                </button>
               </div>
             )}
           </div>
           
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <label className="block text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-              <FiTag className="text-[#1B3766]" /> Tags
+          <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
+            <label className="block text-xs font-semibold text-gray-700 mb-2 flex items-center gap-1">
+              <FiTag className="text-[#1B3766] text-xs" /> Tags
             </label>
             <input 
               type="text" 
               name="tags" 
               value={formData.tags} 
               onChange={handleChange}
-              placeholder="Add up to 5 tags (e.g., technology, innovation, AI)"
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766] focus:border-transparent" 
+              placeholder="tech, business, AI"
+              className="w-full px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm" 
             />
-            <p className="text-xs text-gray-400 mt-2">Separate tags with commas</p>
+            <p className="text-[9px] text-gray-400 mt-1">Separate with commas</p>
           </div>
         </div>
 
         {/* Status selector */}
         {!formData.comingSoon && (
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <label className="block text-sm font-semibold text-gray-700 mb-3">Status</label>
+          <div className="mt-3 bg-white rounded-xl p-3 shadow-sm border border-gray-100">
+            <label className="block text-xs font-semibold text-gray-700 mb-2">Status</label>
             <select 
               name="status" 
               value={formData.status} 
               onChange={handleChange} 
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
+              className="w-full px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm"
             >
-              <option value="draft">Draft - Only you can see it</option>
-              <option value="published">Published - Visible to everyone</option>
+              <option value="draft">Draft</option>
+              <option value="published">Published</option>
             </select>
-            <p className="text-xs text-gray-400 mt-2">Published articles are visible to all readers. Subscribers will be notified.</p>
           </div>
         )}
 
         {/* Info note */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 flex items-start gap-2 mt-4">
-          <FiInfo className="text-[#1B3766] mt-0.5 flex-shrink-0" />
-          <p className="text-xs text-gray-700">
+        <div className="mt-3 bg-blue-50 rounded-lg p-2 flex items-start gap-1.5">
+          <FiInfo className="text-[#1B3766] text-xs mt-0.5 flex-shrink-0" />
+          <p className="text-[10px] text-gray-600">
             {formData.comingSoon 
-              ? "Coming Soon mode hides the full content. Uncheck to edit and publish your complete article."
-              : "Make sure your content is ready. Published articles will be visible to all subscribers immediately."}
+              ? "Coming Soon hides content. Uncheck to edit full article."
+              : "Published articles are visible to everyone immediately."}
           </p>
         </div>
 
         {/* Mobile update button */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 shadow-lg">
+        <div className="fixed bottom-0 left-0 right-0 p-3 bg-white border-t border-gray-100 shadow-lg z-10">
           <button 
             onClick={handleSubmit} 
             disabled={isUpdating}
-            className="w-full py-4 bg-gradient-to-r from-[#1B3766] to-[#142952] text-white rounded-xl font-medium hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full py-3 bg-gradient-to-r from-[#1B3766] to-[#142952] text-white rounded-xl font-medium flex items-center justify-center gap-2 text-sm"
           >
-            {isUpdating ? (
-              <>
-                <FiLoader className="animate-spin" />
-                Updating...
-              </>
-            ) : (
-              <>
-                <FiSave />
-                Update Article
-              </>
-            )}
+            {isUpdating ? <FiLoader className="animate-spin text-sm" /> : <FiSave className="text-sm" />}
+            Update Article
           </button>
         </div>
       </div>
       
       <style jsx>{`
-        .prose {
-          font-size: 1.125rem;
-          line-height: 1.8;
-          color: #1f2937;
+        .prose-sm {
+          font-size: 0.875rem;
+          line-height: 1.6;
         }
-        .prose p {
-          margin-bottom: 1.75rem;
+        .prose-sm p {
+          margin-bottom: 0.75rem;
         }
-        .prose ul, .prose ol {
-          margin: 1.25rem 0;
-          padding-left: 1.75rem;
-        }
-        .prose ul { 
-          list-style-type: disc; 
-        }
-        .prose ol { 
-          list-style-type: decimal; 
-        }
-        .prose li {
+        .prose-sm ul, .prose-sm ol {
           margin: 0.5rem 0;
+          padding-left: 1.25rem;
         }
-        .prose h2 {
-          font-size: 1.875rem;
+        .prose-sm ul { list-style-type: disc; }
+        .prose-sm ol { list-style-type: decimal; }
+        .prose-sm li { margin: 0.2rem 0; }
+        .prose-sm h2 {
+          font-size: 1.25rem;
           font-weight: 700;
-          margin: 2.5rem 0 1.25rem;
-          color: #111827;
+          margin: 1rem 0 0.5rem;
         }
-        .prose h3 {
-          font-size: 1.5rem;
-          font-weight: 600;
-          margin: 2rem 0 1rem;
-          color: #1f2937;
-        }
-        .prose a {
+        .prose-sm a {
           color: #1B3766;
           text-decoration: underline;
-          text-underline-offset: 4px;
-        }
-        .prose a:hover {
-          color: #142952;
-        }
-        .prose strong {
-          font-weight: 700;
-          color: #111827;
-        }
-        .prose em {
-          font-style: italic;
         }
         [contenteditable]:empty:before {
           content: attr(data-placeholder);
           color: #D1D5DB;
-          font-weight: normal;
         }
         [contenteditable] {
           caret-color: #1B3766;
-        }
-        [contenteditable]:focus {
-          outline: none;
         }
       `}</style>
       
