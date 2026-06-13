@@ -41,9 +41,11 @@ const EventDashboardEventRegistrations = () => {
   const [checkInModalAnim, setCheckInModalAnim] = useState(false);
   const [ticketModalAnim, setTicketModalAnim] = useState(false);
 
-  // QR scanner ref
+  // QR scanner ref & duplicate prevention
   const qrScannerRef = useRef(null);
   const scannerContainerId = 'qr-reader-container';
+  const lastScanTimeRef = useRef(0);
+  const lastScannedTicketRef = useRef(null);
 
   // API hooks
   const { data: event, isLoading: eventLoading, refetch: refetchEvent } = useGetEventByIdQuery(id);
@@ -51,7 +53,7 @@ const EventDashboardEventRegistrations = () => {
     id,
     params: { status: statusFilter !== 'all' ? statusFilter : undefined },
   });
-  const [checkInAttendee, { isLoading: isCheckingIn }] = useCheckInAttendeeMutation();
+  const [checkInAttendee] = useCheckInAttendeeMutation();
 
   const registrations = registrationsData?.registrations || [];
   const totalRegistrations = registrationsData?.totalRegistrations || 0;
@@ -91,13 +93,9 @@ const EventDashboardEventRegistrations = () => {
         { facingMode: 'environment' },
         { fps: 10, qrbox: { width: 250, height: 250 } },
         (decodedText) => {
-          // Only process if not already processing
-          if (!isProcessingScan) {
-            handleScan(decodedText);
-          }
+          handleScan(decodedText);
         },
         (errorMessage) => {
-          // Ignore scanning errors (keep scanning)
           console.debug('QR scan debug:', errorMessage);
         }
       );
@@ -138,6 +136,7 @@ const EventDashboardEventRegistrations = () => {
     } else {
       stopScanner();
       setIsProcessingScan(false);
+      lastScannedTicketRef.current = null;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showScanner]);
@@ -342,8 +341,17 @@ const EventDashboardEventRegistrations = () => {
     toast.success('Refreshed');
   };
 
+  // Single scan handler with duplicate prevention
   const handleScan = async (decodedText) => {
-    if (isProcessingScan) return; // prevent double processing
+    // Prevent multiple scans within 2 seconds
+    const now = Date.now();
+    if (now - lastScanTimeRef.current < 2000) {
+      console.debug('Duplicate scan ignored');
+      return;
+    }
+    lastScanTimeRef.current = now;
+
+    if (isProcessingScan) return;
     setIsProcessingScan(true);
     setScannerError(null);
     
@@ -355,11 +363,8 @@ const EventDashboardEventRegistrations = () => {
       }
       if (!ticketId) throw new Error('Invalid QR code: no ticket ID');
 
-      // Perform check-in
-      const result = await checkInAttendee(ticketId).unwrap();
-      // Assuming result contains the attendee name or we fetch from local state
+      // Find attendee name from local registrations for better feedback
       let attendeeName = 'Attendee';
-      // Try to find the registration from current list (could be main or additional)
       const reg = registrations.find(r => r.ticketId === ticketId) ||
                   registrations.find(r => r.additionalAttendees?.some(a => a.ticketId === ticketId));
       if (reg) {
@@ -369,14 +374,16 @@ const EventDashboardEventRegistrations = () => {
           if (att) attendeeName = att.name;
         }
       }
+
+      await checkInAttendee(ticketId).unwrap();
       toast.success(`✅ ${attendeeName} checked in successfully!`);
-      setShowScanner(false); // close scanner on success
-      refetchRegistrations(); // refresh list
+      setShowScanner(false);
+      refetchRegistrations();
     } catch (error) {
       const msg = error?.data?.message || error?.message || 'Check-in failed';
       toast.error(msg);
       setScannerError(msg);
-      // Keep scanner open so user can try again
+      // Keep scanner open for retry
     } finally {
       setIsProcessingScan(false);
     }
@@ -434,7 +441,7 @@ const EventDashboardEventRegistrations = () => {
     closeFilterPopup();
   };
 
-  const handleCheckIn = async () => {
+  const handleManualCheckIn = async () => {
     const ticketId = selectedAttendee ? selectedAttendee.ticketId : selectedRegistration?.ticketId;
     if (!ticketId) return;
     try {
@@ -517,12 +524,28 @@ const EventDashboardEventRegistrations = () => {
     </>
   );
 
-  const FloatingButtons = () => (
+  // Desktop and mobile floating buttons
+  const DesktopScanButton = () => (
+    <button
+      onClick={() => setShowScanner(true)}
+      className="hidden md:flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm"
+    >
+      <FaCamera /> Scan QR
+    </button>
+  );
+
+  const MobileFloatingButtons = () => (
     <div className="md:hidden fixed bottom-6 right-4 z-40 flex flex-col gap-3">
-      <button onClick={() => setShowScanner(true)} className="w-14 h-14 rounded-full bg-purple-600 text-white shadow-lg flex items-center justify-center hover:bg-purple-700 transition-all">
+      <button
+        onClick={() => setShowScanner(true)}
+        className="w-14 h-14 rounded-full bg-purple-600 text-white shadow-lg flex items-center justify-center hover:bg-purple-700 transition-all"
+      >
         <FaCamera className="text-xl" />
       </button>
-      <button onClick={openFilterPopup} className="w-14 h-14 rounded-full bg-[#1B3766] text-white shadow-lg flex items-center justify-center hover:bg-[#142952] transition-all">
+      <button
+        onClick={openFilterPopup}
+        className="w-14 h-14 rounded-full bg-[#1B3766] text-white shadow-lg flex items-center justify-center hover:bg-[#142952] transition-all"
+      >
         <FaSlidersH className="text-xl" />
       </button>
     </div>
@@ -603,7 +626,7 @@ const EventDashboardEventRegistrations = () => {
       </div>
       <div className="flex gap-3">
         <button onClick={closeCheckInModal} className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-gray-700 text-sm">Cancel</button>
-        <button onClick={handleCheckIn} disabled={isCheckingIn} className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm disabled:opacity-50">{isCheckingIn ? 'Checking...' : 'Confirm Check-in'}</button>
+        <button onClick={handleManualCheckIn} className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm">Confirm Check-in</button>
       </div>
     </div>
   );
@@ -644,7 +667,6 @@ const EventDashboardEventRegistrations = () => {
           <h3 className="text-lg font-semibold text-gray-900">Scan QR Code</h3>
           <button onClick={() => setShowScanner(false)} className="p-2 hover:bg-gray-100 rounded-lg"><FaTimes /></button>
         </div>
-        {/* Scanner container with reticle overlay */}
         <div className="relative w-full rounded-xl overflow-hidden bg-black" style={{ minHeight: '300px' }}>
           <div id={scannerContainerId} className="w-full"></div>
           <div className="absolute inset-0 border-2 border-white/30 pointer-events-none rounded-xl"></div>
@@ -684,6 +706,7 @@ const EventDashboardEventRegistrations = () => {
             <p className="text-gray-500 text-sm mt-0.5">{event.title}</p>
           </div>
           <div className="flex gap-2">
+            <DesktopScanButton />
             <button onClick={refreshData} disabled={isRefreshing} className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 text-sm"><FaSync className={isRefreshing ? 'animate-spin' : ''} /> <span className="hidden md:inline">Refresh</span></button>
             <button onClick={bulkMail} className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"><FaEnvelope /> <span className="hidden md:inline">Bulk Mail</span></button>
             <button onClick={exportToCSV} className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-[#1B3766] text-white rounded-lg hover:bg-[#142952] text-sm"><FaDownload /> <span className="hidden md:inline">Export</span></button>
@@ -821,7 +844,7 @@ const EventDashboardEventRegistrations = () => {
 
         <p className="text-center text-xs text-gray-500 mt-4">Showing {filteredRegistrations.length} of {totalRegistrations} registrations</p>
 
-        <FloatingButtons />
+        <MobileFloatingButtons />
         <FilterPopupMobile />
 
         {/* Modals */}
