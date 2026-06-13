@@ -34,6 +34,7 @@ const EventDashboardEventRegistrations = () => {
   const [showScanner, setShowScanner] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [scannerError, setScannerError] = useState(null);
+  const [isProcessingScan, setIsProcessingScan] = useState(false);
 
   // Modal animations
   const [detailsModalAnim, setDetailsModalAnim] = useState(false);
@@ -66,7 +67,6 @@ const EventDashboardEventRegistrations = () => {
 
   // QR scanner start/stop with proper lifecycle
   const startScanner = async () => {
-    // Stop any existing scanner first
     if (qrScannerRef.current) {
       try {
         await qrScannerRef.current.stop();
@@ -88,18 +88,13 @@ const EventDashboardEventRegistrations = () => {
     try {
       const scanner = new Html5Qrcode(scannerContainerId);
       await scanner.start(
-        { facingMode: 'environment' }, // Use back camera
+        { facingMode: 'environment' },
         { fps: 10, qrbox: { width: 250, height: 250 } },
         (decodedText) => {
-          // Successfully scanned
-          if (qrScannerRef.current) {
-            // Stop scanner before processing
-            qrScannerRef.current.stop().catch(console.error);
-            qrScannerRef.current.clear().catch(console.error);
-            qrScannerRef.current = null;
+          // Only process if not already processing
+          if (!isProcessingScan) {
+            handleScan(decodedText);
           }
-          setShowScanner(false);
-          handleScan(decodedText);
         },
         (errorMessage) => {
           // Ignore scanning errors (keep scanning)
@@ -138,13 +133,11 @@ const EventDashboardEventRegistrations = () => {
 
   useEffect(() => {
     if (showScanner) {
-      // Small delay to ensure DOM is ready
-      const timer = setTimeout(() => {
-        startScanner();
-      }, 200);
+      const timer = setTimeout(() => startScanner(), 200);
       return () => clearTimeout(timer);
     } else {
       stopScanner();
+      setIsProcessingScan(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showScanner]);
@@ -350,7 +343,10 @@ const EventDashboardEventRegistrations = () => {
   };
 
   const handleScan = async (decodedText) => {
+    if (isProcessingScan) return; // prevent double processing
+    setIsProcessingScan(true);
     setScannerError(null);
+    
     try {
       let ticketId = decodedText;
       if (decodedText.startsWith('{') && decodedText.endsWith('}')) {
@@ -358,13 +354,31 @@ const EventDashboardEventRegistrations = () => {
         ticketId = parsed.ticketId;
       }
       if (!ticketId) throw new Error('Invalid QR code: no ticket ID');
-      await checkInAttendee(ticketId).unwrap();
-      toast.success('✅ Check-in successful!');
-      refetchRegistrations();
+
+      // Perform check-in
+      const result = await checkInAttendee(ticketId).unwrap();
+      // Assuming result contains the attendee name or we fetch from local state
+      let attendeeName = 'Attendee';
+      // Try to find the registration from current list (could be main or additional)
+      const reg = registrations.find(r => r.ticketId === ticketId) ||
+                  registrations.find(r => r.additionalAttendees?.some(a => a.ticketId === ticketId));
+      if (reg) {
+        if (reg.ticketId === ticketId) attendeeName = reg.name;
+        else {
+          const att = reg.additionalAttendees?.find(a => a.ticketId === ticketId);
+          if (att) attendeeName = att.name;
+        }
+      }
+      toast.success(`✅ ${attendeeName} checked in successfully!`);
+      setShowScanner(false); // close scanner on success
+      refetchRegistrations(); // refresh list
     } catch (error) {
       const msg = error?.data?.message || error?.message || 'Check-in failed';
       toast.error(msg);
       setScannerError(msg);
+      // Keep scanner open so user can try again
+    } finally {
+      setIsProcessingScan(false);
     }
   };
 
@@ -630,10 +644,30 @@ const EventDashboardEventRegistrations = () => {
           <h3 className="text-lg font-semibold text-gray-900">Scan QR Code</h3>
           <button onClick={() => setShowScanner(false)} className="p-2 hover:bg-gray-100 rounded-lg"><FaTimes /></button>
         </div>
-        <div id={scannerContainerId} className="w-full rounded-xl overflow-hidden" style={{ minHeight: '300px' }}></div>
-        {scannerError && <p className="text-red-600 text-sm mt-3">{scannerError}</p>}
-        <p className="text-xs text-gray-500 my-4">Position the QR code inside the frame. The ticket will be checked in automatically.</p>
-        <button onClick={() => setShowScanner(false)} className="w-full py-2.5 border border-gray-200 rounded-lg text-gray-700 text-sm">Cancel</button>
+        {/* Scanner container with reticle overlay */}
+        <div className="relative w-full rounded-xl overflow-hidden bg-black" style={{ minHeight: '300px' }}>
+          <div id={scannerContainerId} className="w-full"></div>
+          <div className="absolute inset-0 border-2 border-white/30 pointer-events-none rounded-xl"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-48 h-48 border-2 border-white rounded-lg pointer-events-none"></div>
+        </div>
+        {isProcessingScan && (
+          <div className="mt-3 text-blue-600 text-sm flex items-center justify-center gap-2">
+            <FaSpinner className="animate-spin" /> Checking in...
+          </div>
+        )}
+        {scannerError && (
+          <p className="text-red-600 text-sm mt-3">{scannerError}</p>
+        )}
+        <p className="text-xs text-gray-500 mt-4">
+          📷 Position the QR code inside the frame. <br />
+          🔍 Move the camera closer if needed.
+        </p>
+        <button
+          onClick={() => setShowScanner(false)}
+          className="w-full py-2.5 border border-gray-200 rounded-lg text-gray-700 text-sm mt-4"
+        >
+          Cancel
+        </button>
       </div>
     </ModalContainer>
   );
@@ -677,7 +711,7 @@ const EventDashboardEventRegistrations = () => {
           </div>
         </div>
 
-        {/* Desktop List (cards with shadows) */}
+        {/* Desktop List (cards) */}
         <div className="hidden md:block">
           {filteredRegistrations.length === 0 ? <EmptyState /> : (
             <div className="space-y-4">
@@ -732,7 +766,7 @@ const EventDashboardEventRegistrations = () => {
           )}
         </div>
 
-        {/* Mobile List (edge-to-edge, dividers, no shadows) */}
+        {/* Mobile List (edge-to-edge, dividers) */}
         <div className="md:hidden -mx-3 px-3">
           {filteredRegistrations.length === 0 ? <EmptyState /> : (
             <div className="divide-y divide-gray-100">
