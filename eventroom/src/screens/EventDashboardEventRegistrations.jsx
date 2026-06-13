@@ -1,12 +1,12 @@
-// screens/EventDashboardEventRegistrations.jsx - With QR code check-in (html5-qrcode)
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+// screens/EventDashboardEventRegistrations.jsx - Fixed QR Scanner & Mobile Design
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   FaArrowLeft, FaSpinner, FaCheckCircle, FaTimesCircle,
   FaUser, FaUsers, FaDownload, FaSearch, FaTimes, FaEye,
   FaSync, FaBan, FaTicketAlt, FaChair, FaClipboardCheck,
   FaQrcode, FaUserFriends, FaDollarSign, FaFilter, FaLayerGroup,
-  FaEnvelope, FaCamera,
+  FaEnvelope, FaCamera, FaSlidersH,
 } from 'react-icons/fa';
 import {
   useGetEventByIdQuery,
@@ -14,14 +14,14 @@ import {
   useCheckInAttendeeMutation,
 } from '../slices/eventApiSlice';
 import { toast } from 'react-toastify';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
 import EventDashboardSidebar from '../components/EventDashboardSidebar';
 
 const EventDashboardEventRegistrations = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  // --- ALL HOOKS (state, refs, effects) ---
+  // --- State ---
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -35,14 +35,15 @@ const EventDashboardEventRegistrations = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [scannerError, setScannerError] = useState(null);
 
-  // Modal animation states
+  // Modal animations
   const [detailsModalAnim, setDetailsModalAnim] = useState(false);
   const [checkInModalAnim, setCheckInModalAnim] = useState(false);
   const [ticketModalAnim, setTicketModalAnim] = useState(false);
 
-  // QR Scanner ref & state
-  const scannerRef = useRef(null);
-  const [scanningActive, setScanningActive] = useState(false);
+  // QR scanner refs
+  const qrScannerRef = useRef(null);
+  const scannerContainerId = 'qr-reader-container';
+  const [scannerInitialized, setScannerInitialized] = useState(false);
 
   // API hooks
   const { data: event, isLoading: eventLoading, refetch: refetchEvent } = useGetEventByIdQuery(id);
@@ -50,14 +51,12 @@ const EventDashboardEventRegistrations = () => {
     id,
     params: { status: statusFilter !== 'all' ? statusFilter : undefined },
   });
+  const [checkInAttendee, { isLoading: isCheckingIn }] = useCheckInAttendeeMutation();
 
-  // Extract data from registrationsData
   const registrations = registrationsData?.registrations || [];
   const totalRegistrations = registrationsData?.totalRegistrations || 0;
   const confirmedCount = registrationsData?.confirmedCount || 0;
   const pendingCount = registrationsData?.pendingCount || 0;
-
-  const [checkInAttendee, { isLoading: isCheckingIn }] = useCheckInAttendeeMutation();
 
   // --- Effects ---
   useEffect(() => {
@@ -66,39 +65,44 @@ const EventDashboardEventRegistrations = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // QR Scanner effect
+  // Initialize QR scanner when modal opens
   useEffect(() => {
-    if (showScanner && !scanningActive) {
-      setScanningActive(true);
-      const scanner = new Html5QrcodeScanner(
-        "qr-reader",
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        false
-      );
-      scanner.render(
-        (decodedText) => {
-          scanner.clear();
-          setScanningActive(false);
-          handleScan(decodedText);
-        },
-        (error) => {
-          console.debug("QR scan error", error);
+    if (showScanner && !scannerInitialized) {
+      // Small delay to ensure DOM is ready
+      setTimeout(() => {
+        const container = document.getElementById(scannerContainerId);
+        if (container && !qrScannerRef.current) {
+          const scanner = new Html5Qrcode(scannerContainerId);
+          qrScannerRef.current = scanner;
+          scanner.start(
+            { facingMode: 'environment' }, // use back camera
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            (decodedText) => {
+              scanner.stop();
+              setScannerInitialized(false);
+              handleScan(decodedText);
+            },
+            (error) => {
+              console.debug('QR scan error', error);
+            }
+          ).catch(err => {
+            console.error('Failed to start scanner', err);
+            setScannerError('Could not access camera. Please check permissions.');
+            toast.error('Camera access denied or not available');
+            setShowScanner(false);
+          });
+          setScannerInitialized(true);
         }
-      );
-      scannerRef.current = scanner;
-    } else if (!showScanner && scannerRef.current) {
-      scannerRef.current.clear();
-      setScanningActive(false);
+      }, 100);
+    } else if (!showScanner && qrScannerRef.current) {
+      qrScannerRef.current.stop().catch(console.error);
+      qrScannerRef.current.clear();
+      qrScannerRef.current = null;
+      setScannerInitialized(false);
     }
+  }, [showScanner]);
 
-    return () => {
-      if (scannerRef.current) {
-        scannerRef.current.clear();
-      }
-    };
-  }, [showScanner, scanningActive]);
-
-  // --- Helper functions (no hooks inside) ---
+  // --- Helper functions ---
   const getAllCheckedInCount = () => {
     let count = 0;
     registrations.forEach((reg) => {
@@ -415,7 +419,7 @@ const EventDashboardEventRegistrations = () => {
     .filter((r) => r.status === 'confirmed')
     .reduce((s, r) => s + (r.totalAmount || r.paidAmount || r.price || 0), 0);
 
-  // --- Early returns (after all hooks) ---
+  // --- Early returns ---
   if (eventLoading || regLoading) {
     return (
       <EventDashboardSidebar>
@@ -442,8 +446,8 @@ const EventDashboardEventRegistrations = () => {
     );
   }
 
-  // --- UI Components (no hooks) ---
-  const FilterSelect = () => (
+  // --- UI Components (mobile optimised) ---
+  const FilterSelectDesktop = () => (
     <select
       value={statusFilter}
       onChange={(e) => setStatusFilter(e.target.value)}
@@ -455,7 +459,7 @@ const EventDashboardEventRegistrations = () => {
     </select>
   );
 
-  const FilterPopup = () => (
+  const FilterPopupMobile = () => (
     <>
       {showFilterPopup && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50" onClick={closeFilterPopup}>
@@ -492,13 +496,22 @@ const EventDashboardEventRegistrations = () => {
     </>
   );
 
-  const MobileFilterButton = () => (
-    <button
-      onClick={openFilterPopup}
-      className="md:hidden fixed bottom-20 right-4 z-40 w-14 h-14 rounded-full bg-[#1B3766] text-white shadow-lg flex items-center justify-center hover:bg-[#142952] transition-all"
-    >
-      <FaFilter className="text-lg" />
-    </button>
+  // Floating action buttons (mobile only)
+  const FloatingButtons = () => (
+    <div className="md:hidden fixed bottom-6 right-4 z-40 flex flex-col gap-3">
+      <button
+        onClick={() => setShowScanner(true)}
+        className="w-14 h-14 rounded-full bg-purple-600 text-white shadow-lg flex items-center justify-center hover:bg-purple-700 transition-all"
+      >
+        <FaCamera className="text-xl" />
+      </button>
+      <button
+        onClick={openFilterPopup}
+        className="w-14 h-14 rounded-full bg-[#1B3766] text-white shadow-lg flex items-center justify-center hover:bg-[#142952] transition-all"
+      >
+        <FaSlidersH className="text-xl" />
+      </button>
+    </div>
   );
 
   const ModalContainer = ({ show, onClose, anim, children }) => {
@@ -684,7 +697,7 @@ const EventDashboardEventRegistrations = () => {
             <FaTimes />
           </button>
         </div>
-        <div id="qr-reader" className="w-full rounded-xl overflow-hidden" style={{ minHeight: '300px' }}></div>
+        <div id={scannerContainerId} className="w-full rounded-xl overflow-hidden" style={{ minHeight: '300px' }}></div>
         {scannerError && (
           <p className="text-red-600 text-sm mt-3">{scannerError}</p>
         )}
@@ -701,11 +714,12 @@ const EventDashboardEventRegistrations = () => {
     </ModalContainer>
   );
 
-  // --- Main return ---
+  // --- Main return with mobile‑optimised list ---
   return (
     <EventDashboardSidebar>
-      <div className="p-4 md:p-6 relative">
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+      <div className="p-3 md:p-6 relative">
+        {/* Header */}
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
           <div>
             <button
               onClick={() => navigate(`/dashboard/events/${id}`)}
@@ -713,47 +727,43 @@ const EventDashboardEventRegistrations = () => {
             >
               <FaArrowLeft className="text-xs" /> Back to Event
             </button>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Registrations</h1>
-            <p className="text-gray-500 mt-1 text-sm">{event.title}</p>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900">Registrations</h1>
+            <p className="text-gray-500 text-sm mt-0.5">{event.title}</p>
           </div>
           <div className="flex gap-2">
             <button
               onClick={refreshData}
               disabled={isRefreshing}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 text-sm"
+              className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 text-sm"
             >
-              <FaSync className={isRefreshing ? 'animate-spin' : ''} /> Refresh
-            </button>
-            <button
-              onClick={() => setShowScanner(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm"
-            >
-              <FaCamera /> Scan QR
+              <FaSync className={isRefreshing ? 'animate-spin' : ''} /> <span className="hidden md:inline">Refresh</span>
             </button>
             <button
               onClick={bulkMail}
-              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
+              className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
             >
-              <FaEnvelope /> Bulk Mail
+              <FaEnvelope /> <span className="hidden md:inline">Bulk Mail</span>
             </button>
             <button
               onClick={exportToCSV}
-              className="flex items-center gap-2 px-4 py-2 bg-[#1B3766] text-white rounded-lg hover:bg-[#142952] text-sm"
+              className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-[#1B3766] text-white rounded-lg hover:bg-[#142952] text-sm"
             >
-              <FaDownload /> Export CSV
+              <FaDownload /> <span className="hidden md:inline">Export</span>
             </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-          <StatCard label="Total" value={totalRegistrations} color="bg-gray-50" textColor="text-gray-900" icon={FaUsers} />
-          <StatCard label="Confirmed" value={confirmedCount} color="bg-green-50" textColor="text-green-700" icon={FaCheckCircle} />
-          <StatCard label="Pending" value={pendingCount} color="bg-yellow-50" textColor="text-yellow-700" icon={FaSpinner} />
-          <StatCard label="Checked In" value={getAllCheckedInCount()} color="bg-blue-50" textColor="text-blue-700" icon={FaClipboardCheck} />
-          <StatCard label="Revenue" value={formatPrice(totalRevenue)} color="bg-purple-50" textColor="text-purple-700" icon={FaDollarSign} isCurrency />
+        {/* Stats - reduced padding on mobile */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
+          <StatCardMobile label="Total" value={totalRegistrations} color="bg-gray-50" textColor="text-gray-900" icon={FaUsers} />
+          <StatCardMobile label="Confirmed" value={confirmedCount} color="bg-green-50" textColor="text-green-700" icon={FaCheckCircle} />
+          <StatCardMobile label="Pending" value={pendingCount} color="bg-yellow-50" textColor="text-yellow-700" icon={FaSpinner} />
+          <StatCardMobile label="Checked In" value={getAllCheckedInCount()} color="bg-blue-50" textColor="text-blue-700" icon={FaClipboardCheck} />
+          <StatCardMobile label="Revenue" value={formatPrice(totalRevenue)} color="bg-purple-50" textColor="text-purple-700" icon={FaDollarSign} isCurrency />
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
+        {/* Search + Desktop Filter */}
+        <div className="bg-white rounded-xl border border-gray-100 p-3 mb-5">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1 relative">
               <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -762,7 +772,7 @@ const EventDashboardEventRegistrations = () => {
                 placeholder="Search by name, email, ticket ID..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-10 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-sm"
+                className="w-full pl-9 pr-9 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-sm"
               />
               {searchTerm && (
                 <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
@@ -770,11 +780,11 @@ const EventDashboardEventRegistrations = () => {
                 </button>
               )}
             </div>
-            <FilterSelect />
+            <FilterSelectDesktop />
           </div>
         </div>
 
-        {/* Desktop list */}
+        {/* Registration list - Desktop (cards with shadow) */}
         <div className="hidden md:block">
           {filteredRegistrations.length === 0 ? (
             <EmptyState />
@@ -870,85 +880,94 @@ const EventDashboardEventRegistrations = () => {
           )}
         </div>
 
-        {/* Mobile list */}
-        <div className="md:hidden space-y-3">
+        {/* Registration list - Mobile (edge-to-edge, border-bottom separators, no shadows) */}
+        <div className="md:hidden -mx-3 px-3">
           {filteredRegistrations.length === 0 ? (
             <EmptyState />
           ) : (
-            filteredRegistrations.map((reg) => {
-              const status = getStatusBadge(reg.status);
-              const hasAdditional = reg.additionalAttendees?.length > 0;
-              return (
-                <div key={reg._id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2.5">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${reg.ticketCheckedIn ? 'bg-green-100' : 'bg-gray-100'}`}>
-                        <FaUser className={`text-sm ${reg.ticketCheckedIn ? 'text-green-600' : 'text-gray-500'}`} />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-gray-900 text-sm">
-                          {reg.name} {hasAdditional && <span className="text-[10px] text-blue-600">+{reg.additionalAttendees.length}</span>}
-                        </p>
-                        <p className="text-xs text-gray-500">{reg.email}</p>
-                        {reg.phone && <p className="text-xs text-gray-400">📞 {reg.phone}</p>}
-                      </div>
-                    </div>
-                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${status.color}`}>
-                      <status.icon className="text-[10px]" /> {status.label}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 mb-2">
-                    <span className="bg-gray-100 px-2 py-0.5 rounded-full">{reg.ticketType || 'General'}</span>
-                    <span>Qty: {reg.quantity || 1}</span>
-                    <span className="font-mono">{reg.ticketId}</span>
-                    <span><FaChair className="inline text-[10px]" /> {reg.seatNumber || '—'}</span>
-                  </div>
-                  <div className="flex justify-between text-xs text-gray-500 pt-2 border-t border-gray-100">
-                    <span>{formatDate(reg.createdAt)}</span>
-                    <span className="font-semibold">{reg.totalAmount > 0 ? formatPrice(reg.totalAmount) : 'Free'}</span>
-                  </div>
-                  <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100">
-                    <button onClick={() => openTicketModal(reg)} className="flex-1 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-medium"><FaTicketAlt className="inline mr-1" /> Ticket</button>
-                    {reg.ticketCheckedIn ? (
-                      <span className="flex-1 py-2 bg-green-50 text-green-600 rounded-lg text-xs font-medium text-center">✅ Checked In</span>
-                    ) : (
-                      reg.status === 'confirmed' && (
-                        <button onClick={() => openCheckInModal(reg)} className="flex-1 py-2 bg-green-600 text-white rounded-lg text-xs font-medium">Check In</button>
-                      )
-                    )}
-                    <button onClick={() => openDetailsModal(reg)} className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg text-xs font-medium"><FaEye className="inline mr-1" /> Details</button>
-                  </div>
-                  {hasAdditional && (
-                    <div className="mt-2 pt-2 border-t border-gray-100 space-y-1.5">
-                      {reg.additionalAttendees.map((att, idx) => (
-                        <div key={idx} className="flex items-center justify-between text-xs">
-                          <div className="flex items-center gap-1.5">
-                            <div className={`w-6 h-6 rounded-full flex items-center justify-center ${att.checkedIn ? 'bg-green-100' : 'bg-gray-100'}`}>
-                              <FaUser className="text-[10px] text-gray-500" />
-                            </div>
-                            <span className="font-medium">{att.name || 'Guest'}</span>
-                            <span className="text-gray-400 font-mono">{att.ticketId}</span>
-                          </div>
-                          {att.checkedIn ? (
-                            <span className="text-green-600 text-[10px]">✅ In</span>
-                          ) : (
-                            <button onClick={() => openCheckInModal(reg, att)} className="px-2 py-1 bg-green-600 text-white rounded text-[10px]">Check In</button>
+            <div className="divide-y divide-gray-100">
+              {filteredRegistrations.map((reg) => {
+                const status = getStatusBadge(reg.status);
+                const hasAdditional = reg.additionalAttendees?.length > 0;
+                return (
+                  <div key={reg._id} className="py-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-semibold text-gray-900 text-sm">{reg.name}</p>
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${status.color}`}>
+                            <status.icon className="text-[10px]" /> {status.label}
+                          </span>
+                          {hasAdditional && (
+                            <span className="text-[10px] text-blue-600">
+                              <FaUserFriends className="inline mr-0.5" />+{reg.additionalAttendees.length}
+                            </span>
                           )}
                         </div>
-                      ))}
+                        <div className="text-xs text-gray-500 mt-1 space-x-1">
+                          <span>{reg.email}</span>
+                          {reg.phone && <span>📞 {reg.phone}</span>}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mt-1">
+                          <span className="bg-gray-100 px-1.5 py-0.5 rounded">{reg.ticketType || 'General'}</span>
+                          <span>Qty: {reg.quantity || 1}</span>
+                          <span className="font-mono text-[11px]">{reg.ticketId}</span>
+                          <span><FaChair className="inline text-[10px]" /> {reg.seatNumber || '—'}</span>
+                          <span className="font-semibold text-gray-700">{reg.totalAmount > 0 ? formatPrice(reg.totalAmount) : 'Free'}</span>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-1 ml-2">
+                        {reg.ticketCheckedIn ? (
+                          <span className="text-[10px] text-green-600 font-medium bg-green-50 px-2 py-0.5 rounded-full">✅ In</span>
+                        ) : (
+                          reg.status === 'confirmed' && (
+                            <button onClick={() => openCheckInModal(reg)} className="px-2 py-1 bg-green-600 text-white rounded text-[11px]">Check In</button>
+                          )
+                        )}
+                        <div className="flex gap-1 mt-1">
+                          <button onClick={() => openTicketModal(reg)} className="p-1 text-indigo-600 bg-indigo-50 rounded" title="Ticket"><FaTicketAlt className="text-xs" /></button>
+                          <button onClick={() => openDetailsModal(reg)} className="p-1 text-blue-600 bg-blue-50 rounded"><FaEye className="text-xs" /></button>
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </div>
-              );
-            })
+                    {hasAdditional && (
+                      <div className="mt-2 pt-2 border-t border-gray-100 space-y-1.5">
+                        {reg.additionalAttendees.map((att, idx) => (
+                          <div key={idx} className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-1.5">
+                              <div className={`w-6 h-6 rounded-full flex items-center justify-center ${att.checkedIn ? 'bg-green-100' : 'bg-gray-100'}`}>
+                                <FaUser className="text-[9px] text-gray-500" />
+                              </div>
+                              <div>
+                                <span className="font-medium text-gray-800">{att.name || 'Guest'}</span>
+                                <div className="text-[10px] text-gray-400">{att.ticketId}</div>
+                              </div>
+                            </div>
+                            {att.checkedIn ? (
+                              <span className="text-green-600 text-[10px] bg-green-50 px-1.5 py-0.5 rounded-full">✅ In</span>
+                            ) : (
+                              <button onClick={() => openCheckInModal(reg, att)} className="px-2 py-0.5 bg-green-600 text-white rounded text-[10px]">Check In</button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
 
-        <p className="text-center text-xs text-gray-500 mt-4">Showing {filteredRegistrations.length} of {totalRegistrations} registrations</p>
+        <p className="text-center text-xs text-gray-500 mt-4">
+          Showing {filteredRegistrations.length} of {totalRegistrations} registrations
+        </p>
 
-        <MobileFilterButton />
-        <FilterPopup />
+        {/* Floating buttons (mobile) */}
+        <FloatingButtons />
+        <FilterPopupMobile />
 
+        {/* Modals */}
         <ModalContainer show={showDetailsModal} onClose={closeDetailsModal} anim={detailsModalAnim}>
           {detailsContent}
         </ModalContainer>
@@ -964,15 +983,15 @@ const EventDashboardEventRegistrations = () => {
   );
 };
 
-// --- Reusable components ---
-const StatCard = ({ label, value, color, textColor, icon: Icon, isCurrency }) => (
-  <div className={`rounded-xl shadow-sm border border-gray-100 p-4 ${color}`}>
+// --- Reusable components (mobile optimised stat card) ---
+const StatCardMobile = ({ label, value, color, textColor, icon: Icon, isCurrency }) => (
+  <div className={`rounded-xl p-3 ${color}`}>
     <div className="flex items-center justify-between">
       <div>
-        <p className="text-xs text-gray-500">{label}</p>
-        <p className={`text-xl font-bold mt-1 ${textColor} ${isCurrency ? 'text-sm' : ''}`}>{value}</p>
+        <p className="text-[11px] text-gray-500">{label}</p>
+        <p className={`text-base font-bold mt-0.5 ${textColor} ${isCurrency ? 'text-xs' : ''}`}>{value}</p>
       </div>
-      <div className="w-10 h-10 rounded-full bg-white/60 flex items-center justify-center">
+      <div className="w-8 h-8 rounded-full bg-white/60 flex items-center justify-center">
         <Icon className={`text-sm ${textColor}`} />
       </div>
     </div>
@@ -980,11 +999,11 @@ const StatCard = ({ label, value, color, textColor, icon: Icon, isCurrency }) =>
 );
 
 const EmptyState = () => (
-  <div className="bg-white rounded-xl shadow-sm border border-gray-100 text-center py-16">
-    <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-      <FaUsers className="text-2xl text-gray-400" />
+  <div className="bg-white rounded-xl border border-gray-100 text-center py-12">
+    <div className="w-14 h-14 mx-auto mb-3 bg-gray-100 rounded-full flex items-center justify-center">
+      <FaUsers className="text-xl text-gray-400" />
     </div>
-    <h3 className="text-lg font-semibold text-gray-900 mb-1">No registrations found</h3>
+    <h3 className="text-md font-semibold text-gray-900 mb-1">No registrations found</h3>
   </div>
 );
 

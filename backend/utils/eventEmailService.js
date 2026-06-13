@@ -3,22 +3,37 @@ import { Resend } from 'resend';
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_EMAIL = process.env.FROM_EMAIL || 'Lovoh Create <events@lovohcreate.com>';
 
-// Template wrapper
-const sendEmail = async (to, subject, html) => {
+// Helper to send email with attachments
+const sendEmail = async (to, subject, html, attachments = []) => {
   try {
     await resend.emails.send({
       from: FROM_EMAIL,
       to,
       subject,
       html,
+      attachments,
     });
   } catch (error) {
     console.error('Email sending failed:', error);
   }
 };
 
-// Generate ticket HTML for email (with optional QR code)
-const generateTicketHTML = (registration, event, qrCodeDataUrl = null) => {
+// Convert data URL to buffer and return attachment object
+const createQRAttachment = (qrCodeDataUrl, cid = 'qr_code') => {
+  if (!qrCodeDataUrl) return null;
+  // data:image/png;base64,xxxxx
+  const base64Data = qrCodeDataUrl.split(',')[1];
+  if (!base64Data) return null;
+  const buffer = Buffer.from(base64Data, 'base64');
+  return {
+    filename: 'ticket_qr.png',
+    content: buffer,
+    cid, // Content-ID used in HTML: <img src="cid:qr_code" />
+  };
+};
+
+// Generate ticket HTML (no inline QR data URL, only cid reference)
+const generateTicketHTML = (registration, event, qrCid = null) => {
   const ticketId = registration.ticketId || 'Pending';
   const seatNumber = registration.seatNumber || '';
   const ticketType = registration.ticketType || 'General';
@@ -44,12 +59,7 @@ const generateTicketHTML = (registration, event, qrCodeDataUrl = null) => {
           ${totalAmount > 0 ? `<p style="margin:5px 0;font-size:13px"><strong>💰 Amount:</strong> ₦${totalAmount.toLocaleString()}</p>` : ''}
         </div>
         
-        ${qrCodeDataUrl ? `
-          <div style="text-align:center;margin-bottom:15px">
-            <img src="${qrCodeDataUrl}" alt="QR Code" style="width:180px;height:180px;border:1px solid #ddd;border-radius:8px;padding:10px;" />
-            <p style="font-size:12px;color:#666;margin:5px 0 0">Scan to verify your ticket</p>
-          </div>
-        ` : ''}
+        ${qrCid ? `<div style="text-align:center;margin-bottom:15px"><img src="cid:${qrCid}" alt="QR Code" style="width:180px;height:180px;border:1px solid #ddd;border-radius:8px;padding:10px;" /><p style="font-size:12px;color:#666;margin:5px 0 0">Scan to verify your ticket</p></div>` : ''}
         
         <div style="background:#1B3766;border-radius:8px;padding:12px;text-align:center;margin-bottom:10px">
           <p style="color:#79FFFF;font-size:11px;margin:0">TICKET ID</p>
@@ -64,44 +74,7 @@ const generateTicketHTML = (registration, event, qrCodeDataUrl = null) => {
   `;
 };
 
-// Additional attendees list HTML
-const generateAttendeesList = (registration) => {
-  if (!registration?.additionalAttendees?.length) return '';
-  
-  return `
-    <div style="background:#f8f9fa;border-radius:8px;padding:15px;margin:15px 0">
-      <p style="font-size:14px;font-weight:bold;color:#1B3766;margin:0 0 10px">👥 Additional Attendees</p>
-      ${registration.additionalAttendees.map(att => `
-        <div style="margin:8px 0;padding:10px;background:#fff;border-radius:6px;border:1px solid #e5e7eb">
-          <p style="margin:0;font-size:13px;font-weight:bold">${att.name}</p>
-          <p style="margin:3px 0;font-size:11px;color:#666">📧 ${att.email || 'N/A'}</p>
-          <p style="margin:3px 0;font-size:11px;color:#666">🎫 Ticket: ${att.ticketId || 'Pending'} | 💺 Seat: #${att.seatNumber || 'TBD'}</p>
-        </div>
-      `).join('')}
-    </div>
-  `;
-};
-
-// Ticket summary box
-const generateTicketSummary = (registration) => {
-  const quantity = registration.quantity || 1;
-  const ticketType = registration.ticketType || 'General';
-  const totalAmount = registration.totalAmount || 0;
-  const seatsPerTicket = registration.seatsPerTicket || 1;
-
-  return `
-    <div style="background:#f8f9fa;border-radius:8px;padding:15px;margin:15px 0">
-      <p style="font-size:14px;font-weight:bold;color:#1B3766;margin:0 0 8px">📋 Ticket Summary</p>
-      <p style="margin:3px 0;font-size:13px"><strong>Type:</strong> ${ticketType}</p>
-      <p style="margin:3px 0;font-size:13px"><strong>Quantity:</strong> ${quantity} ticket(s)</p>
-      ${seatsPerTicket > 1 ? `<p style="margin:3px 0;font-size:13px"><strong>Seats per Ticket:</strong> ${seatsPerTicket}</p>` : ''}
-      <p style="margin:3px 0;font-size:13px"><strong>Total Seats:</strong> ${quantity * seatsPerTicket}</p>
-      ${totalAmount > 0 ? `<p style="margin:3px 0;font-size:15px;font-weight:bold;color:#059669">Total Paid: ₦${totalAmount.toLocaleString()}</p>` : ''}
-    </div>
-  `;
-};
-
-// ==================== REGISTRATION CONFIRMATION (with QR) ====================
+// ==================== REGISTRATION CONFIRMATION (with QR attachment) ====================
 export const sendRegistrationConfirmation = async (email, name, eventTitle, eventDate, eventTime, venue, registration, event, qrCodeDataUrl = null) => {
   const subject = `🎉 You're registered for ${eventTitle}!`;
   const isVirtual = event?.isVirtual;
@@ -135,41 +108,22 @@ export const sendRegistrationConfirmation = async (email, name, eventTitle, even
 
         <p style="font-size:14px;color:#666">Your ticket is attached below. Bring it to the event!</p>
       </div>
-      ${generateTicketHTML(registration, event || { title: eventTitle, date: eventDate, time: eventTime, venue }, qrCodeDataUrl)}
+      ${generateTicketHTML(registration, event || { title: eventTitle, date: eventDate, time: eventTime, venue }, 'ticket_qr')}
       <div style="background:#f1f5f9;padding:20px;text-align:center;font-size:12px;color:#999">
         © ${new Date().getFullYear()} Lovoh Create. All rights reserved.
       </div>
     </div>
   `;
-  await sendEmail(email, subject, html);
+
+  const attachments = [];
+  if (qrCodeDataUrl) {
+    const qrAtt = createQRAttachment(qrCodeDataUrl, 'ticket_qr');
+    if (qrAtt) attachments.push(qrAtt);
+  }
+  await sendEmail(email, subject, html, attachments);
 };
 
-// ==================== NEW REGISTRATION TO CREATOR ====================
-export const sendNewRegistrationToCreator = async (creatorEmail, eventTitle, attendeeName, attendeeEmail, type, ticketId, seatNumber, quantity = 1) => {
-  const subject = `📋 New ${type === 'paid' ? 'Paid ' : ''}Registration for ${eventTitle}`;
-  const html = `
-    <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif">
-      <div style="background:linear-gradient(135deg,#1B3766,#254899);padding:30px;text-align:center">
-        <h1 style="color:#fff;margin:0">New Registration! 📋</h1>
-      </div>
-      <div style="padding:30px;background:#fff">
-        <p style="font-size:16px">Someone just registered for <strong>${eventTitle}</strong>.</p>
-        <div style="background:#f8f9fa;border-radius:8px;padding:20px;margin:20px 0">
-          <p style="margin:5px 0"><strong>Name:</strong> ${attendeeName}</p>
-          <p style="margin:5px 0"><strong>Email:</strong> ${attendeeEmail}</p>
-          <p style="margin:5px 0"><strong>Type:</strong> ${type === 'paid' ? '💰 Paid Registration' : '🆓 Free Registration'}</p>
-          <p style="margin:5px 0"><strong>Quantity:</strong> ${quantity} ticket(s)</p>
-          ${ticketId ? `<p style="margin:5px 0"><strong>🎫 Ticket ID:</strong> ${ticketId}</p>` : ''}
-          ${seatNumber ? `<p style="margin:5px 0"><strong>💺 Seat:</strong> #${seatNumber}</p>` : ''}
-        </div>
-        <a href="${process.env.FRONTEND_URL}/events/dashboard/events" style="display:inline-block;background:#1B3766;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">View Dashboard</a>
-      </div>
-    </div>
-  `;
-  await sendEmail(creatorEmail, subject, html);
-};
-
-// ==================== PAYMENT CONFIRMATION (with QR) ====================
+// ==================== PAYMENT CONFIRMATION (with QR attachment) ====================
 export const sendPaymentConfirmation = async (email, name, eventTitle, amount, registration, event, qrCodeDataUrl = null) => {
   const subject = `✅ Payment Confirmed - ${eventTitle}`;
   const isVirtual = event?.isVirtual;
@@ -203,37 +157,19 @@ export const sendPaymentConfirmation = async (email, name, eventTitle, amount, r
         
         <p style="font-size:14px;color:#666">You're all set! Your ticket is attached below. Bring it to the event for check-in.</p>
       </div>
-      ${generateTicketHTML(registration, event || { title: eventTitle }, qrCodeDataUrl)}
+      ${generateTicketHTML(registration, event || { title: eventTitle }, 'ticket_qr')}
     </div>
   `;
-  await sendEmail(email, subject, html);
+
+  const attachments = [];
+  if (qrCodeDataUrl) {
+    const qrAtt = createQRAttachment(qrCodeDataUrl, 'ticket_qr');
+    if (qrAtt) attachments.push(qrAtt);
+  }
+  await sendEmail(email, subject, html, attachments);
 };
 
-// ==================== PAYMENT TO CREATOR ====================
-export const sendPaymentToCreator = async (creatorEmail, eventTitle, attendeeName, amount, creatorPercentage) => {
-  const creatorShare = (amount * creatorPercentage) / 100;
-  const subject = `💰 Payment Received for ${eventTitle}`;
-  const html = `
-    <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif">
-      <div style="background:linear-gradient(135deg,#059669,#10b981);padding:30px;text-align:center">
-        <h1 style="color:#fff;margin:0">Payment Received! 💰</h1>
-      </div>
-      <div style="padding:30px;background:#fff">
-        <p style="font-size:16px">Good news! A payment has been received for <strong>${eventTitle}</strong>.</p>
-        <div style="background:#f8f9fa;border-radius:8px;padding:20px;margin:20px 0">
-          <p style="margin:5px 0"><strong>Attendee:</strong> ${attendeeName}</p>
-          <p style="margin:5px 0"><strong>Total Amount:</strong> ₦${amount.toLocaleString()}</p>
-          ${creatorPercentage > 0 ? `<p style="margin:5px 0"><strong>Your Share (${creatorPercentage}%):</strong> ₦${creatorShare.toLocaleString()}</p>` : ''}
-        </div>
-        <p style="font-size:14px;color:#666">${creatorPercentage > 0 ? 'Your share has been credited to your subaccount.' : 'This is a company event.'}</p>
-        <a href="${process.env.FRONTEND_URL}/events/dashboard/wallet" style="display:inline-block;background:#1B3766;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">View Wallet</a>
-      </div>
-    </div>
-  `;
-  await sendEmail(creatorEmail, subject, html);
-};
-
-// ==================== INDIVIDUAL TICKET TO ATTENDEE (with QR) ====================
+// ==================== INDIVIDUAL TICKET TO ATTENDEE (with QR attachment) ====================
 export const sendTicketToAttendee = async (email, name, eventTitle, eventDate, eventTime, venue, ticketId, seatNumber, event, qrCodeDataUrl = null) => {
   const subject = `🎟️ Your Ticket for ${eventTitle}`;
   const isVirtual = event?.isVirtual;
@@ -262,9 +198,7 @@ export const sendTicketToAttendee = async (email, name, eventTitle, eventDate, e
           ${locationBlock}
         </div>
         
-        <div style="text-align:center;margin:20px 0">
-          ${qrCodeDataUrl ? `<img src="${qrCodeDataUrl}" alt="QR Code" style="width:200px;height:200px;border:1px solid #ddd;border-radius:8px;padding:10px;" />` : ''}
-        </div>
+        ${qrCodeDataUrl ? `<div style="text-align:center;margin:20px 0"><img src="cid:ticket_qr" alt="QR Code" style="width:200px;height:200px;border:1px solid #ddd;border-radius:8px;padding:10px;" /></div>` : ''}
         
         <div style="background:#1B3766;border-radius:12px;padding:20px;margin:20px 0;text-align:center">
           <p style="color:#79FFFF;font-size:11px;margin:0">TICKET ID</p>
@@ -279,15 +213,102 @@ export const sendTicketToAttendee = async (email, name, eventTitle, eventDate, e
       </div>
     </div>
   `;
-  await sendEmail(email, subject, html);
+
+  const attachments = [];
+  if (qrCodeDataUrl) {
+    const qrAtt = createQRAttachment(qrCodeDataUrl, 'ticket_qr');
+    if (qrAtt) attachments.push(qrAtt);
+  }
+  await sendEmail(email, subject, html, attachments);
 };
 
-// ==================== EVENT REPORT NOTICE ====================
+// ==================== Helper functions (unchanged) ====================
+const generateAttendeesList = (registration) => {
+  if (!registration?.additionalAttendees?.length) return '';
+  return `
+    <div style="background:#f8f9fa;border-radius:8px;padding:15px;margin:15px 0">
+      <p style="font-size:14px;font-weight:bold;color:#1B3766;margin:0 0 10px">👥 Additional Attendees</p>
+      ${registration.additionalAttendees.map(att => `
+        <div style="margin:8px 0;padding:10px;background:#fff;border-radius:6px;border:1px solid #e5e7eb">
+          <p style="margin:0;font-size:13px;font-weight:bold">${att.name}</p>
+          <p style="margin:3px 0;font-size:11px;color:#666">📧 ${att.email || 'N/A'}</p>
+          <p style="margin:3px 0;font-size:11px;color:#666">🎫 Ticket: ${att.ticketId || 'Pending'} | 💺 Seat: #${att.seatNumber || 'TBD'}</p>
+        </div>
+      `).join('')}
+    </div>
+  `;
+};
+
+const generateTicketSummary = (registration) => {
+  const quantity = registration.quantity || 1;
+  const ticketType = registration.ticketType || 'General';
+  const totalAmount = registration.totalAmount || 0;
+  const seatsPerTicket = registration.seatsPerTicket || 1;
+
+  return `
+    <div style="background:#f8f9fa;border-radius:8px;padding:15px;margin:15px 0">
+      <p style="font-size:14px;font-weight:bold;color:#1B3766;margin:0 0 8px">📋 Ticket Summary</p>
+      <p style="margin:3px 0;font-size:13px"><strong>Type:</strong> ${ticketType}</p>
+      <p style="margin:3px 0;font-size:13px"><strong>Quantity:</strong> ${quantity} ticket(s)</p>
+      ${seatsPerTicket > 1 ? `<p style="margin:3px 0;font-size:13px"><strong>Seats per Ticket:</strong> ${seatsPerTicket}</p>` : ''}
+      <p style="margin:3px 0;font-size:13px"><strong>Total Seats:</strong> ${quantity * seatsPerTicket}</p>
+      ${totalAmount > 0 ? `<p style="margin:3px 0;font-size:15px;font-weight:bold;color:#059669">Total Paid: ₦${totalAmount.toLocaleString()}</p>` : ''}
+    </div>
+  `;
+};
+
+// ==================== All other email functions (unchanged, they don't need QR) ====================
+export const sendNewRegistrationToCreator = async (creatorEmail, eventTitle, attendeeName, attendeeEmail, type, ticketId, seatNumber, quantity = 1) => {
+  const subject = `📋 New ${type === 'paid' ? 'Paid ' : ''}Registration for ${eventTitle}`;
+  const html = `
+    <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif">
+      <div style="background:linear-gradient(135deg,#1B3766,#254899);padding:30px;text-align:center">
+        <h1 style="color:#fff;margin:0">New Registration! 📋</h1>
+      </div>
+      <div style="padding:30px;background:#fff">
+        <p style="font-size:16px">Someone just registered for <strong>${eventTitle}</strong>.</p>
+        <div style="background:#f8f9fa;border-radius:8px;padding:20px;margin:20px 0">
+          <p style="margin:5px 0"><strong>Name:</strong> ${attendeeName}</p>
+          <p style="margin:5px 0"><strong>Email:</strong> ${attendeeEmail}</p>
+          <p style="margin:5px 0"><strong>Type:</strong> ${type === 'paid' ? '💰 Paid Registration' : '🆓 Free Registration'}</p>
+          <p style="margin:5px 0"><strong>Quantity:</strong> ${quantity} ticket(s)</p>
+          ${ticketId ? `<p style="margin:5px 0"><strong>🎫 Ticket ID:</strong> ${ticketId}</p>` : ''}
+          ${seatNumber ? `<p style="margin:5px 0"><strong>💺 Seat:</strong> #${seatNumber}</p>` : ''}
+        </div>
+        <a href="${process.env.FRONTEND_URL}/events/dashboard/events" style="display:inline-block;background:#1B3766;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">View Dashboard</a>
+      </div>
+    </div>
+  `;
+  await sendEmail(creatorEmail, subject, html);
+};
+
+export const sendPaymentToCreator = async (creatorEmail, eventTitle, attendeeName, amount, creatorPercentage) => {
+  const creatorShare = (amount * creatorPercentage) / 100;
+  const subject = `💰 Payment Received for ${eventTitle}`;
+  const html = `
+    <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif">
+      <div style="background:linear-gradient(135deg,#059669,#10b981);padding:30px;text-align:center">
+        <h1 style="color:#fff;margin:0">Payment Received! 💰</h1>
+      </div>
+      <div style="padding:30px;background:#fff">
+        <p style="font-size:16px">Good news! A payment has been received for <strong>${eventTitle}</strong>.</p>
+        <div style="background:#f8f9fa;border-radius:8px;padding:20px;margin:20px 0">
+          <p style="margin:5px 0"><strong>Attendee:</strong> ${attendeeName}</p>
+          <p style="margin:5px 0"><strong>Total Amount:</strong> ₦${amount.toLocaleString()}</p>
+          ${creatorPercentage > 0 ? `<p style="margin:5px 0"><strong>Your Share (${creatorPercentage}%):</strong> ₦${creatorShare.toLocaleString()}</p>` : ''}
+        </div>
+        <p style="font-size:14px;color:#666">${creatorPercentage > 0 ? 'Your share has been credited to your subaccount.' : 'This is a company event.'}</p>
+        <a href="${process.env.FRONTEND_URL}/events/dashboard/wallet" style="display:inline-block;background:#1B3766;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">View Wallet</a>
+      </div>
+    </div>
+  `;
+  await sendEmail(creatorEmail, subject, html);
+};
+
 export const sendEventReportNotice = async (creatorEmail, eventTitle, reportCount, action = 'reported') => {
   const subject = action === 'disabled' 
     ? `⚠️ Your event "${eventTitle}" has been disabled`
     : `⚠️ Your event "${eventTitle}" has been reported`;
-  
   const html = `
     <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif">
       <div style="background:${action === 'disabled' ? '#dc2626' : '#f59e0b'};padding:30px;text-align:center">
@@ -305,7 +326,6 @@ export const sendEventReportNotice = async (creatorEmail, eventTitle, reportCoun
   await sendEmail(creatorEmail, subject, html);
 };
 
-// ==================== WALLET SETUP CONFIRMATION ====================
 export const sendWalletSetupConfirmation = async (email, name) => {
   const subject = '✅ Your Payment Wallet is Ready!';
   const html = `
@@ -324,7 +344,6 @@ export const sendWalletSetupConfirmation = async (email, name) => {
   await sendEmail(email, subject, html);
 };
 
-// ==================== WITHDRAWAL CONFIRMATION ====================
 export const sendWithdrawalConfirmation = async (email, name, amount) => {
   const subject = `💸 Withdrawal of ₦${amount.toLocaleString()} Initiated`;
   const html = `
@@ -342,7 +361,6 @@ export const sendWithdrawalConfirmation = async (email, name, amount) => {
   await sendEmail(email, subject, html);
 };
 
-// ==================== SETTLEMENT NOTIFICATION ====================
 export const sendSettlementNotification = async (email, name, totalAmount, transactionCount) => {
   const subject = `💰 ₦${totalAmount.toLocaleString()} Settled to Your Bank Account`;
   const html = `
@@ -359,9 +377,7 @@ export const sendSettlementNotification = async (email, name, totalAmount, trans
           <p style="margin:5px 0;font-size:18px;font-weight:bold;color:#059669">₦${totalAmount.toLocaleString()}</p>
           <p style="margin:5px 0;font-size:14px;color:#666">${transactionCount} transaction${transactionCount > 1 ? 's' : ''} settled</p>
         </div>
-        <p style="font-size:14px;color:#666">
-          The funds should reflect in your bank account within 1-3 business days depending on your bank.
-        </p>
+        <p style="font-size:14px;color:#666">The funds should reflect in your bank account within 1-3 business days depending on your bank.</p>
         <a href="${process.env.FRONTEND_URL}/events/dashboard/wallet" style="display:inline-block;background:#1B3766;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:10px">View Wallet</a>
       </div>
     </div>
@@ -369,7 +385,6 @@ export const sendSettlementNotification = async (email, name, totalAmount, trans
   await sendEmail(email, subject, html);
 };
 
-// ==================== EVENT REMINDER ====================
 export const sendEventReminder = async (email, name, event, daysRemaining, reminderType, registration = null) => {
   let subject = '';
   let reminderText = '';
