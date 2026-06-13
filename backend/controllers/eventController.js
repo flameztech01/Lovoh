@@ -1,6 +1,7 @@
 import asyncHandler from 'express-async-handler';
 import crypto from 'crypto';
 import mongoose from 'mongoose';
+import QRCode from 'qrcode';
 import Event from '../models/eventModel.js';
 import EventForm from '../models/eventFormModel.js';
 import EventRegistration from '../models/eventRegistrationModel.js';
@@ -26,6 +27,31 @@ const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
 const PAYSTACK_BASE_URL = 'https://api.paystack.co';
 const COMPANY_SHARE_PERCENTAGE = 6;
 const CREATOR_SHARE_PERCENTAGE = 94;
+
+// --------------------- QR HELPER ---------------------
+/**
+ * Generate a QR code as a data URL (PNG) containing the ticket ID.
+ * @param {string} ticketId - Unique ticket identifier
+ * @param {string} attendeeName - Name of the attendee (for logging)
+ * @param {string} eventTitle - Title of the event (for logging)
+ * @returns {Promise<string|null>} - Data URL of QR code or null on error
+ */
+const generateTicketQR = async (ticketId, attendeeName, eventTitle) => {
+  try {
+    // Encode only the ticket ID – scanners will read this and verify via backend
+    const qrData = JSON.stringify({ ticketId });
+    const qrDataUrl = await QRCode.toDataURL(qrData, {
+      errorCorrectionLevel: 'H',
+      margin: 1,
+      width: 300,
+      color: { dark: '#000000', light: '#FFFFFF' }
+    });
+    return qrDataUrl;
+  } catch (err) {
+    console.error(`QR generation failed for ${attendeeName} (${eventTitle}):`, err);
+    return null;
+  }
+};
 
 // --------------------- HELPERS ---------------------
 
@@ -586,7 +612,7 @@ const toggleEventStatus = asyncHandler(async (req, res) => {
   res.json({ message: event.isDisabled ? 'Event disabled' : 'Event enabled', event });
 });
 
-// --------------------- REGISTRATION ---------------------
+// --------------------- REGISTRATION (WITH QR) ---------------------
 
 const registerForEvent = asyncHandler(async (req, res) => {
   const {
@@ -723,6 +749,10 @@ const registerForEvent = asyncHandler(async (req, res) => {
     }
     await event.save();
 
+    // --- Generate QR code for main ticket ---
+    const mainQrDataUrl = await generateTicketQR(registration.ticketId, registration.name, event.title);
+
+    // Send confirmation email with embedded QR
     await sendRegistrationConfirmation(
       registration.email,
       registration.name,
@@ -731,15 +761,18 @@ const registerForEvent = asyncHandler(async (req, res) => {
       event.time,
       event.venue || event.location,
       registration,
-      event
+      event,
+      mainQrDataUrl
     );
 
+    // Send individual tickets for additional attendees (each with its own QR)
     if (registration.sendIndividualTickets && registration.additionalAttendees?.length > 0) {
       for (const att of registration.additionalAttendees) {
         if (att.email) {
+          const attendeeQr = await generateTicketQR(att.ticketId, att.name, event.title);
           await sendTicketToAttendee(
             att.email, att.name, event.title, event.date, event.time,
-            event.venue || event.location, att.ticketId, att.seatNumber, event
+            event.venue || event.location, att.ticketId, att.seatNumber, event, attendeeQr
           );
         }
       }
@@ -752,7 +785,7 @@ const registerForEvent = asyncHandler(async (req, res) => {
       );
     }
 
-    return res.status(201).json({ message: 'Registration successful! Check your email for your ticket(s).', registration });
+    return res.status(201).json({ message: 'Registration successful! Check your email for your ticket(s) with QR code.', registration });
   }
 
   // Paid event – initiate payment
@@ -794,7 +827,7 @@ const registerForEvent = asyncHandler(async (req, res) => {
     await registration.save();
 
     res.status(201).json({
-      message: 'Please complete payment to confirm your registration.',
+      message: 'Please complete payment to confirm your registration. Your ticket with QR code will be sent after payment.',
       registration,
       paymentUrl: paymentResponse.data.data.authorization_url,
     });
@@ -806,7 +839,7 @@ const registerForEvent = asyncHandler(async (req, res) => {
   }
 });
 
-// --------------------- VERIFY PAYMENT ---------------------
+// --------------------- VERIFY PAYMENT (WITH QR) ---------------------
 
 const verifyEventPayment = asyncHandler(async (req, res) => {
   const { reference } = req.params;
@@ -896,21 +929,28 @@ const verifyEventPayment = asyncHandler(async (req, res) => {
           });
         }
 
+        // --- Generate QR code for main ticket ---
+        const mainQrDataUrl = await generateTicketQR(registration.ticketId, registration.name, event.title);
+
+        // Send payment confirmation email with embedded QR
         await sendPaymentConfirmation(
           registration.email,
           registration.name,
           event.title,
           totalAmount,
           registration,
-          event
+          event,
+          mainQrDataUrl
         );
 
+        // Send individual tickets for additional attendees (each with its own QR)
         if (registration.sendIndividualTickets && registration.additionalAttendees?.length > 0) {
           for (const att of registration.additionalAttendees) {
             if (att.email) {
+              const attendeeQr = await generateTicketQR(att.ticketId, att.name, event.title);
               await sendTicketToAttendee(
                 att.email, att.name, event.title, event.date, event.time,
-                event.venue || event.location, att.ticketId, att.seatNumber, event
+                event.venue || event.location, att.ticketId, att.seatNumber, event, attendeeQr
               );
             }
           }
@@ -928,7 +968,7 @@ const verifyEventPayment = asyncHandler(async (req, res) => {
         }
       }
 
-      return res.json({ message: 'Payment verified! Check your email for your ticket(s).', registration });
+      return res.json({ message: 'Payment verified! Check your email for your ticket(s) with QR code.', registration });
     } else {
       const reg = await EventRegistration.findOne({ paymentReference: reference });
       if (reg && reg.status === 'pending') {

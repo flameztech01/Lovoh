@@ -246,8 +246,8 @@ const GoogleLoginButton = ({ onSuccess, onError, isLoading }) => {
   const handleNativeGoogleLogin = async () => {
     try {
       // Get your Google OAuth URL
-      const clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
-      const redirectUri = 'https://your-app.com/auth/google/callback'; // Update with your redirect URI
+      const clientId = '423161329900-6rifobklf0pl8l6hfjnct8ek8qbo4gou.apps.googleusercontent.com';
+      const redirectUri = 'https://biizzed.lovohcreate.com/auth/google/callback'; // Update with your redirect URI
       const scope = 'email profile';
       const responseType = 'token id_token';
       

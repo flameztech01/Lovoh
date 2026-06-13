@@ -1,12 +1,12 @@
-// screens/EventDashboardEventRegistrations.jsx - With custom form, mobile bottom-sheet modals & floating filter
-import React, { useState, useEffect, useCallback } from 'react';
+// screens/EventDashboardEventRegistrations.jsx - With QR code check-in (html5-qrcode)
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   FaArrowLeft, FaSpinner, FaCheckCircle, FaTimesCircle,
   FaUser, FaUsers, FaDownload, FaSearch, FaTimes, FaEye,
   FaSync, FaBan, FaTicketAlt, FaChair, FaClipboardCheck,
   FaQrcode, FaUserFriends, FaDollarSign, FaFilter, FaLayerGroup,
-  FaEnvelope, // for bulk mail icon
+  FaEnvelope, FaCamera,
 } from 'react-icons/fa';
 import {
   useGetEventByIdQuery,
@@ -14,21 +14,15 @@ import {
   useCheckInAttendeeMutation,
 } from '../slices/eventApiSlice';
 import { toast } from 'react-toastify';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 import EventDashboardSidebar from '../components/EventDashboardSidebar';
 
 const EventDashboardEventRegistrations = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  // Screen resize for mobile detection
+  // --- ALL HOOKS (state, refs, effects) ---
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedRegistration, setSelectedRegistration] = useState(null);
@@ -37,25 +31,74 @@ const EventDashboardEventRegistrations = () => {
   const [showCheckInModal, setShowCheckInModal] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
   const [showFilterPopup, setShowFilterPopup] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [scannerError, setScannerError] = useState(null);
 
-  // Modal animation states (for bottom sheet)
+  // Modal animation states
   const [detailsModalAnim, setDetailsModalAnim] = useState(false);
   const [checkInModalAnim, setCheckInModalAnim] = useState(false);
   const [ticketModalAnim, setTicketModalAnim] = useState(false);
 
+  // QR Scanner ref & state
+  const scannerRef = useRef(null);
+  const [scanningActive, setScanningActive] = useState(false);
+
+  // API hooks
   const { data: event, isLoading: eventLoading, refetch: refetchEvent } = useGetEventByIdQuery(id);
   const { data: registrationsData, isLoading: regLoading, refetch: refetchRegistrations } = useGetEventRegistrationsQuery({
     id,
     params: { status: statusFilter !== 'all' ? statusFilter : undefined },
   });
-  const [checkInAttendee, { isLoading: isCheckingIn }] = useCheckInAttendeeMutation();
 
+  // Extract data from registrationsData
   const registrations = registrationsData?.registrations || [];
   const totalRegistrations = registrationsData?.totalRegistrations || 0;
   const confirmedCount = registrationsData?.confirmedCount || 0;
   const pendingCount = registrationsData?.pendingCount || 0;
 
+  const [checkInAttendee, { isLoading: isCheckingIn }] = useCheckInAttendeeMutation();
+
+  // --- Effects ---
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // QR Scanner effect
+  useEffect(() => {
+    if (showScanner && !scanningActive) {
+      setScanningActive(true);
+      const scanner = new Html5QrcodeScanner(
+        "qr-reader",
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        false
+      );
+      scanner.render(
+        (decodedText) => {
+          scanner.clear();
+          setScanningActive(false);
+          handleScan(decodedText);
+        },
+        (error) => {
+          console.debug("QR scan error", error);
+        }
+      );
+      scannerRef.current = scanner;
+    } else if (!showScanner && scannerRef.current) {
+      scannerRef.current.clear();
+      setScanningActive(false);
+    }
+
+    return () => {
+      if (scannerRef.current) {
+        scannerRef.current.clear();
+      }
+    };
+  }, [showScanner, scanningActive]);
+
+  // --- Helper functions (no hooks inside) ---
   const getAllCheckedInCount = () => {
     let count = 0;
     registrations.forEach((reg) => {
@@ -94,14 +137,12 @@ const EventDashboardEventRegistrations = () => {
         }).format(p)
       : 'Free';
 
-  // Helper to get custom value as string
   const getCustomValue = (value) => {
     if (Array.isArray(value)) return value.join('; ');
     if (value === undefined || value === null) return '';
     return String(value);
   };
 
-  // Collect all custom form labels across all registrations for CSV header
   const getAllCustomLabels = () => {
     const labelsSet = new Set();
     registrations.forEach((reg) => {
@@ -114,9 +155,28 @@ const EventDashboardEventRegistrations = () => {
     return Array.from(labelsSet).sort();
   };
 
+  const filteredRegistrations = registrations.filter((reg) => {
+    if (!searchTerm) return true;
+    const s = searchTerm.toLowerCase();
+    return (
+      reg.name?.toLowerCase().includes(s) ||
+      reg.email?.toLowerCase().includes(s) ||
+      reg.phone?.toLowerCase().includes(s) ||
+      reg.ticketId?.toLowerCase().includes(s) ||
+      reg.seatNumber?.toLowerCase().includes(s) ||
+      reg.ticketType?.toLowerCase().includes(s) ||
+      reg.additionalAttendees?.some(
+        (a) =>
+          a.name?.toLowerCase().includes(s) ||
+          a.email?.toLowerCase().includes(s) ||
+          a.ticketId?.toLowerCase().includes(s) ||
+          a.seatNumber?.toLowerCase().includes(s)
+      )
+    );
+  });
+
   const exportToCSV = () => {
     const customLabels = getAllCustomLabels();
-    // Define base columns (all important fields)
     const baseColumns = [
       'Type', 'Name', 'Email', 'Phone', 'Ticket ID', 'Seat Number',
       'Ticket Type', 'Quantity', 'Registration Date', 'Status',
@@ -135,7 +195,6 @@ const EventDashboardEventRegistrations = () => {
     };
 
     filteredRegistrations.forEach((reg) => {
-      // Buyer row
       const buyerRow = {};
       baseColumns.forEach(col => buyerRow[col] = '');
       customLabels.forEach(label => buyerRow[label] = '');
@@ -156,7 +215,6 @@ const EventDashboardEventRegistrations = () => {
       buyerRow['Payment Reference'] = reg.paymentReference || '';
       buyerRow['Paid Amount (NGN)'] = reg.paidAmount || '';
       
-      // Custom responses for buyer
       if (reg.customFormResponses && Array.isArray(reg.customFormResponses)) {
         reg.customFormResponses.forEach((resp) => {
           if (resp.label && buyerRow.hasOwnProperty(resp.label)) {
@@ -169,7 +227,6 @@ const EventDashboardEventRegistrations = () => {
         customLabels.map(label => `"${String(buyerRow[label] || '').replace(/"/g, '""')}"`)
       ));
 
-      // Additional attendees rows
       if (reg.additionalAttendees && reg.additionalAttendees.length > 0) {
         reg.additionalAttendees.forEach((att) => {
           const guestRow = {};
@@ -192,7 +249,6 @@ const EventDashboardEventRegistrations = () => {
           guestRow['Payment Reference'] = reg.paymentReference || '';
           guestRow['Paid Amount (NGN)'] = '';
           
-          // Custom responses for guests (same as buyer's custom responses, optional)
           if (reg.customFormResponses && Array.isArray(reg.customFormResponses)) {
             reg.customFormResponses.forEach((resp) => {
               if (resp.label && guestRow.hasOwnProperty(resp.label)) {
@@ -218,10 +274,8 @@ const EventDashboardEventRegistrations = () => {
     toast.success(`Exported ${filteredRegistrations.length} registrations with all details!`);
   };
 
-  // Bulk email: opens Gmail with all attendee emails (buyer + guests)
   const bulkMail = () => {
     const emailSet = new Set();
-    // Collect emails from all registrations (including filtered ones)
     filteredRegistrations.forEach((reg) => {
       if (reg.email && reg.email.trim()) emailSet.add(reg.email.trim());
       if (reg.additionalAttendees && reg.additionalAttendees.length) {
@@ -243,7 +297,6 @@ const EventDashboardEventRegistrations = () => {
       `We would love to hear your feedback. Please feel free to reply to this email with any questions or comments.\n\n` +
       `Best regards,\n${event?.organizer || 'Event Team'}`
     );
-    // Gmail compose URL
     const gmailComposeUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(emails.join(','))}&su=${subject}&body=${body}`;
     window.open(gmailComposeUrl, '_blank');
     toast.success(`Opening Gmail with ${emails.length} recipient(s).`);
@@ -256,27 +309,28 @@ const EventDashboardEventRegistrations = () => {
     toast.success('Refreshed');
   };
 
-  const filteredRegistrations = registrations.filter((reg) => {
-    if (!searchTerm) return true;
-    const s = searchTerm.toLowerCase();
-    return (
-      reg.name?.toLowerCase().includes(s) ||
-      reg.email?.toLowerCase().includes(s) ||
-      reg.phone?.toLowerCase().includes(s) ||
-      reg.ticketId?.toLowerCase().includes(s) ||
-      reg.seatNumber?.toLowerCase().includes(s) ||
-      reg.ticketType?.toLowerCase().includes(s) ||
-      reg.additionalAttendees?.some(
-        (a) =>
-          a.name?.toLowerCase().includes(s) ||
-          a.email?.toLowerCase().includes(s) ||
-          a.ticketId?.toLowerCase().includes(s) ||
-          a.seatNumber?.toLowerCase().includes(s)
-      )
-    );
-  });
+  const handleScan = async (decodedText) => {
+    setScannerError(null);
+    try {
+      let ticketId = decodedText;
+      if (decodedText.startsWith('{') && decodedText.endsWith('}')) {
+        const parsed = JSON.parse(decodedText);
+        ticketId = parsed.ticketId;
+      }
+      if (!ticketId) throw new Error('Invalid QR code: no ticket ID');
 
-  // Modal open helpers with animation triggers
+      await checkInAttendee(ticketId).unwrap();
+      toast.success('✅ Check-in successful!');
+      setShowScanner(false);
+      refetchRegistrations();
+    } catch (error) {
+      const msg = error?.data?.message || error?.message || 'Check-in failed';
+      toast.error(msg);
+      setScannerError(msg);
+    }
+  };
+
+  // Modal helpers
   const openDetailsModal = (reg) => {
     setSelectedRegistration(reg);
     setShowDetailsModal(true);
@@ -321,7 +375,6 @@ const EventDashboardEventRegistrations = () => {
     }, 200);
   };
 
-  // Filter popup
   const openFilterPopup = () => setShowFilterPopup(true);
   const closeFilterPopup = () => setShowFilterPopup(false);
   const handleFilterSelect = (value) => {
@@ -362,6 +415,7 @@ const EventDashboardEventRegistrations = () => {
     .filter((r) => r.status === 'confirmed')
     .reduce((s, r) => s + (r.totalAmount || r.paidAmount || r.price || 0), 0);
 
+  // --- Early returns (after all hooks) ---
   if (eventLoading || regLoading) {
     return (
       <EventDashboardSidebar>
@@ -388,7 +442,7 @@ const EventDashboardEventRegistrations = () => {
     );
   }
 
-  // Desktop filter select (hidden on mobile)
+  // --- UI Components (no hooks) ---
   const FilterSelect = () => (
     <select
       value={statusFilter}
@@ -438,7 +492,6 @@ const EventDashboardEventRegistrations = () => {
     </>
   );
 
-  // Mobile floating filter button
   const MobileFilterButton = () => (
     <button
       onClick={openFilterPopup}
@@ -448,7 +501,6 @@ const EventDashboardEventRegistrations = () => {
     </button>
   );
 
-  // Modal Container for Bottom Sheet (reused)
   const ModalContainer = ({ show, onClose, anim, children }) => {
     if (!show) return null;
     return (
@@ -526,8 +578,6 @@ const EventDashboardEventRegistrations = () => {
             mono
           />
         </DetailSection>
-
-        {/* Custom form responses */}
         {selectedRegistration.customFormResponses &&
           selectedRegistration.customFormResponses.length > 0 && (
             <DetailSection icon={FaLayerGroup} title="Additional Info">
@@ -625,10 +675,36 @@ const EventDashboardEventRegistrations = () => {
     </div>
   );
 
+  const ScannerModal = () => (
+    <ModalContainer show={showScanner} onClose={() => setShowScanner(false)} anim={showScanner}>
+      <div className="text-center">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">Scan QR Code</h3>
+          <button onClick={() => setShowScanner(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+            <FaTimes />
+          </button>
+        </div>
+        <div id="qr-reader" className="w-full rounded-xl overflow-hidden" style={{ minHeight: '300px' }}></div>
+        {scannerError && (
+          <p className="text-red-600 text-sm mt-3">{scannerError}</p>
+        )}
+        <p className="text-xs text-gray-500 my-4">
+          Position the QR code inside the frame. The ticket will be checked in automatically.
+        </p>
+        <button
+          onClick={() => setShowScanner(false)}
+          className="w-full py-2.5 border border-gray-200 rounded-lg text-gray-700 text-sm"
+        >
+          Cancel
+        </button>
+      </div>
+    </ModalContainer>
+  );
+
+  // --- Main return ---
   return (
     <EventDashboardSidebar>
       <div className="p-4 md:p-6 relative">
-        {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div>
             <button
@@ -649,6 +725,12 @@ const EventDashboardEventRegistrations = () => {
               <FaSync className={isRefreshing ? 'animate-spin' : ''} /> Refresh
             </button>
             <button
+              onClick={() => setShowScanner(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm"
+            >
+              <FaCamera /> Scan QR
+            </button>
+            <button
               onClick={bulkMail}
               className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
             >
@@ -663,7 +745,6 @@ const EventDashboardEventRegistrations = () => {
           </div>
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
           <StatCard label="Total" value={totalRegistrations} color="bg-gray-50" textColor="text-gray-900" icon={FaUsers} />
           <StatCard label="Confirmed" value={confirmedCount} color="bg-green-50" textColor="text-green-700" icon={FaCheckCircle} />
@@ -672,7 +753,6 @@ const EventDashboardEventRegistrations = () => {
           <StatCard label="Revenue" value={formatPrice(totalRevenue)} color="bg-purple-50" textColor="text-purple-700" icon={FaDollarSign} isCurrency />
         </div>
 
-        {/* Search + Desktop Filter */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1 relative">
@@ -694,7 +774,7 @@ const EventDashboardEventRegistrations = () => {
           </div>
         </div>
 
-        {/* Registration list - Desktop */}
+        {/* Desktop list */}
         <div className="hidden md:block">
           {filteredRegistrations.length === 0 ? (
             <EmptyState />
@@ -702,7 +782,6 @@ const EventDashboardEventRegistrations = () => {
             <div className="space-y-4">
               {filteredRegistrations.map((reg) => {
                 const status = getStatusBadge(reg.status);
-                const StatusIcon = status.icon;
                 const hasAdditional = reg.additionalAttendees?.length > 0;
                 const allCheckedIn =
                   reg.ticketCheckedIn &&
@@ -714,13 +793,8 @@ const EventDashboardEventRegistrations = () => {
                       allCheckedIn ? 'border-green-200 bg-green-50/20' : 'border-gray-100'
                     }`}
                   >
-                    {/* Primary Buyer */}
                     <div className="p-4 flex items-center gap-4">
-                      <div
-                        className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                          reg.ticketCheckedIn ? 'bg-green-100' : 'bg-gray-100'
-                        }`}
-                      >
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${reg.ticketCheckedIn ? 'bg-green-100' : 'bg-gray-100'}`}>
                         <FaUser className={`text-sm ${reg.ticketCheckedIn ? 'text-green-600' : 'text-gray-400'}`} />
                       </div>
                       <div className="flex-1 min-w-0">
@@ -745,15 +819,11 @@ const EventDashboardEventRegistrations = () => {
                           <span>•</span>
                           <span className="font-mono">{reg.ticketId}</span>
                           <span>•</span>
-                          <span>
-                            <FaChair className="inline text-[10px]" /> {reg.seatNumber}
-                          </span>
+                          <span><FaChair className="inline text-[10px]" /> {reg.seatNumber}</span>
                         </div>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <p className="font-semibold text-sm">
-                          {reg.totalAmount > 0 ? formatPrice(reg.totalAmount) : 'Free'}
-                        </p>
+                        <p className="font-semibold text-sm">{reg.totalAmount > 0 ? formatPrice(reg.totalAmount) : 'Free'}</p>
                         <p className="text-[10px] text-gray-400">{formatDate(reg.createdAt)}</p>
                       </div>
                       <div className="flex items-center gap-1 flex-shrink-0">
@@ -761,42 +831,18 @@ const EventDashboardEventRegistrations = () => {
                           <span className="text-[10px] text-green-600 font-medium px-2">✅ In</span>
                         ) : (
                           reg.status === 'confirmed' && (
-                            <button
-                              onClick={() => openCheckInModal(reg)}
-                              className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs hover:bg-green-700"
-                            >
-                              Check In
-                            </button>
+                            <button onClick={() => openCheckInModal(reg)} className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs hover:bg-green-700">Check In</button>
                           )
                         )}
-                        <button
-                          onClick={() => openTicketModal(reg)}
-                          className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg"
-                          title="Ticket"
-                        >
-                          <FaTicketAlt className="text-sm" />
-                        </button>
-                        <button
-                          onClick={() => openDetailsModal(reg)}
-                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
-                        >
-                          <FaEye className="text-sm" />
-                        </button>
+                        <button onClick={() => openTicketModal(reg)} className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg" title="Ticket"><FaTicketAlt className="text-sm" /></button>
+                        <button onClick={() => openDetailsModal(reg)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"><FaEye className="text-sm" /></button>
                       </div>
                     </div>
-                    {/* Additional Attendees */}
                     {hasAdditional && (
                       <div className="border-t border-gray-100 bg-gray-50/50 rounded-b-xl">
                         {reg.additionalAttendees.map((att, idx) => (
-                          <div
-                            key={idx}
-                            className="px-4 py-2.5 flex items-center gap-4 border-b border-gray-100 last:border-0"
-                          >
-                            <div
-                              className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                                att.checkedIn ? 'bg-green-100' : 'bg-gray-100'
-                              }`}
-                            >
+                          <div key={idx} className="px-4 py-2.5 flex items-center gap-4 border-b border-gray-100 last:border-0">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${att.checkedIn ? 'bg-green-100' : 'bg-gray-100'}`}>
                               <FaUser className={`text-xs ${att.checkedIn ? 'text-green-600' : 'text-gray-400'}`} />
                             </div>
                             <div className="flex-1 min-w-0">
@@ -805,22 +851,13 @@ const EventDashboardEventRegistrations = () => {
                                 {att.email && <span>{att.email}</span>}
                                 {att.phone && <span>📞 {att.phone}</span>}
                                 <span className="font-mono">{att.ticketId}</span>
-                                {att.seatNumber && (
-                                  <span>
-                                    <FaChair className="inline text-[10px]" /> {att.seatNumber}
-                                  </span>
-                                )}
+                                {att.seatNumber && <span><FaChair className="inline text-[10px]" /> {att.seatNumber}</span>}
                               </div>
                             </div>
                             {att.checkedIn ? (
                               <span className="text-[10px] text-green-600 font-medium px-2">✅ In</span>
                             ) : (
-                              <button
-                                onClick={() => openCheckInModal(reg, att)}
-                                className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs hover:bg-green-700"
-                              >
-                                Check In
-                              </button>
+                              <button onClick={() => openCheckInModal(reg, att)} className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs hover:bg-green-700">Check In</button>
                             )}
                           </div>
                         ))}
@@ -833,7 +870,7 @@ const EventDashboardEventRegistrations = () => {
           )}
         </div>
 
-        {/* Registration list - Mobile */}
+        {/* Mobile list */}
         <div className="md:hidden space-y-3">
           {filteredRegistrations.length === 0 ? (
             <EmptyState />
@@ -845,86 +882,48 @@ const EventDashboardEventRegistrations = () => {
                 <div key={reg._id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2.5">
-                      <div
-                        className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                          reg.ticketCheckedIn ? 'bg-green-100' : 'bg-gray-100'
-                        }`}
-                      >
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${reg.ticketCheckedIn ? 'bg-green-100' : 'bg-gray-100'}`}>
                         <FaUser className={`text-sm ${reg.ticketCheckedIn ? 'text-green-600' : 'text-gray-500'}`} />
                       </div>
                       <div>
                         <p className="font-semibold text-gray-900 text-sm">
-                          {reg.name}{' '}
-                          {hasAdditional && (
-                            <span className="text-[10px] text-blue-600">+{reg.additionalAttendees.length}</span>
-                          )}
+                          {reg.name} {hasAdditional && <span className="text-[10px] text-blue-600">+{reg.additionalAttendees.length}</span>}
                         </p>
                         <p className="text-xs text-gray-500">{reg.email}</p>
                         {reg.phone && <p className="text-xs text-gray-400">📞 {reg.phone}</p>}
                       </div>
                     </div>
-                    <span
-                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${status.color}`}
-                    >
-                      <status.icon className="text-[10px]" />
-                      {status.label}
+                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${status.color}`}>
+                      <status.icon className="text-[10px]" /> {status.label}
                     </span>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 mb-2">
                     <span className="bg-gray-100 px-2 py-0.5 rounded-full">{reg.ticketType || 'General'}</span>
                     <span>Qty: {reg.quantity || 1}</span>
                     <span className="font-mono">{reg.ticketId}</span>
-                    <span>
-                      <FaChair className="inline text-[10px]" />
-                      {reg.seatNumber || '—'}
-                    </span>
+                    <span><FaChair className="inline text-[10px]" /> {reg.seatNumber || '—'}</span>
                   </div>
                   <div className="flex justify-between text-xs text-gray-500 pt-2 border-t border-gray-100">
                     <span>{formatDate(reg.createdAt)}</span>
-                    <span className="font-semibold">
-                      {reg.totalAmount > 0 ? formatPrice(reg.totalAmount) : 'Free'}
-                    </span>
+                    <span className="font-semibold">{reg.totalAmount > 0 ? formatPrice(reg.totalAmount) : 'Free'}</span>
                   </div>
                   <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100">
-                    <button
-                      onClick={() => openTicketModal(reg)}
-                      className="flex-1 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-medium"
-                    >
-                      <FaTicketAlt className="inline mr-1" />
-                      Ticket
-                    </button>
+                    <button onClick={() => openTicketModal(reg)} className="flex-1 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-medium"><FaTicketAlt className="inline mr-1" /> Ticket</button>
                     {reg.ticketCheckedIn ? (
-                      <span className="flex-1 py-2 bg-green-50 text-green-600 rounded-lg text-xs font-medium text-center">
-                        ✅ Checked In
-                      </span>
+                      <span className="flex-1 py-2 bg-green-50 text-green-600 rounded-lg text-xs font-medium text-center">✅ Checked In</span>
                     ) : (
                       reg.status === 'confirmed' && (
-                        <button
-                          onClick={() => openCheckInModal(reg)}
-                          className="flex-1 py-2 bg-green-600 text-white rounded-lg text-xs font-medium"
-                        >
-                          Check In
-                        </button>
+                        <button onClick={() => openCheckInModal(reg)} className="flex-1 py-2 bg-green-600 text-white rounded-lg text-xs font-medium">Check In</button>
                       )
                     )}
-                    <button
-                      onClick={() => openDetailsModal(reg)}
-                      className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg text-xs font-medium"
-                    >
-                      <FaEye className="inline mr-1" />
-                      Details
-                    </button>
+                    <button onClick={() => openDetailsModal(reg)} className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg text-xs font-medium"><FaEye className="inline mr-1" /> Details</button>
                   </div>
                   {hasAdditional && (
                     <div className="mt-2 pt-2 border-t border-gray-100 space-y-1.5">
                       {reg.additionalAttendees.map((att, idx) => (
                         <div key={idx} className="flex items-center justify-between text-xs">
                           <div className="flex items-center gap-1.5">
-                            <div
-                              className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                                att.checkedIn ? 'bg-green-100' : 'bg-gray-100'
-                              }`}
-                            >
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center ${att.checkedIn ? 'bg-green-100' : 'bg-gray-100'}`}>
                               <FaUser className="text-[10px] text-gray-500" />
                             </div>
                             <span className="font-medium">{att.name || 'Guest'}</span>
@@ -933,12 +932,7 @@ const EventDashboardEventRegistrations = () => {
                           {att.checkedIn ? (
                             <span className="text-green-600 text-[10px]">✅ In</span>
                           ) : (
-                            <button
-                              onClick={() => openCheckInModal(reg, att)}
-                              className="px-2 py-1 bg-green-600 text-white rounded text-[10px]"
-                            >
-                              Check In
-                            </button>
+                            <button onClick={() => openCheckInModal(reg, att)} className="px-2 py-1 bg-green-600 text-white rounded text-[10px]">Check In</button>
                           )}
                         </div>
                       ))}
@@ -950,32 +944,27 @@ const EventDashboardEventRegistrations = () => {
           )}
         </div>
 
-        <p className="text-center text-xs text-gray-500 mt-4">
-          Showing {filteredRegistrations.length} of {totalRegistrations} registrations
-        </p>
+        <p className="text-center text-xs text-gray-500 mt-4">Showing {filteredRegistrations.length} of {totalRegistrations} registrations</p>
 
-        {/* Mobile Floating Filter Button */}
         <MobileFilterButton />
         <FilterPopup />
 
-        {/* Modals with bottom-sheet behaviour on mobile */}
         <ModalContainer show={showDetailsModal} onClose={closeDetailsModal} anim={detailsModalAnim}>
           {detailsContent}
         </ModalContainer>
-
         <ModalContainer show={showCheckInModal} onClose={closeCheckInModal} anim={checkInModalAnim}>
           {checkInContent}
         </ModalContainer>
-
         <ModalContainer show={showTicketModal} onClose={closeTicketModal} anim={ticketModalAnim}>
           {ticketContent}
         </ModalContainer>
+        <ScannerModal />
       </div>
     </EventDashboardSidebar>
   );
 };
 
-// Reusable stat card
+// --- Reusable components ---
 const StatCard = ({ label, value, color, textColor, icon: Icon, isCurrency }) => (
   <div className={`rounded-xl shadow-sm border border-gray-100 p-4 ${color}`}>
     <div className="flex items-center justify-between">
