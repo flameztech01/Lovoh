@@ -130,6 +130,7 @@ const UduuaLogin = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [resetError, setResetError] = useState('');
+  const [resetSuccess, setResetSuccess] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
 
   // Legal modal state
@@ -236,31 +237,34 @@ const UduuaLogin = () => {
       navigate(redirect, { replace: true });
     } catch (err) {
       const errorMessage = err?.data?.message || 'Google login failed. Try signing up.';
-
+      setLoginError(errorMessage);
       // Check for lockout
       if (errorMessage.toLowerCase().includes('locked')) {
         setIsLocked(true);
       }
-
       toast.error(errorMessage);
     }
   };
 
   const handleGoogleError = (error) => {
     console.error('Google login error:', error);
+    setLoginError('Google login failed. Please try again.');
     toast.error('Google login failed. Please try again.');
   };
 
   const handleSendOtp = async (e) => {
     e.preventDefault();
+    setResetError('');
+    setResetSuccess('');
     if (!resetEmail.trim()) {
       setResetError('Email is required');
+      toast.error('Email is required');
       return;
     }
-    setResetError('');
     try {
       await forgotPassword({ email: resetEmail }).unwrap();
       setModalStep('reset');
+      setResetSuccess('OTP sent to your email');
       toast.success('OTP sent to your email');
     } catch (err) {
       const msg = err?.data?.message || 'Failed to send OTP. Try again.';
@@ -271,27 +275,34 @@ const UduuaLogin = () => {
 
   const handleResetPassword = async (e) => {
     e.preventDefault();
+    setResetError('');
+    setResetSuccess('');
     if (!otp) {
       setResetError('OTP is required');
+      toast.error('OTP is required');
       return;
     }
     if (!newPassword) {
       setResetError('New password is required');
+      toast.error('New password is required');
       return;
     }
     if (newPassword.length < 6) {
       setResetError('Password must be at least 6 characters');
+      toast.error('Password must be at least 6 characters');
       return;
     }
     if (newPassword !== confirmPassword) {
       setResetError('Passwords do not match');
+      toast.error('Passwords do not match');
       return;
     }
-    setResetError('');
     try {
       await resetPassword({ email: resetEmail, otp, newPassword }).unwrap();
+      setResetSuccess('Password reset successfully. Please log in.');
       toast.success('Password reset successfully. Please log in.');
-      closeModal();
+      // Close modal after short delay
+      setTimeout(() => closeModal(), 2000);
     } catch (err) {
       const msg = err?.data?.message || 'Reset failed. Invalid OTP or expired.';
       setResetError(msg);
@@ -307,6 +318,7 @@ const UduuaLogin = () => {
     setNewPassword('');
     setConfirmPassword('');
     setResetError('');
+    setResetSuccess('');
   };
 
   const openLegalModal = (type) => {
@@ -603,13 +615,26 @@ const UduuaLogin = () => {
                     <input
                       type="email"
                       value={resetEmail}
-                      onChange={(e) => setResetEmail(e.target.value)}
+                      onChange={(e) => {
+                        setResetEmail(e.target.value);
+                        if (resetError) setResetError('');
+                        if (resetSuccess) setResetSuccess('');
+                      }}
                       required
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
                       placeholder="you@example.com"
                     />
                   </div>
-                  {resetError && <p className="text-red-500 text-xs mb-3">{resetError}</p>}
+                  {resetError && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
+                      <p className="text-red-600 text-xs">{resetError}</p>
+                    </div>
+                  )}
+                  {resetSuccess && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
+                      <p className="text-green-700 text-xs">{resetSuccess}</p>
+                    </div>
+                  )}
                   <button
                     type="submit"
                     disabled={forgotLoading}
@@ -637,7 +662,11 @@ const UduuaLogin = () => {
                     <input
                       type="text"
                       value={otp}
-                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      onChange={(e) => {
+                        setOtp(e.target.value.replace(/\D/g, '').slice(0, 6));
+                        if (resetError) setResetError('');
+                        if (resetSuccess) setResetSuccess('');
+                      }}
                       required
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 text-center tracking-widest"
                       placeholder="123456"
@@ -649,7 +678,11 @@ const UduuaLogin = () => {
                       <input
                         type={showNewPassword ? 'text' : 'password'}
                         value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
+                        onChange={(e) => {
+                          setNewPassword(e.target.value);
+                          if (resetError) setResetError('');
+                          if (resetSuccess) setResetSuccess('');
+                        }}
                         required
                         className="w-full pr-10 px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
                         placeholder="•••••••• (min 6 chars)"
@@ -668,13 +701,26 @@ const UduuaLogin = () => {
                     <input
                       type="password"
                       value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      onChange={(e) => {
+                        setConfirmPassword(e.target.value);
+                        if (resetError) setResetError('');
+                        if (resetSuccess) setResetSuccess('');
+                      }}
                       required
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
                       placeholder="Confirm new password"
                     />
                   </div>
-                  {resetError && <p className="text-red-500 text-xs mb-3">{resetError}</p>}
+                  {resetError && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
+                      <p className="text-red-600 text-xs">{resetError}</p>
+                    </div>
+                  )}
+                  {resetSuccess && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
+                      <p className="text-green-700 text-xs">{resetSuccess}</p>
+                    </div>
+                  )}
                   <button
                     type="submit"
                     disabled={resetLoading}

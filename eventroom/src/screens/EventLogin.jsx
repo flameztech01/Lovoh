@@ -1,4 +1,4 @@
-// screens/EventLogin.jsx – Redesigned to match Uduua Login style (full‑screen split, no Header/Footer)
+// screens/EventLogin.jsx – Full‑screen split layout with inline error/success feedback
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
@@ -14,7 +14,6 @@ import {
   FaGoogle,
   FaArrowLeft,
   FaCalendarAlt,
-  FaTicketAlt,
   FaSpinner,
   FaEnvelope,
   FaKey,
@@ -108,6 +107,7 @@ const EventLogin = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [loginError, setLoginError] = useState("");
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -130,6 +130,7 @@ const EventLogin = () => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [resetError, setResetError] = useState("");
+  const [resetSuccess, setResetSuccess] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
 
   // Legal modal state
@@ -142,7 +143,9 @@ const EventLogin = () => {
 
   const handleEmailLogin = async (e) => {
     e.preventDefault();
+    setLoginError("");
     if (!email.trim() || !password.trim()) {
+      setLoginError("Please enter your email and password");
       toast.error("Please enter your email and password");
       return;
     }
@@ -152,8 +155,8 @@ const EventLogin = () => {
       toast.success(`Welcome back, ${result.name}!`);
       navigate(redirect);
     } catch (err) {
-      const errorMsg =
-        err?.data?.message || err?.message || "Login failed. Check your credentials.";
+      const errorMsg = err?.data?.message || err?.message || "Login failed. Check your credentials.";
+      setLoginError(errorMsg);
       toast.error(errorMsg);
       setPassword("");
     }
@@ -170,25 +173,32 @@ const EventLogin = () => {
       toast.success(`Welcome back, ${result.name}!`);
       navigate(redirect);
     } catch (err) {
-      toast.error(err?.data?.message || "Google login failed");
+      const msg = err?.data?.message || "Google login failed";
+      setLoginError(msg);
+      toast.error(msg);
     }
   };
 
   const handleGoogleError = (error) => {
     console.error("Google login error:", error);
-    toast.error("Google login failed. Please try again.");
+    const msg = "Google login failed. Please try again.";
+    setLoginError(msg);
+    toast.error(msg);
   };
 
   const handleSendOtp = async (e) => {
     e.preventDefault();
+    setResetError("");
+    setResetSuccess("");
     if (!resetEmail.trim()) {
       setResetError("Email is required");
+      toast.error("Email is required");
       return;
     }
-    setResetError("");
     try {
       await forgotPassword({ email: resetEmail }).unwrap();
       setModalStep("reset");
+      setResetSuccess("OTP sent to your email");
       toast.success("OTP sent to your email");
     } catch (err) {
       const msg = err?.data?.message || "Failed to send OTP. Try again.";
@@ -199,27 +209,33 @@ const EventLogin = () => {
 
   const handleResetPassword = async (e) => {
     e.preventDefault();
+    setResetError("");
+    setResetSuccess("");
     if (!otp) {
       setResetError("OTP is required");
+      toast.error("OTP is required");
       return;
     }
     if (!newPassword) {
       setResetError("New password is required");
+      toast.error("New password is required");
       return;
     }
     if (newPassword.length < 6) {
       setResetError("Password must be at least 6 characters");
+      toast.error("Password must be at least 6 characters");
       return;
     }
     if (newPassword !== confirmPassword) {
       setResetError("Passwords do not match");
+      toast.error("Passwords do not match");
       return;
     }
-    setResetError("");
     try {
       await resetPassword({ email: resetEmail, otp, newPassword }).unwrap();
+      setResetSuccess("Password reset successfully. Please log in.");
       toast.success("Password reset successfully. Please log in.");
-      closeModal();
+      setTimeout(() => closeModal(), 2000);
     } catch (err) {
       const msg = err?.data?.message || "Reset failed. Invalid OTP or expired.";
       setResetError(msg);
@@ -235,6 +251,7 @@ const EventLogin = () => {
     setNewPassword("");
     setConfirmPassword("");
     setResetError("");
+    setResetSuccess("");
   };
 
   const openLegalModal = (type) => {
@@ -335,10 +352,15 @@ const EventLogin = () => {
                     <input
                       type="email"
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        if (loginError) setLoginError("");
+                      }}
                       required
                       placeholder="you@example.com"
-                      className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
+                      className={`w-full pl-10 pr-3 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766] ${
+                        loginError ? "border-red-300" : "border-gray-200"
+                      }`}
                     />
                   </div>
                 </div>
@@ -350,10 +372,15 @@ const EventLogin = () => {
                     <input
                       type={showPassword ? "text" : "password"}
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        if (loginError) setLoginError("");
+                      }}
                       required
                       placeholder="••••••••"
-                      className="w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
+                      className={`w-full pl-10 pr-10 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766] ${
+                        loginError ? "border-red-300" : "border-gray-200"
+                      }`}
                     />
                     <button
                       type="button"
@@ -374,6 +401,12 @@ const EventLogin = () => {
                     Forgot password?
                   </button>
                 </div>
+
+                {loginError && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                    <p className="text-red-600 text-xs">{loginError}</p>
+                  </div>
+                )}
 
                 <button
                   type="submit"
@@ -470,13 +503,26 @@ const EventLogin = () => {
                     <input
                       type="email"
                       value={resetEmail}
-                      onChange={(e) => setResetEmail(e.target.value)}
+                      onChange={(e) => {
+                        setResetEmail(e.target.value);
+                        if (resetError) setResetError("");
+                        if (resetSuccess) setResetSuccess("");
+                      }}
                       required
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
                       placeholder="you@example.com"
                     />
                   </div>
-                  {resetError && <p className="text-red-500 text-xs mb-3">{resetError}</p>}
+                  {resetError && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
+                      <p className="text-red-600 text-xs">{resetError}</p>
+                    </div>
+                  )}
+                  {resetSuccess && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
+                      <p className="text-green-700 text-xs">{resetSuccess}</p>
+                    </div>
+                  )}
                   <button
                     type="submit"
                     disabled={forgotLoading}
@@ -504,7 +550,11 @@ const EventLogin = () => {
                     <input
                       type="text"
                       value={otp}
-                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      onChange={(e) => {
+                        setOtp(e.target.value.replace(/\D/g, "").slice(0, 6));
+                        if (resetError) setResetError("");
+                        if (resetSuccess) setResetSuccess("");
+                      }}
                       required
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-center tracking-widest"
                       placeholder="123456"
@@ -516,7 +566,11 @@ const EventLogin = () => {
                       <input
                         type={showNewPassword ? "text" : "password"}
                         value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
+                        onChange={(e) => {
+                          setNewPassword(e.target.value);
+                          if (resetError) setResetError("");
+                          if (resetSuccess) setResetSuccess("");
+                        }}
                         required
                         className="w-full pr-10 px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
                         placeholder="•••••••• (min 6 chars)"
@@ -535,13 +589,26 @@ const EventLogin = () => {
                     <input
                       type="password"
                       value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      onChange={(e) => {
+                        setConfirmPassword(e.target.value);
+                        if (resetError) setResetError("");
+                        if (resetSuccess) setResetSuccess("");
+                      }}
                       required
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
                       placeholder="Confirm new password"
                     />
                   </div>
-                  {resetError && <p className="text-red-500 text-xs mb-3">{resetError}</p>}
+                  {resetError && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
+                      <p className="text-red-600 text-xs">{resetError}</p>
+                    </div>
+                  )}
+                  {resetSuccess && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
+                      <p className="text-green-700 text-xs">{resetSuccess}</p>
+                    </div>
+                  )}
                   <button
                     type="submit"
                     disabled={resetLoading}

@@ -1,4 +1,4 @@
-// screens/EventSignup.jsx – Full‑screen split layout (Uduua style) with Lovoh Create branding & legal modal
+// screens/EventSignup.jsx – Full‑screen split layout with inline error/success feedback
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -141,6 +141,8 @@ const EventSignup = () => {
   const [registerEmail, setRegisterEmail] = useState('');
   const [resendTimer, setResendTimer] = useState(0);
   const [signupError, setSignupError] = useState('');
+  const [otpError, setOtpError] = useState('');
+  const [otpSuccess, setOtpSuccess] = useState('');
 
   // Legal modal state
   const [legalModalOpen, setLegalModalOpen] = useState(false);
@@ -234,6 +236,7 @@ const EventSignup = () => {
       await register({ name, username, email, password, phone: fullPhone }).unwrap();
       setRegisterEmail(email);
       setShowOTPModal(true);
+      setOtpSuccess('Verification code sent to your email');
       toast.success('Account created! Check your email for the verification code.');
       setResendTimer(60);
     } catch (error) {
@@ -244,7 +247,10 @@ const EventSignup = () => {
   };
 
   const handleVerifyOTP = async () => {
+    setOtpError('');
+    setOtpSuccess('');
     if (!otp.trim() || otp.length !== 6) {
+      setOtpError('Please enter a valid 6‑digit OTP');
       toast.error('Please enter a valid 6‑digit OTP');
       return;
     }
@@ -256,28 +262,38 @@ const EventSignup = () => {
       setShowOTPModal(false);
       navigate(redirect);
     } catch (error) {
-      toast.error(error?.data?.message || 'Invalid or expired OTP');
+      const msg = error?.data?.message || 'Invalid or expired OTP';
+      setOtpError(msg);
+      toast.error(msg);
     }
   };
 
   const handleResendOTP = async () => {
     if (resendTimer > 0) return;
+    setOtpError('');
+    setOtpSuccess('');
     try {
       await resendOTP({ email: registerEmail }).unwrap();
       toast.success('New OTP sent');
       setResendTimer(60);
+      setOtpSuccess('New OTP sent successfully');
     } catch (error) {
-      toast.error(error?.data?.message || 'Failed to resend OTP');
+      const msg = error?.data?.message || 'Failed to resend OTP';
+      setOtpError(msg);
+      toast.error(msg);
     }
   };
 
   const handleGoogleSuccess = async (credentialResponse) => {
     const fullPhone = getFullPhoneNumber();
+    setSignupError('');
     if (!phoneNumber.trim()) {
+      setSignupError('Phone number is required');
       toast.error('Phone number is required');
       return;
     }
     if (!termsAccepted) {
+      setSignupError('Please accept the terms and conditions');
       toast.error('Please accept the terms and conditions');
       return;
     }
@@ -293,12 +309,15 @@ const EventSignup = () => {
       toast.success(`Welcome to Eventroom, ${result.name || 'Creator'}! 🎉`);
       navigate(redirect);
     } catch (error) {
-      toast.error(error?.data?.message || 'Google signup failed. Account may already exist.');
+      const msg = error?.data?.message || 'Google signup failed. Account may already exist.';
+      setSignupError(msg);
+      toast.error(msg);
     }
   };
 
   const handleGoogleError = (error) => {
     console.error('Google signup error:', error);
+    setSignupError('Google signup failed. Please try again.');
     toast.error('Google signup failed. Please try again.');
   };
 
@@ -696,7 +715,11 @@ const EventSignup = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl relative animate-fadeInUp">
             <button
-              onClick={() => setShowOTPModal(false)}
+              onClick={() => {
+                setShowOTPModal(false);
+                setOtpError('');
+                setOtpSuccess('');
+              }}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
             >
               <FaTimes />
@@ -712,12 +735,27 @@ const EventSignup = () => {
             </div>
 
             <div className="space-y-4">
+              {otpSuccess && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                  <p className="text-green-700 text-xs">{otpSuccess}</p>
+                </div>
+              )}
+              {otpError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <p className="text-red-600 text-xs">{otpError}</p>
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Enter OTP</label>
                 <input
                   type="text"
                   value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  onChange={(e) => {
+                    setOtp(e.target.value.replace(/\D/g, '').slice(0, 6));
+                    if (otpError) setOtpError('');
+                    if (otpSuccess) setOtpSuccess('');
+                  }}
                   placeholder="123456"
                   className="w-full px-4 py-3 text-center text-2xl tracking-widest border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
                   autoFocus

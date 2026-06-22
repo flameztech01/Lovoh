@@ -286,6 +286,83 @@ const GoogleLoginButton = ({ onSuccess, onError, isLoading }) => {
   );
 };
 
+// ========== LEGAL MODAL (Terms & Privacy) ==========
+const LegalModal = ({ isOpen, onClose, type }) => {
+  if (!isOpen) return null;
+
+  const content = type === 'terms' ? {
+    title: 'Terms of Service',
+    body: `
+      <p><strong>Effective Date:</strong> ${new Date().toLocaleDateString()}</p>
+      <p>Welcome to Biizzed, a platform owned and operated by Lovoh Create. By using our services, you agree to the following terms.</p>
+      <h4>1. Acceptance of Terms</h4>
+      <p>By creating an account, you agree to comply with these Terms of Service. If you do not agree, please do not use the platform.</p>
+      <h4>2. User Accounts</h4>
+      <p>You are responsible for maintaining the confidentiality of your account credentials. You agree to provide accurate and complete information during registration.</p>
+      <h4>3. Content Ownership</h4>
+      <p>You retain all rights to the content you publish. By posting, you grant Lovoh Create a non-exclusive license to display and distribute your content through the platform.</p>
+      <h4>4. Prohibited Conduct</h4>
+      <p>You may not post illegal, harmful, or abusive content. Harassment, spam, and impersonation are strictly forbidden.</p>
+      <h4>5. Termination</h4>
+      <p>We reserve the right to suspend or terminate accounts that violate these terms or for any other reason at our discretion.</p>
+      <h4>6. Disclaimer of Warranties</h4>
+      <p>The platform is provided "as is" without warranties of any kind. We do not guarantee uninterrupted or error-free service.</p>
+      <h4>7. Limitation of Liability</h4>
+      <p>Lovoh Create shall not be liable for any indirect, incidental, or consequential damages arising from the use of the platform.</p>
+      <h4>8. Changes to Terms</h4>
+      <p>We may update these terms periodically. Continued use constitutes acceptance of the updated terms.</p>
+      <p><strong>Contact:</strong> For any questions, contact us at support@lovohcreate.com.</p>
+    `
+  } : {
+    title: 'Privacy Policy',
+    body: `
+      <p><strong>Effective Date:</strong> ${new Date().toLocaleDateString()}</p>
+      <p>Lovoh Create ("we") values your privacy. This policy explains how we collect, use, and protect your personal information.</p>
+      <h4>1. Information We Collect</h4>
+      <p>We collect information you provide during registration, such as your name, email address, phone number, and username. We also collect usage data to improve our services.</p>
+      <h4>2. How We Use Your Information</h4>
+      <p>We use your data to create your account, provide services, send notifications, and improve the platform. We do not sell your data to third parties.</p>
+      <h4>3. Data Sharing</h4>
+      <p>We may share your information with trusted third-party service providers (e.g., email delivery, analytics) only to operate our services. We ensure they adhere to strict confidentiality.</p>
+      <h4>4. Data Security</h4>
+      <p>We implement industry-standard security measures to protect your data. However, no method of transmission over the internet is completely secure.</p>
+      <h4>5. Cookies and Tracking</h4>
+      <p>We use cookies to enhance user experience and analyze traffic. You can control cookie preferences in your browser settings.</p>
+      <h4>6. Your Rights</h4>
+      <p>You may access, modify, or delete your personal data at any time. Contact us to exercise your rights.</p>
+      <h4>7. Children's Privacy</h4>
+      <p>Our platform is not intended for children under 13. We do not knowingly collect data from minors.</p>
+      <h4>8. Changes to Policy</h4>
+      <p>We may update this policy. We will notify you of significant changes.</p>
+      <p><strong>Contact:</strong> For privacy inquiries, email privacy@lovohcreate.com.</p>
+    `
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-xl animate-fadeInUp">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
+          <h2 className="text-xl font-bold text-gray-900">{content.title}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <FaTimes />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-6 text-sm text-gray-700 space-y-4">
+          <div dangerouslySetInnerHTML={{ __html: content.body }} />
+        </div>
+        <div className="p-4 border-t border-gray-200 flex-shrink-0 flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-6 py-2 bg-[#1B3766] text-white rounded-xl hover:bg-[#142952] transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ========== MAIN LOGIN COMPONENT ==========
 const BiizzedLogin = () => {
   const navigate = useNavigate();
@@ -310,7 +387,12 @@ const BiizzedLogin = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [resetError, setResetError] = useState('');
+  const [resetSuccess, setResetSuccess] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
+
+  // Legal modal state
+  const [legalModalOpen, setLegalModalOpen] = useState(false);
+  const [legalModalType, setLegalModalType] = useState('terms');
 
   const redirect = location.search?.split('=')[1] || '/feed';
 
@@ -365,25 +447,32 @@ const BiizzedLogin = () => {
       toast.success(`Welcome back, ${res.name || 'User'}!`);
       navigate(redirect, { replace: true });
     } catch (err) {
-      toast.error(err?.data?.message || 'Google login failed. Try signing up.');
+      const msg = err?.data?.message || 'Google login failed. Try signing up.';
+      setLoginError(msg);
+      toast.error(msg);
     }
   };
 
   const handleGoogleError = (error) => {
     console.error('Google login error:', error);
-    toast.error('Google login failed. Please try again.');
+    const msg = 'Google login failed. Please try again.';
+    setLoginError(msg);
+    toast.error(msg);
   };
 
   const handleSendOtp = async (e) => {
     e.preventDefault();
+    setResetError('');
+    setResetSuccess('');
     if (!resetEmail.trim()) {
       setResetError('Email is required');
+      toast.error('Email is required');
       return;
     }
-    setResetError('');
     try {
       await forgotPassword({ email: resetEmail }).unwrap();
       setModalStep('reset');
+      setResetSuccess('OTP sent to your email');
       toast.success('OTP sent to your email');
     } catch (err) {
       const msg = err?.data?.message || 'Failed to send OTP. Try again.';
@@ -394,27 +483,36 @@ const BiizzedLogin = () => {
 
   const handleResetPassword = async (e) => {
     e.preventDefault();
+    setResetError('');
+    setResetSuccess('');
     if (!otp) {
       setResetError('OTP is required');
+      toast.error('OTP is required');
       return;
     }
     if (!newPassword) {
       setResetError('New password is required');
+      toast.error('New password is required');
       return;
     }
     if (newPassword.length < 6) {
       setResetError('Password must be at least 6 characters');
+      toast.error('Password must be at least 6 characters');
       return;
     }
     if (newPassword !== confirmPassword) {
       setResetError('Passwords do not match');
+      toast.error('Passwords do not match');
       return;
     }
-    setResetError('');
     try {
       await resetPassword({ email: resetEmail, otp, newPassword }).unwrap();
+      setResetSuccess('Password reset successfully. Please log in.');
       toast.success('Password reset successfully. Please log in.');
-      closeModal();
+      // Close modal after a short delay
+      setTimeout(() => {
+        closeModal();
+      }, 2000);
     } catch (err) {
       const msg = err?.data?.message || 'Reset failed. Invalid OTP or expired.';
       setResetError(msg);
@@ -430,6 +528,12 @@ const BiizzedLogin = () => {
     setNewPassword('');
     setConfirmPassword('');
     setResetError('');
+    setResetSuccess('');
+  };
+
+  const openLegalModal = (type) => {
+    setLegalModalType(type);
+    setLegalModalOpen(true);
   };
 
   const isLoading = emailLoading || googleLoading;
@@ -579,11 +683,16 @@ const BiizzedLogin = () => {
               </Link>
             </p>
 
-            {/* Terms & Copyright */}
+            {/* Terms & Copyright with pop-up links */}
             <p className="text-center text-xs text-gray-400 mt-3 pb-4">
               By continuing, you agree to Biizzed's{' '}
-              <Link to="/terms" className="underline">Terms</Link> and{' '}
-              <Link to="/privacy" className="underline">Privacy</Link>
+              <button onClick={() => openLegalModal('terms')} className="underline hover:text-gray-600 cursor-pointer">
+                Terms
+              </button>
+              {' and '}
+              <button onClick={() => openLegalModal('privacy')} className="underline hover:text-gray-600 cursor-pointer">
+                Privacy
+              </button>
               <br />
               <span className="text-[10px] text-gray-300 mt-1 block">
                 © {new Date().getFullYear()} Lovoh Create — All rights reserved.
@@ -616,13 +725,26 @@ const BiizzedLogin = () => {
                     <input
                       type="email"
                       value={resetEmail}
-                      onChange={(e) => setResetEmail(e.target.value)}
+                      onChange={(e) => {
+                        setResetEmail(e.target.value);
+                        if (resetError) setResetError('');
+                        if (resetSuccess) setResetSuccess('');
+                      }}
                       required
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
                       placeholder="you@example.com"
                     />
                   </div>
-                  {resetError && <p className="text-red-500 text-xs mb-3">{resetError}</p>}
+                  {resetError && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
+                      <p className="text-red-600 text-xs">{resetError}</p>
+                    </div>
+                  )}
+                  {resetSuccess && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
+                      <p className="text-green-700 text-xs">{resetSuccess}</p>
+                    </div>
+                  )}
                   <button
                     type="submit"
                     disabled={forgotLoading}
@@ -650,7 +772,11 @@ const BiizzedLogin = () => {
                     <input
                       type="text"
                       value={otp}
-                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      onChange={(e) => {
+                        setOtp(e.target.value.replace(/\D/g, '').slice(0, 6));
+                        if (resetError) setResetError('');
+                        if (resetSuccess) setResetSuccess('');
+                      }}
                       required
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-center tracking-widest"
                       placeholder="123456"
@@ -662,7 +788,11 @@ const BiizzedLogin = () => {
                       <input
                         type={showNewPassword ? 'text' : 'password'}
                         value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
+                        onChange={(e) => {
+                          setNewPassword(e.target.value);
+                          if (resetError) setResetError('');
+                          if (resetSuccess) setResetSuccess('');
+                        }}
                         required
                         className="w-full pr-10 px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
                         placeholder="•••••••• (min 6 chars)"
@@ -681,13 +811,26 @@ const BiizzedLogin = () => {
                     <input
                       type="password"
                       value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      onChange={(e) => {
+                        setConfirmPassword(e.target.value);
+                        if (resetError) setResetError('');
+                        if (resetSuccess) setResetSuccess('');
+                      }}
                       required
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
                       placeholder="Confirm new password"
                     />
                   </div>
-                  {resetError && <p className="text-red-500 text-xs mb-3">{resetError}</p>}
+                  {resetError && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
+                      <p className="text-red-600 text-xs">{resetError}</p>
+                    </div>
+                  )}
+                  {resetSuccess && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
+                      <p className="text-green-700 text-xs">{resetSuccess}</p>
+                    </div>
+                  )}
                   <button
                     type="submit"
                     disabled={resetLoading}
@@ -702,6 +845,13 @@ const BiizzedLogin = () => {
           </div>
         </div>
       )}
+
+      {/* Legal Modal */}
+      <LegalModal
+        isOpen={legalModalOpen}
+        onClose={() => setLegalModalOpen(false)}
+        type={legalModalType}
+      />
 
       {/* Animation styles */}
       <style>{`
