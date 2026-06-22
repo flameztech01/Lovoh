@@ -3,8 +3,8 @@ import { Resend } from 'resend';
 
 // Environment variables
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const FROM_EMAIL = process.env.EMAIL_FROM || 'otp@lovohcreate.com';
-const FROM_NAME = process.env.EMAIL_FROM_NAME || 'Lovoh Create';
+const FROM_EMAIL = process.env.FROM_EMAIL || 'otp@lovohcreate.com';
+const FROM_NAME = process.env.FROM_NAME || 'Lovoh Create';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://lovohcreate.com';
 
 const getResendClient = () => {
