@@ -1,49 +1,41 @@
 // utils/sendOTPEmail.js
 import { Resend } from 'resend';
-import UduuaSettings from '../models/uduuaSettingsModel.js';
 
-let resendClient = null;
+// Environment variables
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const FROM_EMAIL = process.env.EMAIL_FROM || 'otp@lovohcreate.com';
+const FROM_NAME = process.env.EMAIL_FROM_NAME || 'Lovoh Create';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://lovohcreate.com';
 
-const getResendClient = async () => {
-  if (resendClient) return resendClient;
-  
-  const settings = await UduuaSettings.findOne();
-  
-  if (settings && settings.email.resendApiKey) {
-    resendClient = new Resend(settings.email.resendApiKey);
-  } else {
-    console.warn('Resend API key not configured. Email would be sent to console in development.');
+const getResendClient = () => {
+  if (!RESEND_API_KEY) {
+    console.warn('Resend API key not configured. Emails will be logged to console in development.');
     return null;
   }
-  
-  return resendClient;
+  return new Resend(RESEND_API_KEY);
 };
 
-const getEmailSettings = async () => {
-  const settings = await UduuaSettings.findOne();
-  return {
-    fromEmail: settings?.email?.fromEmail || 'noreply@uduua.com',
-    fromName: settings?.email?.fromName || 'Úduua Marketplace',
-  };
-};
-
+/**
+ * Send an OTP email for email verification
+ * @param {string} toEmail - Recipient email address
+ * @param {string} otp - One-time password
+ */
 export const sendOTPEmail = async (toEmail, otp) => {
-  const resend = await getResendClient();
-  const emailSettings = await getEmailSettings();
-  
+  const resend = getResendClient();
+
   if (!resend) {
     console.log(`[DEV] OTP for ${toEmail}: ${otp}`);
     return;
   }
-  
-  const subject = 'Verify your email address – Úduua';
-  
+
+  const subject = 'Verify your email address – Lovoh Create';
+
   const html = `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Email Verification – Úduua</title>
+  <title>Email Verification – Lovoh Create</title>
   <style>
     body { font-family: Arial, sans-serif; background-color: #f9f9f9; margin: 0; padding: 0; }
     .container { max-width: 480px; margin: 40px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
@@ -59,12 +51,12 @@ export const sendOTPEmail = async (toEmail, otp) => {
 <body>
   <div class="container">
     <div class="header">
-      <h1>Úduua</h1>
+      <h1>Lovoh Create</h1>
     </div>
     <div class="content">
       <h2 style="margin-top: 0; color: #333;">Verify your email</h2>
       <p class="info">
-        Thank you for joining Úduua! Use the code below to complete your registration.
+        Thank you for joining Lovoh Create! Use the code below to complete your registration.
       </p>
       <div class="otp">${otp}</div>
       <p class="info">
@@ -73,8 +65,8 @@ export const sendOTPEmail = async (toEmail, otp) => {
       </p>
     </div>
     <div class="footer">
-      &copy; ${new Date().getFullYear()} Úduua. All rights reserved. <br />
-      <a href="${process.env.FRONTEND_URL || 'https://uduua.com'}" target="_blank">uduua.com</a>
+      &copy; ${new Date().getFullYear()} Lovoh Create. All rights reserved. <br />
+      <a href="${FRONTEND_URL}" target="_blank">${FRONTEND_URL.replace(/^https?:\/\//, '')}</a>
     </div>
   </div>
 </body>
@@ -83,7 +75,7 @@ export const sendOTPEmail = async (toEmail, otp) => {
 
   try {
     const data = await resend.emails.send({
-      from: `${emailSettings.fromName} <${emailSettings.fromEmail}>`,
+      from: `${FROM_NAME} <${FROM_EMAIL}>`,
       to: [toEmail],
       subject,
       html,
@@ -96,23 +88,27 @@ export const sendOTPEmail = async (toEmail, otp) => {
   }
 };
 
+/**
+ * Send a password reset OTP email
+ * @param {string} toEmail - Recipient email address
+ * @param {string} otp - One-time password
+ */
 export const sendPasswordResetEmail = async (toEmail, otp) => {
-  const resend = await getResendClient();
-  const emailSettings = await getEmailSettings();
-  
+  const resend = getResendClient();
+
   if (!resend) {
     console.log(`[DEV] Password reset OTP for ${toEmail}: ${otp}`);
     return;
   }
-  
-  const subject = 'Reset your password – Úduua';
-  
+
+  const subject = 'Reset your password – Lovoh Create';
+
   const html = `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Password Reset – Úduua</title>
+  <title>Password Reset – Lovoh Create</title>
   <style>
     body { font-family: Arial, sans-serif; background-color: #f9f9f9; margin: 0; padding: 0; }
     .container { max-width: 480px; margin: 40px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
@@ -129,7 +125,7 @@ export const sendPasswordResetEmail = async (toEmail, otp) => {
 <body>
   <div class="container">
     <div class="header">
-      <h1>Úduua</h1>
+      <h1>Lovoh Create</h1>
     </div>
     <div class="content">
       <h2 style="margin-top: 0; color: #333;">Reset your password</h2>
@@ -144,8 +140,8 @@ export const sendPasswordResetEmail = async (toEmail, otp) => {
       <p class="warning">Never share this code with anyone.</p>
     </div>
     <div class="footer">
-      &copy; ${new Date().getFullYear()} Úduua. All rights reserved. <br />
-      <a href="${process.env.FRONTEND_URL || 'https://uduua.com'}" target="_blank">uduua.com</a>
+      &copy; ${new Date().getFullYear()} Lovoh Create. All rights reserved. <br />
+      <a href="${FRONTEND_URL}" target="_blank">${FRONTEND_URL.replace(/^https?:\/\//, '')}</a>
     </div>
   </div>
 </body>
@@ -154,7 +150,7 @@ export const sendPasswordResetEmail = async (toEmail, otp) => {
 
   try {
     const data = await resend.emails.send({
-      from: `${emailSettings.fromName} <${emailSettings.fromEmail}>`,
+      from: `${FROM_NAME} <${FROM_EMAIL}>`,
       to: [toEmail],
       subject,
       html,

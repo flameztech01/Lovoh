@@ -228,11 +228,10 @@ const ArticlesSlider = () => {
   );
 };
 
-// ========== GOOGLE SIGNUP BUTTON COMPONENT (Works without extra plugins) ==========
+// ========== GOOGLE SIGNUP BUTTON COMPONENT ==========
 const GoogleSignupButton = ({ onSuccess, onError, isLoading }) => {
   const isNative = Capacitor.isNativePlatform();
 
-  // For web platform, use the standard GoogleLogin button
   if (!isNative) {
     return (
       <div className="flex justify-center">
@@ -249,28 +248,19 @@ const GoogleSignupButton = ({ onSuccess, onError, isLoading }) => {
     );
   }
 
-  // For native platform, open Google Sign-In in browser
   const handleNativeGoogleSignup = async () => {
     try {
-      // Get your Google OAuth URL
       const clientId = '423161329900-6rifobklf0pl8l6hfjnct8ek8qbo4gou.apps.googleusercontent.com';
-      const redirectUri = 'https://biizzed.lovohcreate.com/auth/google/callback'; // Update with your redirect URI
+      const redirectUri = 'https://biizzed.lovohcreate.com/auth/google/callback';
       const scope = 'email profile';
       const responseType = 'token id_token';
-      
       const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=${responseType}&scope=${encodeURIComponent(scope)}&nonce=${Math.random().toString(36)}`;
-      
-      // Open Google Sign-In in browser
       await Browser.open({
         url: googleAuthUrl,
         presentationStyle: 'popover',
         toolbarColor: '#1B3766',
       });
-      
-      // Note: You'll need to handle the callback URL in your app to capture the token
-      // This requires setting up deep linking in Capacitor
       toast.info('Please complete sign-in in the browser window');
-      
     } catch (error) {
       console.error('Native Google Sign-In Error:', error);
       toast.error('Failed to open Google Sign-In. Please try again.');
@@ -287,6 +277,83 @@ const GoogleSignupButton = ({ onSuccess, onError, isLoading }) => {
         Continue with Google
       </span>
     </button>
+  );
+};
+
+// ========== TERMS & PRIVACY MODAL ==========
+const LegalModal = ({ isOpen, onClose, type }) => {
+  if (!isOpen) return null;
+
+  const content = type === 'terms' ? {
+    title: 'Terms of Service',
+    body: `
+      <p><strong>Effective Date:</strong> ${new Date().toLocaleDateString()}</p>
+      <p>Welcome to Biizzed, a platform owned and operated by Lovoh Create. By using our services, you agree to the following terms.</p>
+      <h4>1. Acceptance of Terms</h4>
+      <p>By creating an account, you agree to comply with these Terms of Service. If you do not agree, please do not use the platform.</p>
+      <h4>2. User Accounts</h4>
+      <p>You are responsible for maintaining the confidentiality of your account credentials. You agree to provide accurate and complete information during registration.</p>
+      <h4>3. Content Ownership</h4>
+      <p>You retain all rights to the content you publish. By posting, you grant Lovoh Create a non-exclusive license to display and distribute your content through the platform.</p>
+      <h4>4. Prohibited Conduct</h4>
+      <p>You may not post illegal, harmful, or abusive content. Harassment, spam, and impersonation are strictly forbidden.</p>
+      <h4>5. Termination</h4>
+      <p>We reserve the right to suspend or terminate accounts that violate these terms or for any other reason at our discretion.</p>
+      <h4>6. Disclaimer of Warranties</h4>
+      <p>The platform is provided "as is" without warranties of any kind. We do not guarantee uninterrupted or error-free service.</p>
+      <h4>7. Limitation of Liability</h4>
+      <p>Lovoh Create shall not be liable for any indirect, incidental, or consequential damages arising from the use of the platform.</p>
+      <h4>8. Changes to Terms</h4>
+      <p>We may update these terms periodically. Continued use constitutes acceptance of the updated terms.</p>
+      <p><strong>Contact:</strong> For any questions, contact us at support@lovohcreate.com.</p>
+    `
+  } : {
+    title: 'Privacy Policy',
+    body: `
+      <p><strong>Effective Date:</strong> ${new Date().toLocaleDateString()}</p>
+      <p>Lovoh Create ("we") values your privacy. This policy explains how we collect, use, and protect your personal information.</p>
+      <h4>1. Information We Collect</h4>
+      <p>We collect information you provide during registration, such as your name, email address, phone number, and username. We also collect usage data to improve our services.</p>
+      <h4>2. How We Use Your Information</h4>
+      <p>We use your data to create your account, provide services, send notifications, and improve the platform. We do not sell your data to third parties.</p>
+      <h4>3. Data Sharing</h4>
+      <p>We may share your information with trusted third-party service providers (e.g., email delivery, analytics) only to operate our services. We ensure they adhere to strict confidentiality.</p>
+      <h4>4. Data Security</h4>
+      <p>We implement industry-standard security measures to protect your data. However, no method of transmission over the internet is completely secure.</p>
+      <h4>5. Cookies and Tracking</h4>
+      <p>We use cookies to enhance user experience and analyze traffic. You can control cookie preferences in your browser settings.</p>
+      <h4>6. Your Rights</h4>
+      <p>You may access, modify, or delete your personal data at any time. Contact us to exercise your rights.</p>
+      <h4>7. Children's Privacy</h4>
+      <p>Our platform is not intended for children under 13. We do not knowingly collect data from minors.</p>
+      <h4>8. Changes to Policy</h4>
+      <p>We may update this policy. We will notify you of significant changes.</p>
+      <p><strong>Contact:</strong> For privacy inquiries, email privacy@lovohcreate.com.</p>
+    `
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-xl animate-fadeInUp">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
+          <h2 className="text-xl font-bold text-gray-900">{content.title}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <FaTimes />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-6 text-sm text-gray-700 space-y-4">
+          <div dangerouslySetInnerHTML={{ __html: content.body }} />
+        </div>
+        <div className="p-4 border-t border-gray-200 flex-shrink-0 flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-6 py-2 bg-[#1B3766] text-white rounded-xl hover:bg-[#142952] transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };
 
@@ -320,6 +387,10 @@ const BiizzedSignup = () => {
   const [registeredEmail, setRegisteredEmail] = useState('');
   const [countdown, setCountdown] = useState(0);
   const [canResend, setCanResend] = useState(false);
+
+  // Legal modal state
+  const [legalModalOpen, setLegalModalOpen] = useState(false);
+  const [legalModalType, setLegalModalType] = useState('terms');
 
   const redirect = location.search?.split('=')[1] || '/feed';
 
@@ -427,12 +498,13 @@ const BiizzedSignup = () => {
     toast.error('Google signup failed. Please try again.');
   };
 
+  const openLegalModal = (type) => {
+    setLegalModalType(type);
+    setLegalModalOpen(true);
+  };
+
   const isLoading = registerLoading || verifyLoading || resendLoading;
 
-  // [Keep the rest of your JSX - unchanged from your original]
-  // The JSX structure remains exactly the same as your original component
-  // Just make sure to replace the Google button section with the new component
-  
   return (
     <div className="h-screen w-screen overflow-hidden bg-white flex flex-col lg:flex-row">
       {/* LEFT SIDE - FIXED, NO SCROLL */}
@@ -440,160 +512,121 @@ const BiizzedSignup = () => {
         <ArticlesSlider />
       </div>
 
-      {/* RIGHT SIDE - SCROLLABLE FORM ONLY */}
+      {/* RIGHT SIDE - SCROLLABLE FORM AREA */}
       <div className="flex-1 h-full bg-gray-50 flex flex-col overflow-hidden">
         {/* Mobile Header */}
-        <div className="lg:hidden bg-white border-b border-gray-100 px-4 py-4 flex-shrink-0 sticky top-0 z-10">
+        <div className="lg:hidden bg-white border-b border-gray-100 px-4 py-4 flex-shrink-0">
           <div className="flex items-center justify-between">
             <button onClick={() => navigate(-1)} className="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-600">
               <FaArrowLeft className="text-sm" />
             </button>
-            <img src="/biizzed.png" alt="Biizzed" className="h-8 w-auto" />
+            <div className="flex flex-col items-center">
+              <img src="/biizzed.png" alt="Biizzed" className="h-8 w-auto" />
+              <span className="text-[10px] text-gray-400 mt-0.5">a Lovoh Create product</span>
+            </div>
             <div className="w-9" />
           </div>
         </div>
 
-        {/* SCROLLABLE FORM AREA */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="flex flex-col justify-start px-4 py-6 lg:py-8">
-            <div className="max-w-md mx-auto w-full pb-8">
-              {/* Header */}
-              <div className="hidden lg:block text-center mb-6">
-                <div className="w-14 h-14 bg-[#1B3766]/10 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                  <FaNewspaper className="text-[#1B3766] text-2xl" />
-                </div>
-                <h1 className="text-2xl font-bold text-gray-900">Join Biizzed</h1>
-                <p className="text-gray-500 text-sm mt-1">Create, publish, and connect with a global audience</p>
+        {/* SCROLLABLE FORM CONTENT */}
+        <div className="flex-1 overflow-y-auto px-4 py-6 lg:py-8">
+          <div className="max-w-md mx-auto w-full">
+            {/* Desktop Header */}
+            <div className="hidden lg:block text-center mb-6">
+              <div className="w-14 h-14 bg-[#1B3766]/10 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                <FaNewspaper className="text-[#1B3766] text-2xl" />
               </div>
+              <h1 className="text-2xl font-bold text-gray-900">Join Biizzed</h1>
+              <p className="text-gray-500 text-sm mt-1">
+                <span className="font-semibold">Biizzed</span> — a Lovoh Create product
+              </p>
+            </div>
 
-              {/* Method Toggle */}
-              <div className="flex gap-2 bg-gray-100 p-1 rounded-xl mb-5">
-                <button
-                  onClick={() => setSignupMethod('email')}
-                  className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
-                    signupMethod === 'email' ? 'bg-white text-[#1B3766] shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  Email Signup
-                </button>
-                <button
-                  onClick={() => setSignupMethod('google')}
-                  className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
-                    signupMethod === 'google' ? 'bg-white text-[#1B3766] shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  Google Signup
-                </button>
-              </div>
+            {/* Mobile Title */}
+            <div className="lg:hidden text-center mb-5">
+              <h1 className="text-xl font-bold text-gray-900">Join Biizzed</h1>
+              <p className="text-gray-500 text-xs mt-1">
+                Create your <span className="font-semibold">Lovoh Create</span> account
+              </p>
+            </div>
 
-              {/* Signup Card */}
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 sm:p-6">
-                {signupMethod === 'email' ? (
-                  step === 'form' && (
-                    <form onSubmit={handleEmailSignup} className="space-y-3">
-                      {/* Form fields - keep same as your original */}
-                      <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Full Name *</label>
-                        <div className="relative">
-                          <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
-                          <input
-                            type="text" name="name" value={formData.name} onChange={handleChange}
-                            required placeholder="John Doe"
-                            className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Username *</label>
-                        <div className="relative">
-                          <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
-                          <input
-                            type="text" name="username" value={formData.username} onChange={handleChange}
-                            required placeholder="johndoe"
-                            className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Email *</label>
-                        <div className="relative">
-                          <FaEnvelope className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
-                          <input
-                            type="email" name="email" value={formData.email} onChange={handleChange}
-                            required placeholder="you@example.com"
-                            className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Password *</label>
-                        <div className="relative">
-                          <FaLock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
-                          <input
-                            type={showPassword ? 'text' : 'password'} name="password" value={formData.password} onChange={handleChange}
-                            required placeholder="•••••••• (min 6 chars)"
-                            className="w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
-                          />
-                          <button
-                            type="button" onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                          >
-                            {showPassword ? <FaEyeSlash className="text-sm" /> : <FaEye className="text-sm" />}
-                          </button>
-                        </div>
-                      </div>
+            {/* Method Toggle */}
+            <div className="flex gap-2 bg-gray-100 p-1 rounded-xl mb-5">
+              <button
+                onClick={() => setSignupMethod('email')}
+                className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+                  signupMethod === 'email' ? 'bg-white text-[#1B3766] shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Email Signup
+              </button>
+              <button
+                onClick={() => setSignupMethod('google')}
+                className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+                  signupMethod === 'google' ? 'bg-white text-[#1B3766] shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Google Signup
+              </button>
+            </div>
 
-                      {/* Phone Number */}
-                      <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Phone (Optional)</label>
-                        <div className="flex gap-2">
-                          <div className="relative w-28">
-                            <select
-                              value={selectedCountry.code}
-                              onChange={(e) => {
-                                const country = countryCodes.find(c => c.code === e.target.value);
-                                if (country) setSelectedCountry(country);
-                              }}
-                              className="w-full pl-2 pr-7 py-2.5 border border-gray-200 rounded-xl text-sm bg-white appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
-                            >
-                              {countryCodes.map((country) => (
-                                <option key={country.code + country.name} value={country.code}>
-                                  {country.flag} {country.code}
-                                </option>
-                              ))}
-                            </select>
-                            <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                              </svg>
-                            </div>
-                          </div>
-                          <div className="relative flex-1">
-                            <FaPhone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
-                            <input
-                              type="tel"
-                              value={phoneNumber}
-                              onChange={handlePhoneChange}
-                              placeholder="Phone number"
-                              className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
-                            />
-                          </div>
-                        </div>
+            {/* Signup Card */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 sm:p-6">
+              {signupMethod === 'email' ? (
+                step === 'form' && (
+                  <form onSubmit={handleEmailSignup} className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Full Name *</label>
+                      <div className="relative">
+                        <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+                        <input
+                          type="text" name="name" value={formData.name} onChange={handleChange}
+                          required placeholder="John Doe"
+                          className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
+                        />
                       </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Username *</label>
+                      <div className="relative">
+                        <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+                        <input
+                          type="text" name="username" value={formData.username} onChange={handleChange}
+                          required placeholder="johndoe"
+                          className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Email *</label>
+                      <div className="relative">
+                        <FaEnvelope className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+                        <input
+                          type="email" name="email" value={formData.email} onChange={handleChange}
+                          required placeholder="you@example.com"
+                          className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Password *</label>
+                      <div className="relative">
+                        <FaLock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+                        <input
+                          type={showPassword ? 'text' : 'password'} name="password" value={formData.password} onChange={handleChange}
+                          required placeholder="•••••••• (min 6 chars)"
+                          className="w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
+                        />
+                        <button
+                          type="button" onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                          {showPassword ? <FaEyeSlash className="text-sm" /> : <FaEye className="text-sm" />}
+                        </button>
+                      </div>
+                    </div>
 
-                      <button
-                        type="submit"
-                        disabled={isLoading}
-                        className="w-full py-2.5 bg-[#1B3766] text-white rounded-xl font-medium text-sm hover:bg-[#142952] transition-all disabled:opacity-50 flex items-center justify-center gap-2 mt-1"
-                      >
-                        {registerLoading ? <FaSpinner className="animate-spin" /> : null}
-                        Create Account
-                      </button>
-                    </form>
-                  )
-                ) : (
-                  /* Google Signup */
-                  <div className="space-y-4">
+                    {/* Phone Number */}
                     <div>
                       <label className="block text-xs font-medium text-gray-500 mb-1">Phone (Optional)</label>
                       <div className="flex gap-2">
@@ -630,49 +663,115 @@ const BiizzedSignup = () => {
                         </div>
                       </div>
                     </div>
-                    
-                    <GoogleSignupButton
-                      onSuccess={handleGoogleSuccess}
-                      onError={handleGoogleError}
-                      isLoading={googleLoading}
-                    />
-                    
-                    <div className="relative my-2">
-                      <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
-                      <div className="relative flex justify-center text-xs"><span className="bg-white px-3 text-gray-400">free forever</span></div>
-                    </div>
-                    <div className="space-y-1.5">
-                      {[
-                        'Publish articles, magazines & videos',
-                        'Build your audience & followers',
-                        'Like, bookmark & share content',
-                        'Connect with creators worldwide',
-                      ].map((benefit, index) => (
-                        <div key={index} className="flex items-center gap-2 text-sm text-gray-600">
-                          <FaCheck className="text-green-500 text-xs flex-shrink-0" />
-                          {benefit}
+
+                    <button
+                      type="submit"
+                      disabled={isLoading}
+                      className="w-full py-2.5 bg-[#1B3766] text-white rounded-xl font-medium text-sm hover:bg-[#142952] transition-all disabled:opacity-50 flex items-center justify-center gap-2 mt-1"
+                    >
+                      {registerLoading ? <FaSpinner className="animate-spin" /> : null}
+                      Create Account
+                    </button>
+                  </form>
+                )
+              ) : (
+                /* Google Signup */
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Phone (Optional)</label>
+                    <div className="flex gap-2">
+                      <div className="relative w-28">
+                        <select
+                          value={selectedCountry.code}
+                          onChange={(e) => {
+                            const country = countryCodes.find(c => c.code === e.target.value);
+                            if (country) setSelectedCountry(country);
+                          }}
+                          className="w-full pl-2 pr-7 py-2.5 border border-gray-200 rounded-xl text-sm bg-white appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
+                        >
+                          {countryCodes.map((country) => (
+                            <option key={country.code + country.name} value={country.code}>
+                              {country.flag} {country.code}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
                         </div>
-                      ))}
+                      </div>
+                      <div className="relative flex-1">
+                        <FaPhone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+                        <input
+                          type="tel"
+                          value={phoneNumber}
+                          onChange={handlePhoneChange}
+                          placeholder="Phone number"
+                          className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]"
+                        />
+                      </div>
                     </div>
                   </div>
-                )}
+                  
+                  <GoogleSignupButton
+                    onSuccess={handleGoogleSuccess}
+                    onError={handleGoogleError}
+                    isLoading={googleLoading}
+                  />
+                  
+                  <div className="relative my-2">
+                    <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
+                    <div className="relative flex justify-center text-xs"><span className="bg-white px-3 text-gray-400">free forever</span></div>
+                  </div>
+                  <div className="space-y-1.5">
+                    {[
+                      'Publish articles, magazines & videos',
+                      'Build your audience & followers',
+                      'Like, bookmark & share content',
+                      'Connect with creators worldwide',
+                    ].map((benefit, index) => (
+                      <div key={index} className="flex items-center gap-2 text-sm text-gray-600">
+                        <FaCheck className="text-green-500 text-xs flex-shrink-0" />
+                        {benefit}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Lovoh Create ecosystem note */}
+              <div className="mt-4 text-center text-[11px] text-gray-400 border-t border-gray-100 pt-4">
+                Your Lovoh Create account works across{' '}
+                <span className="font-medium text-gray-500">Biizzed</span>,{' '}
+                <span className="font-medium text-gray-500">Uduua</span>, and{' '}
+                <span className="font-medium text-gray-500">Eventroom</span>.
               </div>
-
-              {/* Login Link */}
-              <p className="text-center text-sm text-gray-500 mt-5">
-                Already have an account?{' '}
-                <Link to={redirect ? `/login?redirect=${redirect}` : '/login'} className="text-[#1B3766] font-medium hover:underline">
-                  Sign in
-                </Link>
-              </p>
-
-              {/* Terms */}
-              <p className="text-center text-xs text-gray-400 mt-3 pb-4">
-                By signing up, you agree to Biizzed's{' '}
-                <Link to="/terms" className="underline">Terms</Link> and{' '}
-                <Link to="/privacy" className="underline">Privacy</Link>
-              </p>
             </div>
+
+            {/* Login Link */}
+            <p className="text-center text-sm text-gray-500 mt-5">
+              Already have a Lovoh Create account?{' '}
+              <Link to={redirect ? `/login?redirect=${redirect}` : '/login'} className="text-[#1B3766] font-medium hover:underline">
+                Sign in
+              </Link>
+            </p>
+
+            {/* Terms & Copyright with pop-up links */}
+            <p className="text-center text-xs text-gray-400 mt-3 pb-4">
+              By signing up, you agree to Biizzed's{' '}
+              <button onClick={() => openLegalModal('terms')} className="underline hover:text-gray-600 cursor-pointer">
+                Terms
+              </button>
+              {' and '}
+              <button onClick={() => openLegalModal('privacy')} className="underline hover:text-gray-600 cursor-pointer">
+                Privacy
+              </button>
+              <br />
+              <span className="text-[10px] text-gray-300 mt-1 block">
+                © {new Date().getFullYear()} Lovoh Create — All rights reserved.
+              </span>
+            </p>
           </div>
         </div>
       </div>
@@ -737,6 +836,13 @@ const BiizzedSignup = () => {
           </div>
         </div>
       )}
+
+      {/* Legal Modal (Terms & Privacy) */}
+      <LegalModal
+        isOpen={legalModalOpen}
+        onClose={() => setLegalModalOpen(false)}
+        type={legalModalType}
+      />
 
       <style>{`
         @keyframes fadeIn {

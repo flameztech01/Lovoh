@@ -1,5 +1,5 @@
 // screens/BiizzedLogin.jsx
-// Full-screen Login: Left random articles slider | Right form (no scroll)
+// Full-screen Login: Left random articles slider | Right form (scrollable, spacious)
 // Matching the Signup page design exactly with Capacitor browser support
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -441,7 +441,7 @@ const BiizzedLogin = () => {
         <ArticlesSlider />
       </div>
 
-      {/* RIGHT SIDE - LOGIN FORM (Full height, no scroll) */}
+      {/* RIGHT SIDE - LOGIN FORM (Full height, scrollable, spacious) */}
       <div className="flex-1 h-full bg-gray-50 flex flex-col overflow-hidden">
         {/* Mobile Header */}
         <div className="lg:hidden bg-white border-b border-gray-100 px-4 py-4 flex-shrink-0">
@@ -449,13 +449,16 @@ const BiizzedLogin = () => {
             <button onClick={() => navigate(-1)} className="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-600">
               <FaArrowLeft className="text-sm" />
             </button>
-            <img src="/biizzed.png" alt="Biizzed" className="h-8 w-auto" />
+            <div className="flex flex-col items-center">
+              <img src="/biizzed.png" alt="Biizzed" className="h-8 w-auto" />
+              <span className="text-[10px] text-gray-400 mt-0.5">a Lovoh Create product</span>
+            </div>
             <div className="w-9" />
           </div>
         </div>
 
-        {/* Form Container */}
-        <div className="flex-1 flex flex-col justify-center px-4 py-6 lg:py-0 overflow-y-auto">
+        {/* Form Container - scrollable, content starts from top */}
+        <div className="flex-1 flex flex-col px-4 py-6 lg:py-8 overflow-y-auto">
           <div className="max-w-md mx-auto w-full">
             {/* Desktop Header */}
             <div className="hidden lg:block text-center mb-6">
@@ -463,13 +466,17 @@ const BiizzedLogin = () => {
                 <FaNewspaper className="text-[#1B3766] text-2xl" />
               </div>
               <h1 className="text-2xl font-bold text-gray-900">Welcome Back</h1>
-              <p className="text-gray-500 text-sm mt-1">Sign in to continue to Biizzed</p>
+              <p className="text-gray-500 text-sm mt-1">
+                Sign in to <span className="font-semibold">Biizzed</span> — a Lovoh Create product
+              </p>
             </div>
 
             {/* Mobile Title */}
             <div className="lg:hidden text-center mb-5">
               <h1 className="text-xl font-bold text-gray-900">Welcome Back</h1>
-              <p className="text-gray-500 text-xs mt-1">Sign in to your account</p>
+              <p className="text-gray-500 text-xs mt-1">
+                Sign in with your <span className="font-semibold">Lovoh Create</span> account
+              </p>
             </div>
 
             {/* Login Card */}
@@ -554,21 +561,33 @@ const BiizzedLogin = () => {
                 onError={handleGoogleError}
                 isLoading={googleLoading}
               />
+
+              {/* Lovoh Create ecosystem note */}
+              <div className="mt-4 text-center text-[11px] text-gray-400">
+                Your Lovoh Create account works across{' '}
+                <span className="font-medium text-gray-500">Biizzed</span>,{' '}
+                <span className="font-medium text-gray-500">Uduua</span>, and{' '}
+                <span className="font-medium text-gray-500">Eventroom</span>.
+              </div>
             </div>
 
             {/* Sign Up Link */}
             <p className="text-center text-sm text-gray-500 mt-5">
-              Don't have an account?{' '}
+              Don't have a Lovoh Create account?{' '}
               <Link to={redirect ? `/signup?redirect=${redirect}` : '/signup'} className="text-[#1B3766] font-medium hover:underline">
                 Sign up
               </Link>
             </p>
 
-            {/* Terms */}
+            {/* Terms & Copyright */}
             <p className="text-center text-xs text-gray-400 mt-3 pb-4">
               By continuing, you agree to Biizzed's{' '}
               <Link to="/terms" className="underline">Terms</Link> and{' '}
               <Link to="/privacy" className="underline">Privacy</Link>
+              <br />
+              <span className="text-[10px] text-gray-300 mt-1 block">
+                © {new Date().getFullYear()} Lovoh Create — All rights reserved.
+              </span>
             </p>
           </div>
         </div>

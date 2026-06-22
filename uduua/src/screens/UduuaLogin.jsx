@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { 
+import {
   FaGoogle,
   FaArrowLeft,
   FaEye,
@@ -19,29 +19,109 @@ import {
 import { toast } from 'react-toastify';
 import { GoogleLogin } from '@react-oauth/google';
 import { setCredentials } from '../slices/authslice.js';
-import { 
-  useGoogleAuthMutation, 
+import {
+  useGoogleAuthMutation,
   useLoginMutation,
   useForgotPasswordMutation,
   useResetPasswordMutation
 } from '../slices/userApiSlice';
 
+// ========== LEGAL MODAL (Terms & Privacy) ==========
+const LegalModal = ({ isOpen, onClose, type }) => {
+  if (!isOpen) return null;
+
+  const content = type === 'terms'
+    ? {
+        title: 'Terms of Service',
+        body: `
+          <p><strong>Effective Date:</strong> ${new Date().toLocaleDateString()}</p>
+          <p>Welcome to Úduua, a platform owned and operated by Lovoh Create. By using our services, you agree to the following terms.</p>
+          <h4>1. Acceptance of Terms</h4>
+          <p>By creating an account, you agree to comply with these Terms of Service. If you do not agree, please do not use the platform.</p>
+          <h4>2. User Accounts</h4>
+          <p>You are responsible for maintaining the confidentiality of your account credentials. You agree to provide accurate and complete information during registration.</p>
+          <h4>3. Content and Transactions</h4>
+          <p>You retain all rights to the content you post. Transactions on Úduua are subject to our payment and refund policies.</p>
+          <h4>4. Prohibited Conduct</h4>
+          <p>You may not post illegal, harmful, or abusive content. Harassment, spam, and impersonation are strictly forbidden.</p>
+          <h4>5. Termination</h4>
+          <p>We reserve the right to suspend or terminate accounts that violate these terms or for any other reason at our discretion.</p>
+          <h4>6. Disclaimer of Warranties</h4>
+          <p>The platform is provided "as is" without warranties of any kind. We do not guarantee uninterrupted or error-free service.</p>
+          <h4>7. Limitation of Liability</h4>
+          <p>Lovoh Create shall not be liable for any indirect, incidental, or consequential damages arising from the use of the platform.</p>
+          <h4>8. Changes to Terms</h4>
+          <p>We may update these terms periodically. Continued use constitutes acceptance of the updated terms.</p>
+          <p><strong>Contact:</strong> For any questions, contact us at support@lovohcreate.com.</p>
+        `
+      }
+    : {
+        title: 'Privacy Policy',
+        body: `
+          <p><strong>Effective Date:</strong> ${new Date().toLocaleDateString()}</p>
+          <p>Lovoh Create ("we") values your privacy. This policy explains how we collect, use, and protect your personal information.</p>
+          <h4>1. Information We Collect</h4>
+          <p>We collect information you provide during registration, such as your name, email address, phone number, and username. We also collect usage data to improve our services.</p>
+          <h4>2. How We Use Your Information</h4>
+          <p>We use your data to create your account, provide services, send notifications, and improve the platform. We do not sell your data to third parties.</p>
+          <h4>3. Data Sharing</h4>
+          <p>We may share your information with trusted third-party service providers (e.g., email delivery, analytics) only to operate our services. We ensure they adhere to strict confidentiality.</p>
+          <h4>4. Data Security</h4>
+          <p>We implement industry-standard security measures to protect your data. However, no method of transmission over the internet is completely secure.</p>
+          <h4>5. Cookies and Tracking</h4>
+          <p>We use cookies to enhance user experience and analyze traffic. You can control cookie preferences in your browser settings.</p>
+          <h4>6. Your Rights</h4>
+          <p>You may access, modify, or delete your personal data at any time. Contact us to exercise your rights.</p>
+          <h4>7. Children's Privacy</h4>
+          <p>Our platform is not intended for children under 13. We do not knowingly collect data from minors.</p>
+          <h4>8. Changes to Policy</h4>
+          <p>We may update this policy. We will notify you of significant changes.</p>
+          <p><strong>Contact:</strong> For privacy inquiries, email privacy@lovohcreate.com.</p>
+        `
+      };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-xl animate-fadeInUp">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
+          <h2 className="text-xl font-bold text-gray-900">{content.title}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <FaTimes />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-6 text-sm text-gray-700 space-y-4">
+          <div dangerouslySetInnerHTML={{ __html: content.body }} />
+        </div>
+        <div className="p-4 border-t border-gray-200 flex-shrink-0 flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-6 py-2 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ========== MAIN LOGIN COMPONENT ==========
 const UduuaLogin = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
-  
+
   const [login, { isLoading: emailLoading }] = useLoginMutation();
   const [googleAuth, { isLoading: googleLoading }] = useGoogleAuthMutation();
   const [forgotPassword, { isLoading: forgotLoading }] = useForgotPasswordMutation();
   const [resetPassword, { isLoading: resetLoading }] = useResetPasswordMutation();
-  
+
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState('');
   const [isLocked, setIsLocked] = useState(false);
   const [lockTimeRemaining, setLockTimeRemaining] = useState(0);
-  
+
   // Forgot password modal state
   const [showModal, setShowModal] = useState(false);
   const [modalStep, setModalStep] = useState('email');
@@ -51,9 +131,13 @@ const UduuaLogin = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [resetError, setResetError] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
-  
+
+  // Legal modal state
+  const [legalModalOpen, setLegalModalOpen] = useState(false);
+  const [legalModalType, setLegalModalType] = useState('terms');
+
   const { userInfo } = useSelector((state) => state.auth);
-  
+
   const redirect = location.search ? location.search.split('=')[1] : '/shop';
 
   useEffect(() => {
@@ -95,16 +179,16 @@ const UduuaLogin = () => {
     } catch (err) {
       const errorMessage = err?.data?.message || err?.message || 'Login failed. Check your credentials.';
       setLoginError(errorMessage);
-      
+
       // Check for lockout message
       if (errorMessage.toLowerCase().includes('locked') || errorMessage.toLowerCase().includes('too many failed attempts')) {
         setIsLocked(true);
-        
+
         // Extract lock time from message (e.g., "30 minutes")
         const match = errorMessage.match(/(\d+)\s*minutes?/i);
         if (match) {
           setLockTimeRemaining(parseInt(match[1]));
-          
+
           // Start countdown timer
           let timeLeft = parseInt(match[1]);
           const timer = setInterval(() => {
@@ -117,12 +201,12 @@ const UduuaLogin = () => {
               toast.info('Account unlocked. You can now try logging in again.', { autoClose: 5000 });
             }
           }, 60000);
-          
+
           // Store timer to clean up
           window._lockTimer = timer;
         }
       }
-      
+
       // Display appropriate toast based on error type
       if (errorMessage.toLowerCase().includes('attempts remaining')) {
         toast.error(errorMessage, { autoClose: 8000 });
@@ -152,12 +236,12 @@ const UduuaLogin = () => {
       navigate(redirect, { replace: true });
     } catch (err) {
       const errorMessage = err?.data?.message || 'Google login failed. Try signing up.';
-      
+
       // Check for lockout
       if (errorMessage.toLowerCase().includes('locked')) {
         setIsLocked(true);
       }
-      
+
       toast.error(errorMessage);
     }
   };
@@ -225,6 +309,11 @@ const UduuaLogin = () => {
     setResetError('');
   };
 
+  const openLegalModal = (type) => {
+    setLegalModalType(type);
+    setLegalModalOpen(true);
+  };
+
   // Clean up timer on unmount
   useEffect(() => {
     return () => {
@@ -239,7 +328,7 @@ const UduuaLogin = () => {
   // Render lock message if account is locked
   const renderLockMessage = () => {
     if (!isLocked && !loginError?.toLowerCase().includes('locked')) return null;
-    
+
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
         <div className="flex items-start gap-3">
@@ -270,7 +359,7 @@ const UduuaLogin = () => {
     <div className="fixed inset-0 w-full h-full bg-white flex overflow-hidden">
       {/* Full Screen Grid - 50/50 Split */}
       <div className="flex flex-1 w-full h-full">
-        
+
         {/* Left Panel - Image (Full height, no scroll) */}
         <div className="hidden lg:block lg:w-1/2 h-full relative overflow-hidden bg-gray-900">
           <img
@@ -278,14 +367,13 @@ const UduuaLogin = () => {
             alt="Shopping"
             className="absolute inset-0 w-full h-full object-cover"
           />
-          {/* Dark Overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/30" />
 
           {/* Top Bar with Logo and Back Button */}
           <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-8 pt-8">
-            <img 
-              src="/uduua.png" 
-              alt="Úduua Logo" 
+            <img
+              src="/uduua.png"
+              alt="Úduua Logo"
               className="h-8 w-auto object-contain brightness-0 invert"
             />
             <button
@@ -315,7 +403,7 @@ const UduuaLogin = () => {
           </div>
         </div>
 
-        {/* Right Panel - Form (Full height, centered, scrollable if needed) */}
+        {/* Right Panel - Form (scrollable, spacious) */}
         <div className="w-full lg:w-1/2 h-full bg-gray-50 flex flex-col overflow-hidden">
           {/* Mobile Header */}
           <div className="lg:hidden bg-white border-b border-gray-100 px-4 py-4 flex-shrink-0">
@@ -323,28 +411,34 @@ const UduuaLogin = () => {
               <button onClick={() => navigate('/shop')} className="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-600">
                 <FaArrowLeft className="text-sm" />
               </button>
-              <img src="/uduua.png" alt="Úduua" className="h-8 w-auto" />
+              <div className="flex flex-col items-center">
+                <img src="/uduua.png" alt="Úduua" className="h-8 w-auto" />
+                <span className="text-[10px] text-gray-400 mt-0.5">a Lovoh Create product</span>
+              </div>
               <div className="w-9" />
             </div>
           </div>
 
-          {/* Form Container */}
-          <div className="flex-1 flex flex-col justify-center px-4 py-6 lg:py-0 overflow-y-auto">
+          {/* Form Container - scrollable, content starts from top */}
+          <div className="flex-1 overflow-y-auto px-4 py-6 lg:py-8">
             <div className="max-w-md mx-auto w-full">
-              
               {/* Desktop Header */}
               <div className="hidden lg:block text-center mb-6">
                 <div className="w-14 h-14 bg-gray-900/10 rounded-2xl flex items-center justify-center mx-auto mb-3">
                   <FaShoppingBag className="text-gray-900 text-2xl" />
                 </div>
                 <h1 className="text-2xl font-bold text-gray-900">Welcome Back</h1>
-                <p className="text-gray-500 text-sm mt-1">Sign in to continue to Úduua</p>
+                <p className="text-gray-500 text-sm mt-1">
+                  Sign in to <span className="font-semibold">Úduua</span> — a Lovoh Create product
+                </p>
               </div>
 
               {/* Mobile Title */}
               <div className="lg:hidden text-center mb-5">
                 <h1 className="text-xl font-bold text-gray-900">Welcome Back</h1>
-                <p className="text-gray-500 text-xs mt-1">Sign in to your account</p>
+                <p className="text-gray-500 text-xs mt-1">
+                  Sign in with your <span className="font-semibold">Lovoh Create</span> account
+                </p>
               </div>
 
               {/* Lock Message */}
@@ -442,21 +536,44 @@ const UduuaLogin = () => {
                     width="300"
                   />
                 </div>
+
+                {/* Lovoh Create ecosystem note */}
+                <div className="mt-4 text-center text-[11px] text-gray-400 border-t border-gray-100 pt-4">
+                  Your Lovoh Create account works across{' '}
+                  <span className="font-medium text-gray-500">Biizzed</span>,{' '}
+                  <span className="font-medium text-gray-500">Úduua</span>, and{' '}
+                  <span className="font-medium text-gray-500">Eventroom</span>.
+                </div>
               </div>
 
               {/* Sign Up Link */}
               <p className="text-center text-sm text-gray-500 mt-5">
-                Don't have an account?{' '}
+                Don't have a Lovoh Create account?{' '}
                 <Link to={redirect ? `/shop/signup?redirect=${redirect}` : '/shop/signup'} className="text-gray-900 font-medium hover:underline">
                   Sign up
                 </Link>
               </p>
 
-              {/* Terms */}
+              {/* Terms & Privacy with pop-up links */}
               <p className="text-center text-xs text-gray-400 mt-3 pb-4">
                 By continuing, you agree to Úduua's{' '}
-                <Link to="/terms" className="underline">Terms</Link> and{' '}
-                <Link to="/privacy" className="underline">Privacy</Link>
+                <button
+                  onClick={() => openLegalModal('terms')}
+                  className="underline hover:text-gray-600 cursor-pointer"
+                >
+                  Terms
+                </button>
+                {' and '}
+                <button
+                  onClick={() => openLegalModal('privacy')}
+                  className="underline hover:text-gray-600 cursor-pointer"
+                >
+                  Privacy Policy
+                </button>
+                <br />
+                <span className="text-[10px] text-gray-300 mt-1 block">
+                  © {new Date().getFullYear()} Lovoh Create — All rights reserved.
+                </span>
               </p>
             </div>
           </div>
@@ -572,6 +689,13 @@ const UduuaLogin = () => {
           </div>
         </div>
       )}
+
+      {/* Legal Modal */}
+      <LegalModal
+        isOpen={legalModalOpen}
+        onClose={() => setLegalModalOpen(false)}
+        type={legalModalType}
+      />
 
       <style>{`
         @keyframes fadeInUp {
