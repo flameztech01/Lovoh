@@ -17,6 +17,30 @@ const ticketTypeSchema = mongoose.Schema({
   soldCount: { type: Number, default: 0 },
 });
 
+// --- NEW: Team member sub-document ---
+const teamMemberSchema = mongoose.Schema({
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+  },
+  role: {
+    type: String,
+    enum: ['viewer', 'checker', 'manager'],
+    required: true,
+    default: 'viewer',
+  },
+  addedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+  },
+  addedAt: {
+    type: Date,
+    default: Date.now,
+  },
+}, { _id: false }); // we don't need a separate _id for each team member entry
+
 const eventSchema = mongoose.Schema(
   {
     title: { type: String, required: true, trim: true },
@@ -69,37 +93,38 @@ const eventSchema = mongoose.Schema(
       required: true,
     },
 
-    // NEW: URL slug (unique, sparse so existing docs can stay null until updated)
+    // URL slug
     slug: {
       type: String,
       unique: true,
-      sparse: true,          // allows null for legacy events until first update
+      sparse: true,
       lowercase: true,
       trim: true,
     },
 
-    // NEW: reference to the custom form for this event
+    // Custom form reference
     customForm: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'EventForm',
       default: null,
     },
+
+    // --- NEW: Team members ---
+    teamMembers: [teamMemberSchema],
   },
   { timestamps: true }
 );
 
 // --------------------- Slugs generation ---------------------
 eventSchema.pre('save', async function (next) {
-  // Only generate slug if title changed or no slug yet
   if (this.isModified('title') || !this.slug) {
     let base = this.title
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')       // replace non-alphanum with hyphens
-      .replace(/(^-|-$)/g, '');           // trim leading/trailing hyphens
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
 
     let slug = base;
     let counter = 1;
-    // Ensure slug is unique (excluding the current document)
     while (await mongoose.model('Event').findOne({ slug, _id: { $ne: this._id } })) {
       slug = `${base}-${counter++}`;
     }
@@ -141,13 +166,14 @@ eventSchema.methods.updateStatus = function () {
   return this.status;
 };
 
-// Indexes
+// Indexes – add one for teamMembers.userId for fast lookups
 eventSchema.index({ status: 1, date: 1 });
 eventSchema.index({ category: 1 });
 eventSchema.index({ eventType: 1 });
 eventSchema.index({ createdBy: 1 });
 eventSchema.index({ isDisabled: 1 });
-eventSchema.index({ slug: 1 });   // NEW index for slug lookups
+eventSchema.index({ slug: 1 });
+eventSchema.index({ 'teamMembers.userId': 1 }); // <-- NEW index for team queries
 
 eventSchema.set('toJSON', { virtuals: true });
 eventSchema.set('toObject', { virtuals: true });

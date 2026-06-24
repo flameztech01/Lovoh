@@ -26,6 +26,7 @@ import EventDashboardAnalytics from "./screens/EventDashboardAnalytics.jsx";
 import EventDashboardEventDetail from "./screens/EventDashboardEventDetail.jsx";
 import EventDashboardEventRegistrations from "./screens/EventDashboardEventRegistrations.jsx";
 import EventDashboardEditEvent from "./screens/EventDashboardEditEvent.jsx";
+import EventDashboardTeam from "./screens/EventDashboardTeam.jsx";
 
 import NotFound from "./screens/NotFound.jsx";
 
@@ -53,6 +54,7 @@ const router = createBrowserRouter([
           { path: "dashboard/events/:id", element: <EventDashboardEventDetail /> },
           { path: "dashboard/events/:id/registrations", element: <EventDashboardEventRegistrations /> },
           { path: "dashboard/events/:id/edit", element: <EventDashboardEditEvent /> },
+          {path: "dashboard/team", element: <EventDashboardTeam />},
         ],
       },
       // ⚠️ Catch-all route – must be the last child

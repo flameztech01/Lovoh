@@ -1,9 +1,9 @@
 // components/EventDashboardSidebar.jsx
-import React, { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { useLogoutMutation } from '../slices/userApiSlice';
-import { logout } from '../slices/authslice';
+import React, { useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { useLogoutMutation } from "../slices/userApiSlice";
+import { logout } from "../slices/authslice";
 import {
   FaCalendarAlt,
   FaPlus,
@@ -15,8 +15,9 @@ import {
   FaSignOutAlt,
   FaHome,
   FaChartBar,
-} from 'react-icons/fa';
-import { toast } from 'react-toastify';
+  FaUsers, // <-- NEW import
+} from "react-icons/fa";
+import { toast } from "react-toastify";
 
 const EventDashboardSidebar = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -29,73 +30,69 @@ const EventDashboardSidebar = ({ children }) => {
 
   const menuItems = [
     {
-      title: 'Dashboard',
+      title: "Dashboard",
       icon: FaHome,
-      path: '/dashboard',
+      path: "/dashboard",
     },
     {
-      title: 'My Events',
+      title: "My Events",
       icon: FaList,
-      path: '/dashboard/events',
+      path: "/dashboard/events",
     },
     {
-      title: 'Create Event',
+      title: "Create Event",
       icon: FaPlus,
-      path: '/dashboard/events/new',
+      path: "/dashboard/events/new",
     },
     {
-      title: 'Registrations',
+      title: "Registrations",
       icon: FaTicketAlt,
-      path: '/dashboard/registrations',
+      path: "/dashboard/registrations",
     },
     {
-      title: 'Wallet',
+      title: "Wallet",
       icon: FaWallet,
-      path: '/dashboard/wallet',
+      path: "/dashboard/wallet",
+    },
+    // NEW TEAM MENU ITEM
+    {
+      title: "Team",
+      icon: FaUsers,
+      path: "/dashboard/team",
     },
     {
-      title: 'Analytics',
+      title: "Analytics",
       icon: FaChartBar,
-      path: '/dashboard/analytics',
+      path: "/dashboard/analytics",
     },
   ];
 
   const isActive = (path) => {
-    if (path === '/dashboard') {
-      return location.pathname === '/dashboard';
+    if (path === "/dashboard") {
+      return location.pathname === "/dashboard";
     }
     return location.pathname.startsWith(path);
   };
 
   const handleLogout = async () => {
     try {
-      // Try to call backend logout
       await logoutMutation().unwrap();
     } catch (error) {
-      // Continue with frontend logout even if API fails
-      console.log('Backend logout failed, clearing locally');
+      console.log("Backend logout failed, clearing locally");
     }
 
-    // Clear Redux state
     dispatch(logout());
-
-    // Clear ALL browser storage
     localStorage.clear();
     sessionStorage.clear();
 
-    // Clear all cookies
     document.cookie.split(";").forEach((c) => {
       document.cookie = c
         .replace(/^ +/, "")
         .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
     });
 
-    toast.success('Logged out successfully');
-    
-    // Navigate to events page
-    navigate('/');
-    
-    // Force a full page reload to clear any cached state
+    toast.success("Logged out successfully");
+    navigate("/");
     setTimeout(() => {
       window.location.reload();
     }, 100);
@@ -106,26 +103,42 @@ const EventDashboardSidebar = ({ children }) => {
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 px-4 py-3">
         <div className="flex items-center justify-between">
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 text-gray-600 hover:text-[#1B3766]">
-            {sidebarOpen ? <FaTimes className="w-5 h-5" /> : <FaBars className="w-5 h-5" />}
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2 text-gray-600 hover:text-[#1B3766]"
+          >
+            {sidebarOpen ? (
+              <FaTimes className="w-5 h-5" />
+            ) : (
+              <FaBars className="w-5 h-5" />
+            )}
           </button>
           <span className="font-bold text-[#1B3766]">Event Dashboard</span>
           <div className="w-8 h-8 rounded-full bg-[#1B3766] text-white flex items-center justify-center text-sm font-bold">
-            {userInfo?.name?.charAt(0)?.toUpperCase() || 'U'}
+            {userInfo?.name?.charAt(0)?.toUpperCase() || "U"}
           </div>
         </div>
       </div>
 
       {/* Mobile Overlay */}
       {sidebarOpen && (
-        <div className="lg:hidden fixed inset-0 z-30 bg-black/50" onClick={() => setSidebarOpen(false)} />
+        <div
+          className="lg:hidden fixed inset-0 z-30 bg-black/50"
+          onClick={() => setSidebarOpen(false)}
+        />
       )}
 
       {/* Sidebar */}
-      <aside className={`fixed top-0 left-0 z-40 h-full w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside
+        className={`fixed top-0 left-0 z-40 h-full w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+      >
         {/* Logo */}
         <div className="p-6 border-b border-gray-100">
-          <Link to="/events/dashboard" className="flex items-center gap-3" onClick={() => setSidebarOpen(false)}>
+          <Link
+            to="/events/dashboard"
+            className="flex items-center gap-3"
+            onClick={() => setSidebarOpen(false)}
+          >
             <div className="w-10 h-10 bg-gradient-to-br from-[#1B3766] to-blue-700 rounded-xl flex items-center justify-center">
               <FaCalendarAlt className="text-white text-lg" />
             </div>
@@ -145,11 +158,13 @@ const EventDashboardSidebar = ({ children }) => {
               onClick={() => setSidebarOpen(false)}
               className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                 isActive(item.path)
-                  ? 'bg-[#1B3766] text-white shadow-md'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-[#1B3766]'
+                  ? "bg-[#1B3766] text-white shadow-md"
+                  : "text-gray-600 hover:bg-gray-50 hover:text-[#1B3766]"
               }`}
             >
-              <item.icon className={`text-sm ${isActive(item.path) ? 'text-white' : 'text-gray-400'}`} />
+              <item.icon
+                className={`text-sm ${isActive(item.path) ? "text-white" : "text-gray-400"}`}
+              />
               {item.title}
             </Link>
           ))}
@@ -159,11 +174,15 @@ const EventDashboardSidebar = ({ children }) => {
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#1B3766] to-blue-700 text-white flex items-center justify-center text-sm font-bold">
-              {userInfo?.name?.charAt(0)?.toUpperCase() || 'U'}
+              {userInfo?.name?.charAt(0)?.toUpperCase() || "U"}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900 truncate">{userInfo?.name || 'User'}</p>
-              <p className="text-xs text-gray-500 truncate">{userInfo?.email || ''}</p>
+              <p className="text-sm font-semibold text-gray-900 truncate">
+                {userInfo?.name || "User"}
+              </p>
+              <p className="text-xs text-gray-500 truncate">
+                {userInfo?.email || ""}
+              </p>
             </div>
           </div>
           <button
@@ -178,9 +197,7 @@ const EventDashboardSidebar = ({ children }) => {
 
       {/* Main Content */}
       <main className="lg:ml-64 pt-16 lg:pt-0">
-        <div className="p-4 md:p-6 lg:p-8">
-          {children}
-        </div>
+        <div className="p-4 md:p-6 lg:p-8">{children}</div>
       </main>
     </div>
   );

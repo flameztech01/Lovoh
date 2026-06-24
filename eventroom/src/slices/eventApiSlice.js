@@ -189,6 +189,62 @@ export const eventApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['Event'],
     }),
+
+    // ==================== TEAM MANAGEMENT ====================
+
+    // Get events where current user is a team member or creator
+    getMyTeamEvents: builder.query({
+      query: () => `${EVENTS_URL}/team/my-events`,
+      providesTags: ['Event'],
+    }),
+
+    // Get all team members of an event
+    getEventTeam: builder.query({
+      query: (id) => `${EVENTS_URL}/${id}/team`,
+      providesTags: (result, error, id) => [{ type: 'Event', id }],
+    }),
+
+    // Add a team member to an event
+    addTeamMember: builder.mutation({
+      query: ({ id, data }) => ({
+        url: `${EVENTS_URL}/${id}/team`,
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['Event'],
+    }),
+
+    // Remove a team member from an event
+    removeTeamMember: builder.mutation({
+      query: ({ id, userId }) => ({
+        url: `${EVENTS_URL}/${id}/team/${userId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Event'],
+    }),
+
+    // Get registrations for an event (team member access)
+    getEventRegistrationsTeam: builder.query({
+      query: ({ id, params }) => ({
+        url: `${EVENTS_URL}/${id}/team/registrations`,
+        params,
+      }),
+      providesTags: ['EventRegistration'],
+    }),
+
+    // Verify ticket validity without checking in (team)
+    verifyTicketValidityTeam: builder.query({
+      query: ({ id, ticketId }) => `${EVENTS_URL}/${id}/team/verify/${ticketId}`,
+    }),
+
+    // Check-in attendee (team member with checker/manager role)
+    verifyTicketTeam: builder.mutation({
+      query: ({ id, ticketId }) => ({
+        url: `${EVENTS_URL}/${id}/team/checkin/${ticketId}`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['EventRegistration'],
+    }),
   }),
 });
 
@@ -209,11 +265,20 @@ export const {
   useGetMyRegistrationsQuery,
   useCheckInAttendeeMutation,
   useUpdateEventCustomFormMutation,
-  useSendReminderMutation,  // NEW: Add this
+  useSendReminderMutation,
   useSetupWalletMutation,
   useGetWalletInfoQuery,
   useWithdrawFromWalletMutation,
   useGetBanksQuery,
   useGetAdminDashboardQuery,
   useToggleEventStatusMutation,
+
+  // NEW team hooks
+  useGetMyTeamEventsQuery,
+  useGetEventTeamQuery,
+  useAddTeamMemberMutation,
+  useRemoveTeamMemberMutation,
+  useGetEventRegistrationsTeamQuery,
+  useVerifyTicketValidityTeamQuery,
+  useVerifyTicketTeamMutation,
 } = eventApiSlice;

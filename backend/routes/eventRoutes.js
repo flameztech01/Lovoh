@@ -23,9 +23,21 @@ import {
   handlePaystackWebhook,
   getEventCustomForm,
   updateEventCustomForm,
-  sendReminder,           // ← ADD THIS IMPORT
-  sendAllReminders,       // ← ADD THIS IMPORT
+  sendReminder,
+  sendAllReminders,
 } from '../controllers/eventController.js';
+
+// NEW: Import team controller functions
+import {
+  addTeamMember,
+  removeTeamMember,
+  getEventTeam,
+  getMyTeamEvents,
+  getEventRegistrationsTeam,
+  verifyTicketTeam,
+  verifyTicketValidityTeam,
+} from '../controllers/eventTeamController.js';
+
 import { protect } from '../middleware/authMiddleware.js';
 import { protectAdmin } from '../middleware/adminAuthMiddleware.js';
 import multer from 'multer';
@@ -110,7 +122,7 @@ const protectBoth = asyncHandler(async (req, res, next) => {
   }
 });
 
-// ==================== FIXED PUBLIC ROUTES FIRST ====================
+// ==================== PUBLIC ROUTES (no auth) ====================
 router.get('/banks', getBankList);
 router.get('/filters', getEventFilters);
 router.get('/registrations/verify/:reference', verifyEventPayment);
@@ -121,7 +133,7 @@ router.post(
   handlePaystackWebhook
 );
 
-// ==================== FIXED PROTECTED ROUTES ====================
+// ==================== PROTECTED ROUTES (user or admin) ====================
 router.get('/my-events/list', protect, getMyEvents);
 router.get('/my-registrations/list', protect, getMyRegistrations);
 router.put('/check-in/:ticketId', protectBoth, checkInAttendee);
@@ -136,28 +148,47 @@ router.get('/admin/dashboard', protectAdmin, getAdminDashboard);
 router.put('/admin/:id/toggle-status', protectAdmin, toggleEventStatus);
 
 // ==================== REMINDER ROUTES ====================
-// Send reminder for specific event (event creator or admin)
-router.post('/:id/send-reminder', protectBoth, sendReminder);  // ← ADD THIS ROUTE
-// Send all reminders for all events (admin only - can be called by cron job)
-router.post('/send-all-reminders', sendAllReminders);  // ← ADD THIS ROUTE
+router.post('/:id/send-reminder', protectBoth, sendReminder);
+router.post('/send-all-reminders', sendAllReminders);
 
 // ==================== CUSTOM FORM ROUTES ====================
-// Public: fetch the custom form for an event (used during registration)
 router.get('/:id/custom-form', getEventCustomForm);
-// Protected: create/update the custom form
 router.put('/:id/custom-form', protectBoth, updateEventCustomForm);
 
-// ==================== :id ROUTES (with sub-paths) ====================
-router.get('/:id/registrations', protectBoth, getEventRegistrations);
+// ==================== TEAM MEMBER ROUTES ====================
+// Get events where current user is team member or creator
+router.get('/team/my-events', protectBoth, getMyTeamEvents);
+
+// Routes that operate on a specific event (must come before plain /:id)
+router
+  .route('/:id/team')
+  .get(protectBoth, getEventTeam)               // Get all team members
+  .post(protectBoth, addTeamMember);            // Add a team member
+
+router.delete('/:id/team/:userId', protectBoth, removeTeamMember);
+
+// Team access to registrations and ticket actions
+router.get('/:id/team/registrations', protectBoth, getEventRegistrationsTeam);
+router.get('/:id/team/verify/:ticketId', protectBoth, verifyTicketValidityTeam);
+router.post('/:id/team/checkin/:ticketId', protectBoth, verifyTicketTeam);
+
+// ==================== EVENT REGISTRATION (public) ====================
 router.post('/:id/register', registerForEvent);
+
+// ==================== EVENT REPORTING ====================
 router.post('/:id/report', reportEvent);
+
+// ==================== EVENT CRUD (protected) ====================
 router.put('/:id', protectBoth, upload, updateEvent);
 router.delete('/:id', protectBoth, deleteEvent);
 
-// ==================== PLAIN :id LAST (works with slug or _id) ====================
+// ==================== GET EVENT REGISTRATIONS (creator/admin only) ====================
+router.get('/:id/registrations', protectBoth, getEventRegistrations);
+
+// ==================== GET SINGLE EVENT (public - must be last) ====================
 router.get('/:id', getEventById);
 
-// ==================== ROOT ROUTES ====================
+// ==================== CREATE EVENT & GET ALL EVENTS ====================
 router.post('/', protectBoth, upload, createEvent);
 router.get('/', getEvents);
 
