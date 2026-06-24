@@ -38,6 +38,7 @@ const EventDashboardTeam = () => {
 
   // QR scanner state
   const [showScanner, setShowScanner] = useState(false);
+  const [scannerEventId, setScannerEventId] = useState(null); // specific event for scan
   const [scannerError, setScannerError] = useState(null);
   const [isProcessingScan, setIsProcessingScan] = useState(false);
   const qrScannerRef = useRef(null);
@@ -167,14 +168,20 @@ const EventDashboardTeam = () => {
       }
       if (!ticketId) throw new Error('Invalid QR code');
 
+      // Use the specific event ID from the scanner context
+      if (!scannerEventId) throw new Error('No event selected for check-in');
+
       await verifyTicketTeam({
-        id: expandedEvent,
+        id: scannerEventId,
         ticketId,
       }).unwrap();
 
       toast.success(`✅ Ticket checked in successfully!`);
       setShowScanner(false);
-      if (showRegistrations) refetchRegs();
+      // If registrations are open for this event, refresh them
+      if (showRegistrations === scannerEventId) {
+        refetchRegs();
+      }
     } catch (error) {
       const msg = error?.data?.message || error?.message || 'Check-in failed';
       toast.error(msg);
@@ -240,6 +247,13 @@ const EventDashboardTeam = () => {
     } finally {
       setCheckingIn(null);
     }
+  };
+
+  // Open scanner for a specific event
+  const openScannerForEvent = (eventId) => {
+    setScannerEventId(eventId);
+    setExpandedEvent(eventId); // expand the event so the user sees context
+    setShowScanner(true);
   };
 
   // ==================== HELPERS ====================
@@ -326,16 +340,10 @@ const EventDashboardTeam = () => {
   return (
     <EventDashboardSidebar>
       <div className="max-w-6xl mx-auto relative">
-        {/* Header with Scan button */}
+        {/* Header without the global Scan QR button */}
         <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
           <h1 className="text-2xl font-bold text-gray-900">Team Management</h1>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowScanner(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm shadow-sm transition-colors"
-            >
-              <FaCamera /> Scan QR
-            </button>
             <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1.5 rounded-full">
               {teamEvents?.length || 0} events
             </span>
@@ -385,16 +393,28 @@ const EventDashboardTeam = () => {
                     </div>
                     <div className="flex items-center gap-2 mt-2 sm:mt-0">
                       {event.role !== 'viewer' && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleRegistrations(event._id);
-                          }}
-                          className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center gap-1 transition-colors"
-                        >
-                          <FaTicketAlt className="text-xs" />
-                          Registrations
-                        </button>
+                        <>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleRegistrations(event._id);
+                            }}
+                            className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center gap-1 transition-colors"
+                          >
+                            <FaTicketAlt className="text-xs" />
+                            Registrations
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openScannerForEvent(event._id);
+                            }}
+                            className="px-3 py-1.5 text-sm bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg flex items-center gap-1 transition-colors"
+                          >
+                            <FaCamera className="text-xs" />
+                            Scan QR
+                          </button>
+                        </>
                       )}
                     </div>
                   </div>
