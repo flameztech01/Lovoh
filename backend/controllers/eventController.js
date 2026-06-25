@@ -21,6 +21,9 @@ import {
   sendTicketToAttendee,
   sendEventReminder
 } from '../utils/eventEmailService.js';
+// Add these imports
+import { generatePoster } from '../utils/generatePoster.js';
+import { sendPosterEmail } from '../utils/eventEmailService.js';
 
 // Paystack config
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
@@ -142,7 +145,7 @@ const createEvent = asyncHandler(async (req, res) => {
     location, venue, speakers, maxAttendees, isPaid, price,
     registrationDeadline, tags, isVirtual, meetingLink,
     ticketTypes, enableMultipleTickets, maxTicketsPerOrder,
-    customForm,
+    customForm, posterTemplate, // posterTemplate JSON from frontend
   } = req.body;
 
   if (!title || !description || !eventType || !category || !date || !time) {
@@ -211,10 +214,12 @@ const createEvent = asyncHandler(async (req, res) => {
 
   let eventImages = [];
   let speakerImageFiles = [];
+  let posterImageFile = null;
   if (req.files) {
     const allFiles = Array.isArray(req.files) ? req.files : [];
     eventImages = allFiles.filter(f => f.fieldname === 'images');
     speakerImageFiles = allFiles.filter(f => f.fieldname.startsWith('speakerImages'));
+    posterImageFile = allFiles.find(f => f.fieldname === 'posterImage');
   }
 
   const eventImageUrls = eventImages.map(file => file.path);
@@ -234,6 +239,46 @@ const createEvent = asyncHandler(async (req, res) => {
   const eventDate = new Date(date);
   const now = new Date();
   const eventPassed = hasEventPassed({ date: eventDate });
+
+  // ---------- Process poster template ----------
+  let posterTemplateData = null;
+  if (posterTemplate) {
+    try {
+      posterTemplateData = typeof posterTemplate === 'string' ? JSON.parse(posterTemplate) : posterTemplate;
+    } catch (e) {
+      // invalid JSON, ignore
+    }
+  }
+
+  let posterImageUrl = '';
+  if (posterImageFile) {
+    const result = await cloudinary.uploader.upload(posterImageFile.path, {
+      folder: 'eventroom/posters',
+      public_id: `poster_${Date.now()}`,
+      allowed_formats: ['jpg', 'png', 'jpeg', 'webp'],
+    });
+    posterImageUrl = result.secure_url;
+  } else if (posterTemplateData?.image) {
+    posterImageUrl = posterTemplateData.image;
+  }
+
+  const finalPosterTemplate = posterTemplateData ? {
+    image: posterImageUrl,
+    photoPlaceholder: {
+      x: posterTemplateData.photoPlaceholder?.x || 100,
+      y: posterTemplateData.photoPlaceholder?.y || 150,
+      width: posterTemplateData.photoPlaceholder?.width || 200,
+      height: posterTemplateData.photoPlaceholder?.height || 200,
+      borderRadius: posterTemplateData.photoPlaceholder?.borderRadius || 0, // <-- borderRadius
+    },
+    namePlaceholder: {
+      x: posterTemplateData.namePlaceholder?.x || 100,
+      y: posterTemplateData.namePlaceholder?.y || 400,
+      fontSize: posterTemplateData.namePlaceholder?.fontSize || 48,
+      color: posterTemplateData.namePlaceholder?.color || '#FFFFFF',
+      fontFamily: posterTemplateData.namePlaceholder?.fontFamily || 'Arial',
+    },
+  } : null;
 
   const event = await Event.create({
     title: title.trim(),
@@ -262,9 +307,9 @@ const createEvent = asyncHandler(async (req, res) => {
     createdBy: req.user._id,
     creatorType: isAdmin ? 'admin' : 'user',
     paymentSplit: isAdmin ? 'full' : 'split',
+    posterTemplate: finalPosterTemplate,
   });
 
-  // Process custom form
   if (customForm) {
     try {
       const formData = typeof customForm === 'string' ? JSON.parse(customForm) : customForm;
@@ -421,6 +466,7 @@ const updateEvent = asyncHandler(async (req, res) => {
     registrationDeadline, tags, isVirtual, meetingLink, keepImages,
     ticketTypes, enableMultipleTickets, maxTicketsPerOrder,
     customForm,
+    posterTemplate, // JSON string or object
   } = req.body;
 
   let allFiles = [];
@@ -429,8 +475,68 @@ const updateEvent = asyncHandler(async (req, res) => {
   }
   const eventImageFiles = allFiles.filter(f => f.fieldname === 'images');
   const speakerImageFiles = allFiles.filter(f => f.fieldname.startsWith('speakerImages'));
+  const posterImageFile = allFiles.find(f => f.fieldname === 'posterImage');
 
-  // Handle speakers
+  // ---------- Handle poster template ----------
+  let posterTemplateData = null;
+  if (posterTemplate) {
+    try {
+      posterTemplateData = typeof posterTemplate === 'string' ? JSON.parse(posterTemplate) : posterTemplate;
+    } catch (e) {
+      // invalid JSON, ignore
+    }
+  }
+
+  let removePoster = false;
+  if (posterTemplateData && posterTemplateData.image === '' && !posterImageFile) {
+    removePoster = true;
+  }
+
+  let posterImageUrl = '';
+  if (posterImageFile) {
+    if (event.posterTemplate && event.posterTemplate.image) {
+      try {
+        const publicId = event.posterTemplate.image.split('/').pop().split('.')[0];
+        await cloudinary.uploader.destroy(`eventroom/posters/${publicId}`);
+      } catch (err) {
+        console.error('Error deleting old poster:', err);
+      }
+    }
+    const result = await cloudinary.uploader.upload(posterImageFile.path, {
+      folder: 'eventroom/posters',
+      public_id: `poster_${Date.now()}`,
+      allowed_formats: ['jpg', 'png', 'jpeg', 'webp'],
+    });
+    posterImageUrl = result.secure_url;
+  }
+
+  let finalPosterTemplate = null;
+  if (removePoster) {
+    finalPosterTemplate = null;
+  } else if (posterTemplateData) {
+    const existingImage = event.posterTemplate && event.posterTemplate.image ? event.posterTemplate.image : '';
+    finalPosterTemplate = {
+      image: posterImageUrl || posterTemplateData.image || existingImage,
+      photoPlaceholder: {
+        x: posterTemplateData.photoPlaceholder?.x || event.posterTemplate?.photoPlaceholder?.x || 100,
+        y: posterTemplateData.photoPlaceholder?.y || event.posterTemplate?.photoPlaceholder?.y || 150,
+        width: posterTemplateData.photoPlaceholder?.width || event.posterTemplate?.photoPlaceholder?.width || 200,
+        height: posterTemplateData.photoPlaceholder?.height || event.posterTemplate?.photoPlaceholder?.height || 200,
+        borderRadius: posterTemplateData.photoPlaceholder?.borderRadius !== undefined ? posterTemplateData.photoPlaceholder.borderRadius : event.posterTemplate?.photoPlaceholder?.borderRadius || 0,
+      },
+      namePlaceholder: {
+        x: posterTemplateData.namePlaceholder?.x || event.posterTemplate?.namePlaceholder?.x || 100,
+        y: posterTemplateData.namePlaceholder?.y || event.posterTemplate?.namePlaceholder?.y || 400,
+        fontSize: posterTemplateData.namePlaceholder?.fontSize || event.posterTemplate?.namePlaceholder?.fontSize || 48,
+        color: posterTemplateData.namePlaceholder?.color || event.posterTemplate?.namePlaceholder?.color || '#FFFFFF',
+        fontFamily: posterTemplateData.namePlaceholder?.fontFamily || event.posterTemplate?.namePlaceholder?.fontFamily || 'Arial',
+      },
+    };
+  } else {
+    finalPosterTemplate = event.posterTemplate;
+  }
+
+  // ---------- Handle speakers ----------
   if (speakers) {
     try {
       let parsedSpeakers = typeof speakers === 'string' ? JSON.parse(speakers) : speakers;
@@ -444,7 +550,7 @@ const updateEvent = asyncHandler(async (req, res) => {
               if (oldSpeaker && oldSpeaker.image && oldSpeaker.image.includes('cloudinary')) {
                 try {
                   const publicId = oldSpeaker.image.split('/').pop().split('.')[0];
-                  cloudinary.uploader.destroy(`The_Brave_Events/speakers/${publicId}`);
+                  cloudinary.uploader.destroy(`eventroom/speakers/${publicId}`);
                 } catch (err) { console.error('Error deleting old speaker image:', err); }
               }
               parsedSpeakers[index].image = file.path;
@@ -452,7 +558,6 @@ const updateEvent = asyncHandler(async (req, res) => {
           }
         });
       }
-      // Preserve existing speaker images if not updated
       for (let i = 0; i < parsedSpeakers.length; i++) {
         const existingSpeaker = event.speakers[i];
         if (existingSpeaker && existingSpeaker.image) {
@@ -461,14 +566,13 @@ const updateEvent = asyncHandler(async (req, res) => {
           }
         }
       }
-      // Delete removed speaker images
       for (const oldSpeaker of event.speakers) {
         if (oldSpeaker.image && oldSpeaker.image.includes('cloudinary')) {
           const stillExists = parsedSpeakers.some(s => s.image === oldSpeaker.image);
           if (!stillExists) {
             try {
               const publicId = oldSpeaker.image.split('/').pop().split('.')[0];
-              await cloudinary.uploader.destroy(`The_Brave_Events/speakers/${publicId}`);
+              await cloudinary.uploader.destroy(`eventroom/speakers/${publicId}`);
             } catch (err) { console.error('Error deleting old speaker image:', err); }
           }
         }
@@ -477,14 +581,14 @@ const updateEvent = asyncHandler(async (req, res) => {
     } catch (error) { console.error('Speaker parsing error:', error); }
   }
 
-  // Handle ticket types
+  // ---------- Handle ticket types ----------
   if (ticketTypes) {
     try {
       event.ticketTypes = typeof ticketTypes === 'string' ? JSON.parse(ticketTypes) : ticketTypes;
     } catch (error) { console.error('Ticket types parsing error:', error); }
   }
 
-  // Handle event images
+  // ---------- Handle event images ----------
   const imagesToKeep = keepImages
     ? (Array.isArray(keepImages) ? keepImages : JSON.parse(keepImages))
     : [];
@@ -492,14 +596,14 @@ const updateEvent = asyncHandler(async (req, res) => {
     if (!imagesToKeep.includes(oldImage)) {
       try {
         const publicId = oldImage.split('/').pop().split('.')[0];
-        await cloudinary.uploader.destroy(`The_Brave_Events/${publicId}`);
+        await cloudinary.uploader.destroy(`eventroom/${publicId}`);
       } catch (err) { console.error('Error deleting old image:', err); }
     }
   }
   const newImages = eventImageFiles.map(file => file.path);
   event.images = [...imagesToKeep, ...newImages];
 
-  // Update text fields
+  // ---------- Update text fields ----------
   if (title) event.title = title.trim();
   if (description) event.description = description;
   if (eventType) event.eventType = eventType;
@@ -524,20 +628,22 @@ const updateEvent = asyncHandler(async (req, res) => {
   if (registrationDeadline) event.registrationDeadline = new Date(registrationDeadline);
   if (tags) event.tags = Array.isArray(tags) ? tags : tags.split(',').map(t => t.trim()).filter(Boolean);
 
-  // Custom form handling
+  // ---------- Custom form ----------
   if (customForm !== undefined) {
     const formData = typeof customForm === 'string' ? JSON.parse(customForm) : customForm;
     if (formData && formData.fields && formData.fields.length > 0) {
       const formId = await upsertEventForm(event._id, formData);
       event.customForm = formId;
     } else if (customForm === null || (Array.isArray(formData?.fields) && formData.fields.length === 0)) {
-      // remove form
       if (event.customForm) {
         await EventForm.findByIdAndDelete(event.customForm);
         event.customForm = undefined;
       }
     }
   }
+
+  // ---------- Save poster template ----------
+  event.posterTemplate = finalPosterTemplate;
 
   await event.save();
   res.json(event);
@@ -556,14 +662,24 @@ const deleteEvent = asyncHandler(async (req, res) => {
     throw new Error('Not authorized to delete this event');
   }
 
+  // Delete event images
   for (const image of event.images) {
     try {
       const publicId = image.split('/').pop().split('.')[0];
-      await cloudinary.uploader.destroy(`The_Brave_Events/${publicId}`);
+      await cloudinary.uploader.destroy(`eventroom/${publicId}`);
     } catch (err) {}
   }
+
+  // Delete poster template image
+  if (event.posterTemplate && event.posterTemplate.image) {
+    try {
+      const publicId = event.posterTemplate.image.split('/').pop().split('.')[0];
+      await cloudinary.uploader.destroy(`eventroom/posters/${publicId}`);
+    } catch (err) {}
+  }
+
   await EventRegistration.deleteMany({ event: event._id });
-  await EventForm.deleteOne({ event: event._id }); // clean up custom form
+  await EventForm.deleteOne({ event: event._id });
   await Event.deleteOne({ _id: event._id });
   res.json({ message: 'Event removed successfully' });
 });
@@ -612,7 +728,7 @@ const toggleEventStatus = asyncHandler(async (req, res) => {
   res.json({ message: event.isDisabled ? 'Event disabled' : 'Event enabled', event });
 });
 
-// --------------------- REGISTRATION (WITH QR) ---------------------
+// --------------------- REGISTRATION (WITH QR & POSTER) ---------------------
 
 const registerForEvent = asyncHandler(async (req, res) => {
   const {
@@ -731,6 +847,10 @@ const registerForEvent = asyncHandler(async (req, res) => {
     sendIndividualTickets,
   };
 
+  // --------------------- POSTER SUPPORT ---------------------
+  const posterTemplate = (event.posterTemplate && event.posterTemplate.image) ? event.posterTemplate : null;
+  const canGeneratePoster = !!posterTemplate;
+
   // Free event – direct confirmation
   if (!registrationData.isPaidEvent || totalAmount === 0) {
     const baseSeatNumber = await generateSeatNumber(event._id);
@@ -740,6 +860,14 @@ const registerForEvent = asyncHandler(async (req, res) => {
       ...att,
       seatNumber: `${baseSeatNumber}-${Math.random().toString(36).substr(2, 3).toUpperCase()}`,
     }));
+
+    // Set poster related fields
+    if (canGeneratePoster) {
+      registrationData.posterGenerated = false;
+      registrationData.posterImage = '';
+      registrationData.userPhoto = '';
+      registrationData.posterName = '';
+    }
 
     const registration = await EventRegistration.create(registrationData);
 
@@ -785,13 +913,23 @@ const registerForEvent = asyncHandler(async (req, res) => {
       );
     }
 
-    return res.status(201).json({ message: 'Registration successful! Check your email for your ticket(s) with QR code.', registration });
+    return res.status(201).json({
+      message: 'Registration successful! Check your email for your ticket(s) with QR code.',
+      registration,
+      canGeneratePoster,
+      posterTemplate: canGeneratePoster ? posterTemplate : null,
+    });
   }
 
   // Paid event – initiate payment
   const registration = await EventRegistration.create({
     ...registrationData,
     status: 'pending',
+    // Set poster fields if available
+    posterGenerated: canGeneratePoster ? false : undefined,
+    posterImage: '',
+    userPhoto: '',
+    posterName: '',
   });
 
   try {
@@ -830,6 +968,8 @@ const registerForEvent = asyncHandler(async (req, res) => {
       message: 'Please complete payment to confirm your registration. Your ticket with QR code will be sent after payment.',
       registration,
       paymentUrl: paymentResponse.data.data.authorization_url,
+      canGeneratePoster,
+      posterTemplate: canGeneratePoster ? posterTemplate : null,
     });
   } catch (error) {
     registration.status = 'failed';
@@ -839,7 +979,7 @@ const registerForEvent = asyncHandler(async (req, res) => {
   }
 });
 
-// --------------------- VERIFY PAYMENT (WITH QR) ---------------------
+// --------------------- VERIFY PAYMENT (WITH QR & POSTER) ---------------------
 
 const verifyEventPayment = asyncHandler(async (req, res) => {
   const { reference } = req.params;
@@ -888,9 +1028,21 @@ const verifyEventPayment = asyncHandler(async (req, res) => {
           att.seatNumber = seats[idx + 1] || `${seatPrefix}${String(currentConfirmed + idx + 2).padStart(3, '0')}`;
         });
       }
+
+      // --------------------- POSTER SUPPORT ---------------------
+      const event = await Event.findById(registration.event);
+      const posterTemplate = (event && event.posterTemplate && event.posterTemplate.image) ? event.posterTemplate : null;
+      const canGeneratePoster = !!posterTemplate;
+
+      if (canGeneratePoster) {
+        registration.posterGenerated = false;
+        registration.posterImage = '';
+        registration.userPhoto = '';
+        registration.posterName = '';
+      }
+
       await registration.save();
 
-      const event = await Event.findById(registration.event);
       if (event) {
         const confirmedCount = await EventRegistration.countDocuments({ event: event._id, status: 'confirmed' });
         event.currentAttendees = confirmedCount;
@@ -968,7 +1120,12 @@ const verifyEventPayment = asyncHandler(async (req, res) => {
         }
       }
 
-      return res.json({ message: 'Payment verified! Check your email for your ticket(s) with QR code.', registration });
+      return res.json({
+        message: 'Payment verified! Check your email for your ticket(s) with QR code.',
+        registration,
+        canGeneratePoster,
+        posterTemplate: canGeneratePoster ? posterTemplate : null,
+      });
     } else {
       const reg = await EventRegistration.findOne({ paymentReference: reference });
       if (reg && reg.status === 'pending') {
@@ -1657,6 +1814,149 @@ const sendAllReminders = asyncHandler(async (req, res) => {
   });
 });
 
+// --------------------- POSTER GENERATION ---------------------
+
+// --------------------- POSTER GENERATION (PUBLIC) ---------------------
+
+// @desc    Generate personalised "I'm attending" poster
+// @route   POST /api/events/:id/registrations/:registrationId/generate-poster
+// @access  Public (registration ID acts as token; also supports authenticated users)
+const generatePosterForRegistration = asyncHandler(async (req, res) => {
+  const { id, registrationId } = req.params;
+  const { name } = req.body;
+  const photoFile = req.file;
+
+  console.log('📸 Poster generation request:', {
+    eventId: id,
+    registrationId,
+    name,
+    hasFile: !!photoFile,
+    fileInfo: photoFile ? { originalname: photoFile.originalname, size: photoFile.size } : null,
+  });
+
+  try {
+    const event = await findEvent(id);
+    if (!event || event.isDisabled) {
+      res.status(404);
+      throw new Error('Event not found');
+    }
+
+    const registration = await EventRegistration.findById(registrationId);
+    if (!registration || registration.event.toString() !== event._id.toString()) {
+      res.status(404);
+      throw new Error('Registration not found');
+    }
+
+    // Authorization: allow if registrant, event creator, admin, or anonymous (trust registration ID)
+    let authorized = false;
+    if (req.user) {
+      const isOwner = registration.email.toLowerCase() === req.user.email.toLowerCase();
+      const isEventCreator = event.createdBy.toString() === req.user._id.toString();
+      const isAdmin = req.user.role === 'admin';
+      if (isOwner || isEventCreator || isAdmin) authorized = true;
+    } else {
+      authorized = true;
+    }
+
+    if (!authorized) {
+      res.status(403);
+      throw new Error('Not authorized to generate poster');
+    }
+
+    if (!event.posterTemplate || !event.posterTemplate.image) {
+      res.status(400);
+      throw new Error('This event does not support poster generation');
+    }
+
+    // Handle photo upload (if provided)
+    let photoUrl = registration.userPhoto || '';
+    if (photoFile) {
+      const result = await cloudinary.uploader.upload(photoFile.path, {
+        folder: 'poster_photos',
+        public_id: `photo_${registrationId}_${Date.now()}`,
+        allowed_formats: ['jpg', 'png', 'jpeg', 'webp'],
+      });
+      photoUrl = result.secure_url;
+      registration.userPhoto = photoUrl;
+    } else {
+      console.log('No photo provided, using existing userPhoto:', photoUrl);
+    }
+
+    const posterName = name || registration.name;
+
+    console.log('Generating poster with:', {
+      template: event.posterTemplate.image,
+      photoUrl,
+      posterName,
+      placeholders: event.posterTemplate.photoPlaceholder,
+      namePlaceholder: event.posterTemplate.namePlaceholder,
+    });
+
+    const posterUrl = await generatePoster(
+      event.posterTemplate.image,
+      photoUrl,
+      posterName,
+      {
+        photo: {
+          x: event.posterTemplate.photoPlaceholder?.x || 100,
+          y: event.posterTemplate.photoPlaceholder?.y || 150,
+          width: event.posterTemplate.photoPlaceholder?.width || 200,
+          height: event.posterTemplate.photoPlaceholder?.height || 200,
+          borderRadius: event.posterTemplate.photoPlaceholder?.borderRadius || 0, // <-- borderRadius passed to generator
+        },
+        name: {
+          x: event.posterTemplate.namePlaceholder?.x || 100,
+          y: event.posterTemplate.namePlaceholder?.y || 400,
+          fontSize: event.posterTemplate.namePlaceholder?.fontSize || 48,
+          color: event.posterTemplate.namePlaceholder?.color || '#FFFFFF',
+          fontFamily: event.posterTemplate.namePlaceholder?.fontFamily || 'Arial',
+        },
+      }
+    );
+
+    registration.posterImage = posterUrl;
+    registration.posterGenerated = true;
+    registration.posterName = posterName;
+    await registration.save();
+
+    await sendPosterEmail(registration.email, registration.name, event.title, posterUrl, registration);
+
+    res.json({
+      message: 'Poster generated successfully',
+      posterImage: posterUrl,
+      registration,
+    });
+  } catch (error) {
+    console.error('❌ Poster generation error:', error);
+    throw error;
+  }
+});
+
+// @desc    Get poster status for a registration
+// @route   GET /api/events/:id/registrations/:registrationId/poster
+// @access  Private (registrant or admin)
+const getPosterStatus = asyncHandler(async (req, res) => {
+  const { id, registrationId } = req.params;
+  const registration = await EventRegistration.findById(registrationId);
+  if (!registration) {
+    res.status(404);
+    throw new Error('Registration not found');
+  }
+
+  // Authorization check (optional, but good practice)
+  const isOwner = registration.email === req.user.email;
+  const isAdmin = req.user.role === 'admin';
+  if (!isOwner && !isAdmin) {
+    res.status(403);
+    throw new Error('Not authorized');
+  }
+
+  res.json({
+    posterGenerated: registration.posterGenerated || false,
+    posterImage: registration.posterImage || null,
+  });
+});
+
 // --------------------- EXPORT ---------------------
 
 export {
@@ -1685,4 +1985,6 @@ export {
   handlePaystackWebhook,
   sendReminder,
   sendAllReminders,
+  generatePosterForRegistration,   // new
+  getPosterStatus,  
 };

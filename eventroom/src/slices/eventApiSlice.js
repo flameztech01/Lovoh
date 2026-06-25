@@ -54,7 +54,7 @@ export const eventApiSlice = apiSlice.injectEndpoints({
       query: () => `${EVENTS_URL}/filters`,
     }),
 
-    // NEW: Get custom form for an event
+    // Get custom form for an event
     getEventCustomForm: builder.query({
       query: (id) => `${EVENTS_URL}/${id}/custom-form`,
     }),
@@ -120,7 +120,7 @@ export const eventApiSlice = apiSlice.injectEndpoints({
       invalidatesTags: ['EventRegistration'],
     }),
 
-    // NEW: Update custom form for an event (protected)
+    // Update custom form for an event (protected)
     updateEventCustomForm: builder.mutation({
       query: ({ id, data }) => ({
         url: `${EVENTS_URL}/${id}/custom-form`,
@@ -245,6 +245,31 @@ export const eventApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['EventRegistration'],
     }),
+
+    // ==================== POSTER GENERATION ====================
+
+    // Get poster status (generated or not, image URL)
+    getPosterStatus: builder.query({
+      query: ({ id, registrationId }) =>
+        `${EVENTS_URL}/${id}/registrations/${registrationId}/poster`,
+      providesTags: (result, error, { id, registrationId }) => [
+        { type: 'Poster', id: registrationId },
+      ],
+    }),
+
+    // Generate poster for a registration (upload photo, optional name)
+    generatePoster: builder.mutation({
+      query: ({ id, registrationId, formData }) => ({
+        url: `${EVENTS_URL}/${id}/registrations/${registrationId}/generate-poster`,
+        method: 'POST',
+        body: formData,
+        // headers set automatically for FormData by fetchBaseQuery
+      }),
+      invalidatesTags: (result, error, { registrationId }) => [
+        { type: 'Poster', id: registrationId },
+        { type: 'EventRegistration' },
+      ],
+    }),
   }),
 });
 
@@ -273,7 +298,7 @@ export const {
   useGetAdminDashboardQuery,
   useToggleEventStatusMutation,
 
-  // NEW team hooks
+  // Team hooks
   useGetMyTeamEventsQuery,
   useGetEventTeamQuery,
   useAddTeamMemberMutation,
@@ -281,4 +306,8 @@ export const {
   useGetEventRegistrationsTeamQuery,
   useVerifyTicketValidityTeamQuery,
   useVerifyTicketTeamMutation,
+
+  // Poster hooks
+  useGetPosterStatusQuery,
+  useGeneratePosterMutation,
 } = eventApiSlice;

@@ -11,11 +11,14 @@ const attendeeSchema = mongoose.Schema({
   checkedInAt: { type: Date },
 });
 
-const customFormResponseSchema = mongoose.Schema({
-  fieldId: { type: mongoose.Schema.Types.ObjectId, required: true },
-  label: { type: String },   // optional, but useful for displaying later
-  value: { type: mongoose.Schema.Types.Mixed }, // string, number, array of strings, etc.
-}, { _id: false });
+const customFormResponseSchema = mongoose.Schema(
+  {
+    fieldId: { type: mongoose.Schema.Types.ObjectId, required: true },
+    label: { type: String },
+    value: { type: mongoose.Schema.Types.Mixed },
+  },
+  { _id: false }
+);
 
 const eventRegistrationSchema = mongoose.Schema(
   {
@@ -37,7 +40,11 @@ const eventRegistrationSchema = mongoose.Schema(
     paidAmount: { type: Number, default: 0 },
     paymentReference: { type: String, default: '' },
 
-    status: { type: String, enum: ['pending', 'confirmed', 'failed', 'cancelled'], default: 'pending' },
+    status: {
+      type: String,
+      enum: ['pending', 'confirmed', 'failed', 'cancelled'],
+      default: 'pending',
+    },
     paymentConfirmedAt: { type: Date },
 
     additionalAttendees: [attendeeSchema],
@@ -49,8 +56,14 @@ const eventRegistrationSchema = mongoose.Schema(
     checkedInAt: { type: Date },
     notes: { type: String, default: '' },
 
-    // NEW: custom form answers
+    // Custom form answers
     customFormResponses: [customFormResponseSchema],
+
+    // ===== NEW: Poster fields =====
+    posterGenerated: { type: Boolean, default: false },
+    posterImage: { type: String, default: '' },
+    userPhoto: { type: String, default: '' },          // URL of uploaded photo
+    posterName: { type: String, default: '' },         // optional separate name for poster
   },
   { timestamps: true }
 );
@@ -63,7 +76,7 @@ eventRegistrationSchema.pre('save', function (next) {
     this.ticketId = `TKT-${r1}-${r2}`;
   }
   if (this.status === 'confirmed' && this.additionalAttendees?.length > 0) {
-    this.additionalAttendees.forEach(att => {
+    this.additionalAttendees.forEach((att) => {
       if (!att.ticketId) {
         const r1 = crypto.randomBytes(3).toString('hex').toUpperCase();
         const r2 = crypto.randomBytes(2).toString('hex').toUpperCase();
@@ -74,6 +87,7 @@ eventRegistrationSchema.pre('save', function (next) {
   next();
 });
 
+// Indexes
 eventRegistrationSchema.index({ event: 1, email: 1 });
 eventRegistrationSchema.index({ event: 1, status: 1 });
 eventRegistrationSchema.index({ email: 1 });

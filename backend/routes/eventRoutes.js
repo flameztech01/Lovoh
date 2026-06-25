@@ -1,3 +1,4 @@
+// routes/eventRoutes.js
 import express from 'express';
 import {
   createEvent,
@@ -25,6 +26,8 @@ import {
   updateEventCustomForm,
   sendReminder,
   sendAllReminders,
+  generatePosterForRegistration,   // <-- NEW import
+  getPosterStatus,                 // <-- NEW import
 } from '../controllers/eventController.js';
 
 // NEW: Import team controller functions
@@ -56,7 +59,8 @@ cloudinary.config({
   api_secret: process.env.API_SECRET,
 });
 
-// Single storage configuration that handles both event and speaker images
+// ==================== MULTER CONFIG ====================
+// Storage for event/speaker images (multiple)
 const storage = new CloudinaryStorage({
   cloudinary,
   params: async (req, file) => {
@@ -73,10 +77,16 @@ const storage = new CloudinaryStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  limits: { fileSize: 10 * 1024 * 1024 },
 }).any();
 
-// Unified auth middleware
+// NEW: Single file upload for poster photo (temporary storage, then processed by controller)
+const uploadPosterPhoto = multer({
+  storage: multer.diskStorage({}), // store in memory; controller will handle Cloudinary upload
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+}).single('photo');
+
+// ==================== AUTH MIDDLEWARE ====================
 const protectBoth = asyncHandler(async (req, res, next) => {
   let token;
 
@@ -156,21 +166,28 @@ router.get('/:id/custom-form', getEventCustomForm);
 router.put('/:id/custom-form', protectBoth, updateEventCustomForm);
 
 // ==================== TEAM MEMBER ROUTES ====================
-// Get events where current user is team member or creator
 router.get('/team/my-events', protectBoth, getMyTeamEvents);
 
-// Routes that operate on a specific event (must come before plain /:id)
 router
   .route('/:id/team')
-  .get(protectBoth, getEventTeam)               // Get all team members
-  .post(protectBoth, addTeamMember);            // Add a team member
+  .get(protectBoth, getEventTeam)
+  .post(protectBoth, addTeamMember);
 
 router.delete('/:id/team/:userId', protectBoth, removeTeamMember);
 
-// Team access to registrations and ticket actions
 router.get('/:id/team/registrations', protectBoth, getEventRegistrationsTeam);
 router.get('/:id/team/verify/:ticketId', protectBoth, verifyTicketValidityTeam);
 router.post('/:id/team/checkin/:ticketId', protectBoth, verifyTicketTeam);
+
+// ==================== POSTER ROUTES (NEW) ====================
+// Get poster status for a registration
+router.get('/:id/registrations/:registrationId/poster', getPosterStatus);
+// Generate poster for a registration (upload photo)
+router.post(
+  '/:id/registrations/:registrationId/generate-poster',
+  uploadPosterPhoto,
+  generatePosterForRegistration
+);
 
 // ==================== EVENT REGISTRATION (public) ====================
 router.post('/:id/register', registerForEvent);

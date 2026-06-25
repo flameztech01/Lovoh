@@ -1,4 +1,6 @@
+// utils/eventEmailService.js
 import { Resend } from 'resend';
+import axios from 'axios';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_EMAIL = process.env.FROM_EMAIL || 'Lovoh Create <events@lovohcreate.com>';
@@ -21,14 +23,13 @@ const sendEmail = async (to, subject, html, attachments = []) => {
 // Convert data URL to buffer and return attachment object
 const createQRAttachment = (qrCodeDataUrl, cid = 'qr_code') => {
   if (!qrCodeDataUrl) return null;
-  // data:image/png;base64,xxxxx
   const base64Data = qrCodeDataUrl.split(',')[1];
   if (!base64Data) return null;
   const buffer = Buffer.from(base64Data, 'base64');
   return {
     filename: 'ticket_qr.png',
     content: buffer,
-    cid, // Content-ID used in HTML: <img src="cid:qr_code" />
+    cid,
   };
 };
 
@@ -222,7 +223,7 @@ export const sendTicketToAttendee = async (email, name, eventTitle, eventDate, e
   await sendEmail(email, subject, html, attachments);
 };
 
-// ==================== Helper functions (unchanged) ====================
+// ==================== HELPER FUNCTIONS ====================
 const generateAttendeesList = (registration) => {
   if (!registration?.additionalAttendees?.length) return '';
   return `
@@ -257,7 +258,7 @@ const generateTicketSummary = (registration) => {
   `;
 };
 
-// ==================== All other email functions (unchanged, they don't need QR) ====================
+// ==================== OTHER EMAILS (no QR) ====================
 export const sendNewRegistrationToCreator = async (creatorEmail, eventTitle, attendeeName, attendeeEmail, type, ticketId, seatNumber, quantity = 1) => {
   const subject = `📋 New ${type === 'paid' ? 'Paid ' : ''}Registration for ${eventTitle}`;
   const html = `
@@ -466,4 +467,62 @@ export const sendEventReminder = async (email, name, event, daysRemaining, remin
   `;
   
   await sendEmail(email, subject, html);
+};
+
+// ==================== NEW: POSTER EMAIL ====================
+export const sendPosterEmail = async (email, name, eventTitle, posterUrl, registration = null) => {
+  const subject = `🎨 Your "I'm Attending" Poster for ${eventTitle}`;
+  
+  // Attempt to download the poster image as a buffer to attach it
+  let attachment = null;
+  try {
+    const response = await axios.get(posterUrl, { responseType: 'arraybuffer' });
+    const buffer = Buffer.from(response.data);
+    attachment = {
+      filename: `poster_${eventTitle.replace(/\s+/g, '_')}.png`,
+      content: buffer,
+    };
+  } catch (err) {
+    console.warn('Could not download poster for attachment:', err);
+    // We'll still include a link
+  }
+
+  const html = `
+    <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,0.1)">
+      <div style="background:linear-gradient(135deg,#1B3766,#254899);padding:30px;text-align:center">
+        <h1 style="color:#fff;margin:0">🎨 Your Poster is Ready!</h1>
+        <p style="color:#79FFFF;margin:5px 0 0;font-size:14px">${eventTitle}</p>
+      </div>
+      <div style="padding:30px">
+        <p style="font-size:16px;color:#333">Hi ${name},</p>
+        <p style="font-size:16px;color:#333;line-height:1.6">
+          Your personalised <strong>"I'm Attending"</strong> poster for <strong>${eventTitle}</strong> has been generated!
+        </p>
+        
+        <div style="background:#f8f9fa;border-radius:8px;padding:20px;margin:20px 0;text-align:center">
+          <a href="${posterUrl}" target="_blank" style="display:inline-block;background:#1B3766;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin:10px 0">
+            📥 Download Poster
+          </a>
+          <p style="font-size:12px;color:#666;margin:5px 0">The poster is also attached to this email.</p>
+        </div>
+        
+        ${registration ? `
+          <div style="background:#f8f9fa;border-radius:8px;padding:15px;margin:20px 0">
+            <p style="font-size:14px;font-weight:bold;color:#1B3766;margin:0 0 5px">📋 Registration Details</p>
+            <p style="margin:3px 0;font-size:13px"><strong>Ticket ID:</strong> ${registration.ticketId || 'N/A'}</p>
+            ${registration.seatNumber ? `<p style="margin:3px 0;font-size:13px"><strong>Seat:</strong> #${registration.seatNumber}</p>` : ''}
+          </div>
+        ` : ''}
+        
+        <p style="font-size:14px;color:#666">Share your poster on social media and let everyone know you'll be there! 🎉</p>
+      </div>
+      <div style="background:#f1f5f9;padding:20px;text-align:center;font-size:12px;color:#999">
+        <p style="margin:0">Need help? Contact us at eventroom@lovohcreate.com</p>
+        <p style="margin:5px 0 0">© ${new Date().getFullYear()} Lovoh Create. All rights reserved.</p>
+      </div>
+    </div>
+  `;
+
+  const attachments = attachment ? [attachment] : [];
+  await sendEmail(email, subject, html, attachments);
 };

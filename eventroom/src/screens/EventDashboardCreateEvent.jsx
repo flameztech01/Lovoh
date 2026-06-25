@@ -1,5 +1,5 @@
 // screens/EventDashboardCreateEvent.jsx
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FaArrowLeft, FaSave, FaCalendarAlt, FaClock, FaMapMarkerAlt,
@@ -9,7 +9,7 @@ import {
   FaVideo, FaTicketAlt, FaTimes, FaUsers, FaUser, FaCamera,
   FaClipboardList, FaCheckSquare, FaDotCircle, FaFont, FaHashtag,
   FaCalendar, FaEnvelope, FaPhone, FaChevronDown, FaChevronUp,
-  FaInfoCircle,
+  FaInfoCircle, FaUserCircle, FaPaintBrush, FaArrowsAlt, FaExpandArrowsAlt,
 } from "react-icons/fa";
 import { useCreateEventMutation } from "../slices/eventApiSlice";
 import { toast } from "react-toastify";
@@ -77,6 +77,179 @@ const EventDashboardCreateEvent = () => {
   const [formTitle, setFormTitle] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const [formFields, setFormFields] = useState([]);
+
+  // ===== Poster template state =====
+  const [posterTemplate, setPosterTemplate] = useState({
+    image: '',
+    photoPlaceholder: { x: 100, y: 150, width: 200, height: 200, borderRadius: 0 },
+    namePlaceholder: { x: 100, y: 400, fontSize: 48, color: '#FFFFFF', fontFamily: 'Arial' },
+  });
+  const [posterImageFile, setPosterImageFile] = useState(null);
+  const [posterImagePreview, setPosterImagePreview] = useState('');
+
+  // ===== Drag & drop refs =====
+  const containerRef = useRef(null);
+  const imageRef = useRef(null);
+  const [imageNaturalSize, setImageNaturalSize] = useState({ width: 1, height: 1 });
+  const dragState = useRef({
+    active: false,
+    type: null, // 'photo' or 'name'
+    startX: 0,
+    startY: 0,
+    startElX: 0,
+    startElY: 0,
+    startW: 0,
+    startH: 0,
+    isResize: false,
+  });
+
+  // ---------- Poster template handlers ----------
+  const handlePosterImageSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast.error("Please select an image"); return; }
+    if (file.size > 10 * 1024 * 1024) { toast.error("Max 10MB"); return; }
+    setPosterImageFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPosterImagePreview(reader.result);
+      const img = new Image();
+      img.onload = () => {
+        setImageNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  };
+  const removePosterImage = () => {
+    setPosterImageFile(null);
+    setPosterImagePreview('');
+    setPosterTemplate(prev => ({ ...prev, image: '' }));
+    setImageNaturalSize({ width: 1, height: 1 });
+  };
+
+  const updatePosterNamePlaceholder = (field, value) => {
+    setPosterTemplate(prev => ({
+      ...prev,
+      namePlaceholder: { ...prev.namePlaceholder, [field]: field === 'color' ? value : (Number(value) || value) },
+    }));
+  };
+
+  const updatePhotoBorderRadius = (value) => {
+    setPosterTemplate(prev => ({
+      ...prev,
+      photoPlaceholder: { ...prev.photoPlaceholder, borderRadius: Number(value) },
+    }));
+  };
+
+  // ===== Drag logic =====
+  const getImageCoords = (clientX, clientY) => {
+    const imgRect = imageRef.current?.getBoundingClientRect();
+    if (!imgRect) return null;
+    const scaleX = imageNaturalSize.width / imgRect.width;
+    const scaleY = imageNaturalSize.height / imgRect.height;
+    const x = (clientX - imgRect.left) * scaleX;
+    const y = (clientY - imgRect.top) * scaleY;
+    return { x, y };
+  };
+
+  const startDrag = (e, type, isResize = false) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const clientX = e.clientX || e.touches?.[0]?.clientX;
+    const clientY = e.clientY || e.touches?.[0]?.clientY;
+    if (clientX == null) return;
+
+    const coords = getImageCoords(clientX, clientY);
+    if (!coords) return;
+
+    dragState.current = {
+      active: true,
+      type,
+      isResize,
+      startX: clientX,
+      startY: clientY,
+      startElX: type === 'photo' ? posterTemplate.photoPlaceholder.x : posterTemplate.namePlaceholder.x,
+      startElY: type === 'photo' ? posterTemplate.photoPlaceholder.y : posterTemplate.namePlaceholder.y,
+      startW: posterTemplate.photoPlaceholder.width,
+      startH: posterTemplate.photoPlaceholder.height,
+    };
+
+    document.addEventListener('mousemove', onDragMove);
+    document.addEventListener('mouseup', onDragEnd);
+    document.addEventListener('touchmove', onDragMove, { passive: false });
+    document.addEventListener('touchend', onDragEnd);
+  };
+
+  const onDragMove = (e) => {
+    if (!dragState.current.active) return;
+    const clientX = e.clientX || e.touches?.[0]?.clientX;
+    const clientY = e.clientY || e.touches?.[0]?.clientY;
+    if (clientX == null) return;
+
+    const coords = getImageCoords(clientX, clientY);
+    if (!coords) return;
+
+    const { type, isResize, startX, startY, startElX, startElY, startW, startH } = dragState.current;
+    const dx = clientX - startX;
+    const dy = clientY - startY;
+    // Convert to image pixel space using the scale
+    const imgRect = imageRef.current?.getBoundingClientRect();
+    if (!imgRect) return;
+    const scaleX = imageNaturalSize.width / imgRect.width;
+    const scaleY = imageNaturalSize.height / imgRect.height;
+    const pixelDx = dx * scaleX;
+    const pixelDy = dy * scaleY;
+
+    if (isResize) {
+      let newW = Math.max(30, startW + pixelDx);
+      let newH = Math.max(30, startH + pixelDy);
+      // Clamp to image bounds
+      newW = Math.min(newW, imageNaturalSize.width - posterTemplate.photoPlaceholder.x);
+      newH = Math.min(newH, imageNaturalSize.height - posterTemplate.photoPlaceholder.y);
+      setPosterTemplate(prev => ({
+        ...prev,
+        photoPlaceholder: { ...prev.photoPlaceholder, width: newW, height: newH },
+      }));
+    } else {
+      let newX = startElX + pixelDx;
+      let newY = startElY + pixelDy;
+      // Clamp
+      if (type === 'photo') {
+        newX = Math.max(0, Math.min(newX, imageNaturalSize.width - posterTemplate.photoPlaceholder.width));
+        newY = Math.max(0, Math.min(newY, imageNaturalSize.height - posterTemplate.photoPlaceholder.height));
+        setPosterTemplate(prev => ({
+          ...prev,
+          photoPlaceholder: { ...prev.photoPlaceholder, x: newX, y: newY },
+        }));
+      } else {
+        newX = Math.max(0, Math.min(newX, imageNaturalSize.width));
+        newY = Math.max(0, Math.min(newY, imageNaturalSize.height));
+        setPosterTemplate(prev => ({
+          ...prev,
+          namePlaceholder: { ...prev.namePlaceholder, x: newX, y: newY },
+        }));
+      }
+    }
+  };
+
+  const onDragEnd = () => {
+    dragState.current.active = false;
+    document.removeEventListener('mousemove', onDragMove);
+    document.removeEventListener('mouseup', onDragEnd);
+    document.removeEventListener('touchmove', onDragMove);
+    document.removeEventListener('touchend', onDragEnd);
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      document.removeEventListener('mousemove', onDragMove);
+      document.removeEventListener('mouseup', onDragEnd);
+      document.removeEventListener('touchmove', onDragMove);
+      document.removeEventListener('touchend', onDragEnd);
+    };
+  }, []);
 
   // ---------- Ticket Types ----------
   const addTicketType = () => {
@@ -232,7 +405,6 @@ const EventDashboardCreateEvent = () => {
     setFormFields(updated);
   };
 
-  // NEW – reorder functions
   const moveFieldUp = (index) => {
     if (index === 0) return;
     const updated = [...formFields];
@@ -251,7 +423,6 @@ const EventDashboardCreateEvent = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Basic checks
     if (!formData.title.trim()) { toast.error("Event title is required"); return; }
     if (!description || description === "<br>" || description.trim().length < 20) { toast.error("Please add a detailed event description"); return; }
     if (!formData.category) { toast.error("Category is required"); return; }
@@ -259,7 +430,6 @@ const EventDashboardCreateEvent = () => {
     if (!formData.date) { toast.error("Event date is required"); return; }
     if (!formData.time) { toast.error("Event time is required"); return; }
 
-    // Location validation: only required if NOT virtual
     if (!formData.isVirtual) {
       if (!formData.location.trim() && !formData.venue.trim()) {
         toast.error("Location is required for in‑person events");
@@ -269,7 +439,6 @@ const EventDashboardCreateEvent = () => {
 
     if (images.length === 0) { toast.error("At least one event image is required"); return; }
 
-    // Price validation for paid events
     if (formData.isPaid) {
       if (hasTicketTypes && ticketTypes.length > 0) {
         for (const tt of ticketTypes) {
@@ -291,7 +460,6 @@ const EventDashboardCreateEvent = () => {
     submitData.append("time", formData.time);
     submitData.append("duration", formData.duration || "");
 
-    // Location handling for virtual events
     if (formData.isVirtual) {
       submitData.append("location", formData.location?.trim() || formData.venue?.trim() || "Online");
       submitData.append("venue", formData.venue?.trim() || formData.location?.trim() || "Online");
@@ -318,7 +486,6 @@ const EventDashboardCreateEvent = () => {
       submitData.append("ticketTypes", JSON.stringify(ticketTypes));
     }
 
-    // Speakers
     const speakersForSubmit = speakers.map(({ imagePreview, ...rest }) => ({ ...rest, image: '' }));
     if (speakersForSubmit.length > 0) {
       submitData.append("speakers", JSON.stringify(speakersForSubmit));
@@ -327,12 +494,20 @@ const EventDashboardCreateEvent = () => {
       submitData.append(`speakerImages[${index}]`, file);
     });
 
-    // Custom Form (if fields exist)
     if (formFields.length > 0) {
       submitData.append("customForm", JSON.stringify({
         title: formTitle || 'Additional Information',
         description: formDescription || '',
         fields: formFields,
+      }));
+    }
+
+    if (posterImageFile) {
+      submitData.append("posterImage", posterImageFile);
+      submitData.append("posterTemplate", JSON.stringify({
+        image: '',
+        photoPlaceholder: posterTemplate.photoPlaceholder,
+        namePlaceholder: posterTemplate.namePlaceholder,
       }));
     }
 
@@ -492,7 +667,6 @@ const EventDashboardCreateEvent = () => {
                 <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2"><FaClipboardList className="text-[#1B3766]" /> Custom Registration Form</h3>
               </div>
 
-              {/* 🔔 HARDCODED INFO NOTICE */}
               <div className="mb-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded-md flex items-start gap-2 text-sm">
                 <FaInfoCircle className="text-blue-500 mt-0.5 flex-shrink-0" />
                 <div>
@@ -578,11 +752,166 @@ const EventDashboardCreateEvent = () => {
                   ))
                 )}
 
-                {/* Add Field button placed at the bottom */}
                 <button type="button" onClick={addFormField} className="w-full py-2.5 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 text-sm hover:border-[#1B3766] hover:text-[#1B3766] transition-colors">
                   <FaPlus className="inline mr-1 text-xs" /> Add Field
                 </button>
               </div>
+            </div>
+
+            {/* ===== Poster Template Section with Drag-and-Drop ===== */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <FaPaintBrush className="text-[#1B3766]" />
+                <h3 className="text-sm font-semibold text-gray-900">"I'm Attending" Poster</h3>
+                <span className="ml-2 text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">Optional</span>
+              </div>
+              <p className="text-xs text-gray-500 mb-4">
+                Enable attendees to generate a personalised "I'm attending" poster. 
+                Upload a background template and use the visual editor to position the photo and name placeholders.
+              </p>
+
+              {/* Background image upload */}
+              <div className="mb-4">
+                <label className="block text-xs font-medium text-gray-600 mb-1">Background Template</label>
+                <div className="flex items-center gap-4">
+                  {posterImagePreview ? (
+                    <div className="relative group">
+                      <img src={posterImagePreview} alt="Poster template" className="w-32 h-32 object-cover rounded-lg border border-gray-200" />
+                      <button type="button" onClick={removePosterImage} className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <FaTimes className="text-[10px]" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="cursor-pointer">
+                      <div className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
+                        <FaImage className="text-xs" /> Upload Template
+                      </div>
+                      <input type="file" accept="image/*" onChange={handlePosterImageSelect} className="hidden" />
+                    </label>
+                  )}
+                  <span className="text-xs text-gray-400">JPG, PNG, WEBP (max 10MB)</span>
+                </div>
+              </div>
+
+              {posterImagePreview && (
+                <div>
+                  <p className="text-xs text-gray-500 mb-2 flex items-center gap-2">
+                    <FaArrowsAlt className="text-xs" /> Drag the blue (photo) and green (name) boxes to reposition. Resize photo by dragging the bottom-right corner.
+                  </p>
+                  <div 
+                    ref={containerRef}
+                    className="relative border-2 border-gray-200 rounded-lg overflow-hidden mb-4"
+                    style={{ maxWidth: '100%', userSelect: 'none' }}
+                  >
+                    <img 
+                      ref={imageRef}
+                      src={posterImagePreview} 
+                      alt="Template" 
+                      className="w-full h-auto"
+                      draggable={false}
+                      onLoad={(e) => {
+                        const img = e.target;
+                        setImageNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+                      }}
+                    />
+                    
+                    {/* Photo placeholder - draggable and resizable */}
+                    <div
+                      className="absolute border-2 border-blue-500 bg-blue-500/20 cursor-move"
+                      style={{
+                        left: `${(posterTemplate.photoPlaceholder.x / imageNaturalSize.width) * 100}%`,
+                        top: `${(posterTemplate.photoPlaceholder.y / imageNaturalSize.height) * 100}%`,
+                        width: `${(posterTemplate.photoPlaceholder.width / imageNaturalSize.width) * 100}%`,
+                        height: `${(posterTemplate.photoPlaceholder.height / imageNaturalSize.height) * 100}%`,
+                        borderRadius: `${posterTemplate.photoPlaceholder.borderRadius || 0}px`,
+                      }}
+                      onMouseDown={(e) => startDrag(e, 'photo', false)}
+                      onTouchStart={(e) => startDrag(e, 'photo', false)}
+                    >
+                      <div className="w-full h-full flex items-center justify-center text-blue-600 text-xs font-semibold">
+                        📷 Photo
+                      </div>
+                      {/* Resize handle */}
+                      <div 
+                        className="absolute bottom-0 right-0 w-4 h-4 bg-blue-500 cursor-se-resize rounded-bl-none rounded-tr-none"
+                        onMouseDown={(e) => { e.stopPropagation(); startDrag(e, 'photo', true); }}
+                        onTouchStart={(e) => { e.stopPropagation(); startDrag(e, 'photo', true); }}
+                      >
+                        <FaExpandArrowsAlt className="text-white text-[10px] absolute bottom-0.5 right-0.5" />
+                      </div>
+                    </div>
+
+                    {/* Name placeholder - draggable */}
+                    <div
+                      className="absolute cursor-move font-bold"
+                      style={{
+                        left: `${(posterTemplate.namePlaceholder.x / imageNaturalSize.width) * 100}%`,
+                        top: `${(posterTemplate.namePlaceholder.y / imageNaturalSize.height) * 100}%`,
+                        color: posterTemplate.namePlaceholder.color,
+                        fontSize: `${(posterTemplate.namePlaceholder.fontSize / imageNaturalSize.height) * 100}vh`, // relative to image height
+                        fontFamily: posterTemplate.namePlaceholder.fontFamily,
+                        whiteSpace: 'nowrap',
+                      }}
+                      onMouseDown={(e) => startDrag(e, 'name', false)}
+                      onTouchStart={(e) => startDrag(e, 'name', false)}
+                    >
+                      Your Name
+                      <div className="absolute top-0 left-0 w-full h-full border-2 border-green-500 bg-green-500/10 -z-10" />
+                    </div>
+                  </div>
+
+                  {/* Controls for name styling and border radius */}
+                  <div className="grid grid-cols-2 gap-2 mt-3">
+                    <div>
+                      <label className="block text-[10px] text-gray-500 mb-0.5">Font Size</label>
+                      <input
+                        type="number"
+                        value={posterTemplate.namePlaceholder.fontSize}
+                        onChange={(e) => updatePosterNamePlaceholder('fontSize', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-200 rounded text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-gray-500 mb-0.5">Color</label>
+                      <input
+                        type="color"
+                        value={posterTemplate.namePlaceholder.color}
+                        onChange={(e) => updatePosterNamePlaceholder('color', e.target.value)}
+                        className="w-full h-8 p-0 border border-gray-200 rounded"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-[10px] text-gray-500 mb-0.5">Font Family</label>
+                      <select
+                        value={posterTemplate.namePlaceholder.fontFamily}
+                        onChange={(e) => updatePosterNamePlaceholder('fontFamily', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-200 rounded text-xs"
+                      >
+                        <option value="Arial">Arial</option>
+                        <option value="Helvetica">Helvetica</option>
+                        <option value="Georgia">Georgia</option>
+                        <option value="Times New Roman">Times New Roman</option>
+                        <option value="Courier New">Courier New</option>
+                        <option value="Verdana">Verdana</option>
+                      </select>
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-[10px] text-gray-500 mb-0.5">Photo Border Radius (px)</label>
+                      <input
+                        type="number"
+                        value={posterTemplate.photoPlaceholder.borderRadius || 0}
+                        onChange={(e) => updatePhotoBorderRadius(e.target.value)}
+                        min="0"
+                        max="200"
+                        className="w-full px-2 py-1 border border-gray-200 rounded text-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+              {!posterImagePreview && (
+                <p className="text-sm text-gray-400 text-center py-2">Upload a template to configure placeholders</p>
+              )}
             </div>
           </div>
 

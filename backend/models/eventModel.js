@@ -17,29 +17,64 @@ const ticketTypeSchema = mongoose.Schema({
   soldCount: { type: Number, default: 0 },
 });
 
-// --- NEW: Team member sub-document ---
-const teamMemberSchema = mongoose.Schema({
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
+// Team member sub-document
+const teamMemberSchema = mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
+    role: {
+      type: String,
+      enum: ['viewer', 'checker', 'manager'],
+      required: true,
+      default: 'viewer',
+    },
+    addedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
+    addedAt: {
+      type: Date,
+      default: Date.now,
+    },
   },
-  role: {
-    type: String,
-    enum: ['viewer', 'checker', 'manager'],
-    required: true,
-    default: 'viewer',
+  { _id: false }
+);
+
+// Poster template placeholders
+const photoPlaceholderSchema = mongoose.Schema(
+  {
+    x: { type: Number, default: 100 },
+    y: { type: Number, default: 150 },
+    width: { type: Number, default: 200 },
+    height: { type: Number, default: 200 },
+    borderRadius: { type: Number, default: 0 }, // <-- ADDED
   },
-  addedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
+  { _id: false }
+);
+
+const namePlaceholderSchema = mongoose.Schema(
+  {
+    x: { type: Number, default: 100 },
+    y: { type: Number, default: 400 },
+    fontSize: { type: Number, default: 48 },
+    color: { type: String, default: '#FFFFFF' },
+    fontFamily: { type: String, default: 'Arial' },
   },
-  addedAt: {
-    type: Date,
-    default: Date.now,
+  { _id: false }
+);
+
+const posterTemplateSchema = mongoose.Schema(
+  {
+    image: { type: String, default: '' },
+    photoPlaceholder: { type: photoPlaceholderSchema, default: () => ({}) },
+    namePlaceholder: { type: namePlaceholderSchema, default: () => ({}) },
   },
-}, { _id: false }); // we don't need a separate _id for each team member entry
+  { _id: false }
+);
 
 const eventSchema = mongoose.Schema(
   {
@@ -93,7 +128,6 @@ const eventSchema = mongoose.Schema(
       required: true,
     },
 
-    // URL slug
     slug: {
       type: String,
       unique: true,
@@ -102,20 +136,20 @@ const eventSchema = mongoose.Schema(
       trim: true,
     },
 
-    // Custom form reference
     customForm: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'EventForm',
       default: null,
     },
 
-    // --- NEW: Team members ---
     teamMembers: [teamMemberSchema],
+
+    posterTemplate: { type: posterTemplateSchema, default: () => ({}) },
   },
   { timestamps: true }
 );
 
-// --------------------- Slugs generation ---------------------
+// Slugs generation
 eventSchema.pre('save', async function (next) {
   if (this.isModified('title') || !this.slug) {
     let base = this.title
@@ -154,7 +188,6 @@ eventSchema.virtual('totalSeatsSold').get(function () {
   return this.currentAttendees;
 });
 
-// Method
 eventSchema.methods.updateStatus = function () {
   const now = new Date();
   if (this.status === 'postponed' || this.status === 'cancelled') return this.status;
@@ -166,14 +199,14 @@ eventSchema.methods.updateStatus = function () {
   return this.status;
 };
 
-// Indexes – add one for teamMembers.userId for fast lookups
+// Indexes
 eventSchema.index({ status: 1, date: 1 });
 eventSchema.index({ category: 1 });
 eventSchema.index({ eventType: 1 });
 eventSchema.index({ createdBy: 1 });
 eventSchema.index({ isDisabled: 1 });
 eventSchema.index({ slug: 1 });
-eventSchema.index({ 'teamMembers.userId': 1 }); // <-- NEW index for team queries
+eventSchema.index({ 'teamMembers.userId': 1 });
 
 eventSchema.set('toJSON', { virtuals: true });
 eventSchema.set('toObject', { virtuals: true });
