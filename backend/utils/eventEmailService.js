@@ -53,7 +53,7 @@ const formatEventTime = (time) => {
 };
 
 const getPosterUrl = (registrationId) =>
-  `${process.env.FRONTEND_URL}/poster/${registrationId}`;
+  `${process.env.EVENT_FRONTEND_URL}/poster/${registrationId}`;
 
 // ===== Ticket HTML (beautiful ticket design) =====
 const generateTicketHTML = (registration, event) => {
@@ -455,7 +455,7 @@ export const sendNewRegistrationToCreator = async (
           ${ticketId ? `<p style="margin:4px 0;"><strong>🎫 Ticket ID:</strong> ${ticketId}</p>` : ''}
           ${seatNumber ? `<p style="margin:4px 0;"><strong>💺 Seat:</strong> #${seatNumber}</p>` : ''}
         </div>
-        <a href="${process.env.FRONTEND_URL}/events/dashboard/events" style="display:inline-block;background:#1B3766;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">View Dashboard</a>
+        <a href="${process.env.EVENT_FRONTEND_URL}/events/dashboard/events" style="display:inline-block;background:#1B3766;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">View Dashboard</a>
       </div>
       <div style="background:#f1f5f9;padding:16px;text-align:center;font-size:12px;color:#666;">
         © ${new Date().getFullYear()} Lovoh Create
@@ -489,7 +489,7 @@ export const sendPaymentToCreator = async (
           ${creatorPercentage > 0 ? `<p style="margin:4px 0;"><strong>Your Share (${creatorPercentage}%):</strong> ₦${creatorShare.toLocaleString()}</p>` : ''}
         </div>
         <p style="font-size:14px;color:#666;">${creatorPercentage > 0 ? 'Your share has been credited to your subaccount.' : 'This is a company event.'}</p>
-        <a href="${process.env.FRONTEND_URL}/events/dashboard/wallet" style="display:inline-block;background:#1B3766;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">View Wallet</a>
+        <a href="${process.env.EVENT_FRONTEND_URL}/events/dashboard/wallet" style="display:inline-block;background:#1B3766;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">View Wallet</a>
       </div>
       <div style="background:#f1f5f9;padding:16px;text-align:center;font-size:12px;color:#666;">
         © ${new Date().getFullYear()} Lovoh Create
@@ -543,7 +543,7 @@ export const sendWalletSetupConfirmation = async (email, name) => {
         <p style="font-size:16px;color:#333;">Hi ${name},</p>
         <p style="font-size:16px;color:#333;">Your payment wallet has been set up successfully. You can now create paid events and receive payments directly.</p>
         <p style="font-size:14px;color:#666;">Earnings from your events will be automatically split and your share (94%) will be settled to your bank by Paystack.</p>
-        <a href="${process.env.FRONTEND_URL}/events/dashboard/wallet" style="display:inline-block;background:#1B3766;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">View Wallet</a>
+        <a href="${process.env.EVENT_FRONTEND_URL}/events/dashboard/wallet" style="display:inline-block;background:#1B3766;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">View Wallet</a>
       </div>
       <div style="background:#f1f5f9;padding:16px;text-align:center;font-size:12px;color:#666;">
         © ${new Date().getFullYear()} Lovoh Create
@@ -592,7 +592,7 @@ export const sendSettlementNotification = async (email, name, totalAmount, trans
           <p style="margin:4px 0 0;font-size:14px;color:#666;">${transactionCount} transaction${transactionCount > 1 ? 's' : ''} settled</p>
         </div>
         <p style="font-size:14px;color:#666;">The funds should reflect within 1-3 business days.</p>
-        <a href="${process.env.FRONTEND_URL}/events/dashboard/wallet" style="display:inline-block;background:#1B3766;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">View Wallet</a>
+        <a href="${process.env.EVENT_FRONTEND_URL}/events/dashboard/wallet" style="display:inline-block;background:#1B3766;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">View Wallet</a>
       </div>
       <div style="background:#f1f5f9;padding:16px;text-align:center;font-size:12px;color:#666;">
         © ${new Date().getFullYear()} Lovoh Create
@@ -666,7 +666,7 @@ export const sendEventReminder = async (
             • Bring a valid ID for verification
           </p>
         </div>
-        <a href="${process.env.FRONTEND_URL}/events/${event.slug || event._id}" style="display:inline-block;background:#1B3766;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">View Event Details</a>
+        <a href="${process.env.EVENT_FRONTEND_URL}/events/${event.slug || event._id}" style="display:inline-block;background:#1B3766;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">View Event Details</a>
       </div>
       <div style="background:#f1f5f9;padding:16px;text-align:center;font-size:12px;color:#666;">
         <p style="margin:0;">Need help? <a href="mailto:eventroom@lovohcreate.com" style="color:#1B3766;">eventroom@lovohcreate.com</a></p>
