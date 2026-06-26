@@ -1,7 +1,7 @@
 // slices/eventApiSlice.js
-import { apiSlice } from './apiSlice';
+import { apiSlice } from "./apiSlice";
 
-const EVENTS_URL = '/events';
+const EVENTS_URL = "/events";
 
 export const eventApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
@@ -13,20 +13,20 @@ export const eventApiSlice = apiSlice.injectEndpoints({
         url: EVENTS_URL,
         params,
       }),
-      providesTags: ['Event'],
+      providesTags: ["Event"],
     }),
 
     // Get single event (now works with slug or ID)
     getEventById: builder.query({
       query: (id) => `${EVENTS_URL}/${id}`,
-      providesTags: (result, error, id) => [{ type: 'Event', id }],
+      providesTags: (result, error, id) => [{ type: "Event", id }],
     }),
 
     // Register for event (free or paid)
     registerForEvent: builder.mutation({
       query: ({ id, data }) => ({
         url: `${EVENTS_URL}/${id}/register`,
-        method: 'POST',
+        method: "POST",
         body: data,
       }),
     }),
@@ -35,7 +35,7 @@ export const eventApiSlice = apiSlice.injectEndpoints({
     reportEvent: builder.mutation({
       query: (id) => ({
         url: `${EVENTS_URL}/${id}/report`,
-        method: 'POST',
+        method: "POST",
       }),
     }),
 
@@ -64,36 +64,36 @@ export const eventApiSlice = apiSlice.injectEndpoints({
     // Get my created events
     getMyEvents: builder.query({
       query: () => `${EVENTS_URL}/my-events/list`,
-      providesTags: ['MyEvent'],
+      providesTags: ["MyEvent"],
     }),
 
     // Create event
     createEvent: builder.mutation({
       query: (formData) => ({
         url: EVENTS_URL,
-        method: 'POST',
+        method: "POST",
         body: formData,
       }),
-      invalidatesTags: ['Event', 'MyEvent'],
+      invalidatesTags: ["Event", "MyEvent"],
     }),
 
     // Update event
     updateEvent: builder.mutation({
       query: ({ id, formData }) => ({
         url: `${EVENTS_URL}/${id}`,
-        method: 'PUT',
+        method: "PUT",
         body: formData,
       }),
-      invalidatesTags: ['Event', 'MyEvent'],
+      invalidatesTags: ["Event", "MyEvent"],
     }),
 
     // Delete event
     deleteEvent: builder.mutation({
       query: (id) => ({
         url: `${EVENTS_URL}/${id}`,
-        method: 'DELETE',
+        method: "DELETE",
       }),
-      invalidatesTags: ['Event', 'MyEvent'],
+      invalidatesTags: ["Event", "MyEvent"],
     }),
 
     // Get event registrations (creator)
@@ -102,32 +102,32 @@ export const eventApiSlice = apiSlice.injectEndpoints({
         url: `${EVENTS_URL}/${id}/registrations`,
         params,
       }),
-      providesTags: ['EventRegistration'],
+      providesTags: ["EventRegistration"],
     }),
 
     // Get my registrations (attendee) - with tickets
     getMyRegistrations: builder.query({
       query: () => `${EVENTS_URL}/my-registrations/list`,
-      providesTags: ['MyRegistration'],
+      providesTags: ["MyRegistration"],
     }),
 
     // Check-in attendee by ticket ID
     checkInAttendee: builder.mutation({
       query: (ticketId) => ({
         url: `${EVENTS_URL}/check-in/${ticketId}`,
-        method: 'PUT',
+        method: "PUT",
       }),
-      invalidatesTags: ['EventRegistration'],
+      invalidatesTags: ["EventRegistration"],
     }),
 
     // Update custom form for an event (protected)
     updateEventCustomForm: builder.mutation({
       query: ({ id, data }) => ({
         url: `${EVENTS_URL}/${id}/custom-form`,
-        method: 'PUT',
+        method: "PUT",
         body: data,
       }),
-      invalidatesTags: ['Event'],
+      invalidatesTags: ["Event"],
     }),
 
     // ==================== REMINDERS ====================
@@ -136,9 +136,9 @@ export const eventApiSlice = apiSlice.injectEndpoints({
     sendReminder: builder.mutation({
       query: (id) => ({
         url: `${EVENTS_URL}/${id}/send-reminder`,
-        method: 'POST',
+        method: "POST",
       }),
-      invalidatesTags: ['Event'],
+      invalidatesTags: ["Event"],
     }),
 
     // ==================== WALLET ====================
@@ -147,7 +147,7 @@ export const eventApiSlice = apiSlice.injectEndpoints({
     setupWallet: builder.mutation({
       query: (data) => ({
         url: `${EVENTS_URL}/wallet/setup`,
-        method: 'POST',
+        method: "POST",
         body: data,
       }),
     }),
@@ -155,17 +155,17 @@ export const eventApiSlice = apiSlice.injectEndpoints({
     // Get wallet info
     getWalletInfo: builder.query({
       query: () => `${EVENTS_URL}/wallet/info`,
-      providesTags: ['Wallet'],
+      providesTags: ["Wallet"],
     }),
 
     // Withdraw from wallet
     withdrawFromWallet: builder.mutation({
       query: (data) => ({
         url: `${EVENTS_URL}/wallet/withdraw`,
-        method: 'POST',
+        method: "POST",
         body: data,
       }),
-      invalidatesTags: ['Wallet'],
+      invalidatesTags: ["Wallet"],
     }),
 
     // Get bank list
@@ -184,10 +184,10 @@ export const eventApiSlice = apiSlice.injectEndpoints({
     toggleEventStatus: builder.mutation({
       query: ({ id, data }) => ({
         url: `${EVENTS_URL}/admin/${id}/toggle-status`,
-        method: 'PUT',
+        method: "PUT",
         body: data,
       }),
-      invalidatesTags: ['Event'],
+      invalidatesTags: ["Event"],
     }),
 
     // ==================== TEAM MANAGEMENT ====================
@@ -195,32 +195,32 @@ export const eventApiSlice = apiSlice.injectEndpoints({
     // Get events where current user is a team member or creator
     getMyTeamEvents: builder.query({
       query: () => `${EVENTS_URL}/team/my-events`,
-      providesTags: ['Event'],
+      providesTags: ["Event"],
     }),
 
     // Get all team members of an event
     getEventTeam: builder.query({
       query: (id) => `${EVENTS_URL}/${id}/team`,
-      providesTags: (result, error, id) => [{ type: 'Event', id }],
+      providesTags: (result, error, id) => [{ type: "Event", id }],
     }),
 
     // Add a team member to an event
     addTeamMember: builder.mutation({
       query: ({ id, data }) => ({
         url: `${EVENTS_URL}/${id}/team`,
-        method: 'POST',
+        method: "POST",
         body: data,
       }),
-      invalidatesTags: ['Event'],
+      invalidatesTags: ["Event"],
     }),
 
     // Remove a team member from an event
     removeTeamMember: builder.mutation({
       query: ({ id, userId }) => ({
         url: `${EVENTS_URL}/${id}/team/${userId}`,
-        method: 'DELETE',
+        method: "DELETE",
       }),
-      invalidatesTags: ['Event'],
+      invalidatesTags: ["Event"],
     }),
 
     // Get registrations for an event (team member access)
@@ -229,21 +229,22 @@ export const eventApiSlice = apiSlice.injectEndpoints({
         url: `${EVENTS_URL}/${id}/team/registrations`,
         params,
       }),
-      providesTags: ['EventRegistration'],
+      providesTags: ["EventRegistration"],
     }),
 
     // Verify ticket validity without checking in (team)
     verifyTicketValidityTeam: builder.query({
-      query: ({ id, ticketId }) => `${EVENTS_URL}/${id}/team/verify/${ticketId}`,
+      query: ({ id, ticketId }) =>
+        `${EVENTS_URL}/${id}/team/verify/${ticketId}`,
     }),
 
     // Check-in attendee (team member with checker/manager role)
     verifyTicketTeam: builder.mutation({
       query: ({ id, ticketId }) => ({
         url: `${EVENTS_URL}/${id}/team/checkin/${ticketId}`,
-        method: 'POST',
+        method: "POST",
       }),
-      invalidatesTags: ['EventRegistration'],
+      invalidatesTags: ["EventRegistration"],
     }),
 
     // ==================== POSTER GENERATION ====================
@@ -253,7 +254,7 @@ export const eventApiSlice = apiSlice.injectEndpoints({
       query: ({ id, registrationId }) =>
         `${EVENTS_URL}/${id}/registrations/${registrationId}/poster`,
       providesTags: (result, error, { id, registrationId }) => [
-        { type: 'Poster', id: registrationId },
+        { type: "Poster", id: registrationId },
       ],
     }),
 
@@ -261,14 +262,18 @@ export const eventApiSlice = apiSlice.injectEndpoints({
     generatePoster: builder.mutation({
       query: ({ id, registrationId, formData }) => ({
         url: `${EVENTS_URL}/${id}/registrations/${registrationId}/generate-poster`,
-        method: 'POST',
+        method: "POST",
         body: formData,
         // headers set automatically for FormData by fetchBaseQuery
       }),
       invalidatesTags: (result, error, { registrationId }) => [
-        { type: 'Poster', id: registrationId },
-        { type: 'EventRegistration' },
+        { type: "Poster", id: registrationId },
+        { type: "EventRegistration" },
       ],
+    }),
+    // Get public registration info (no auth)
+    getPublicRegistration: builder.query({
+      query: (registrationId) => `/registrations/${registrationId}/public`,
     }),
   }),
 });
@@ -310,4 +315,6 @@ export const {
   // Poster hooks
   useGetPosterStatusQuery,
   useGeneratePosterMutation,
+
+  useGetPublicRegistrationQuery,
 } = eventApiSlice;

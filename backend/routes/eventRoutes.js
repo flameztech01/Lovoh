@@ -28,6 +28,7 @@ import {
   sendAllReminders,
   generatePosterForRegistration,   // <-- NEW import
   getPosterStatus,                 // <-- NEW import
+  getPublicRegistration,
 } from '../controllers/eventController.js';
 
 // NEW: Import team controller functions
@@ -188,6 +189,8 @@ router.post(
   uploadPosterPhoto,
   generatePosterForRegistration
 );
+// ==================== PUBLIC REGISTRATION INFO ====================
+router.get('/registrations/:registrationId/public', getPublicRegistration);
 
 // ==================== EVENT REGISTRATION (public) ====================
 router.post('/:id/register', registerForEvent);

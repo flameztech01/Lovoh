@@ -1957,6 +1957,34 @@ const getPosterStatus = asyncHandler(async (req, res) => {
   });
 });
 
+// --------------------- PUBLIC REGISTRATION INFO (for poster) ---------------------
+
+// @desc    Get public registration info for poster generator
+// @route   GET /api/registrations/:registrationId/public
+// @access  Public
+const getPublicRegistration = asyncHandler(async (req, res) => {
+  const { registrationId } = req.params;
+
+  const registration = await EventRegistration.findById(registrationId).populate('event', 'title posterTemplate');
+  if (!registration) {
+    res.status(404);
+    throw new Error('Registration not found');
+  }
+
+  // Return safe fields
+  res.json({
+    name: registration.name,
+    email: registration.email,
+    posterGenerated: registration.posterGenerated || false,
+    posterImage: registration.posterImage || null,
+    event: {
+      _id: registration.event._id,
+      title: registration.event.title,
+      posterTemplate: registration.event.posterTemplate || null,
+    },
+  });
+});
+
 // --------------------- EXPORT ---------------------
 
 export {
@@ -1987,4 +2015,5 @@ export {
   sendAllReminders,
   generatePosterForRegistration,   // new
   getPosterStatus,  
+  getPublicRegistration,
 };

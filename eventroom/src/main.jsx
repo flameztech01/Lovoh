@@ -27,6 +27,7 @@ import EventDashboardEventDetail from "./screens/EventDashboardEventDetail.jsx";
 import EventDashboardEventRegistrations from "./screens/EventDashboardEventRegistrations.jsx";
 import EventDashboardEditEvent from "./screens/EventDashboardEditEvent.jsx";
 import EventDashboardTeam from "./screens/EventDashboardTeam.jsx";
+import PosterGeneratorPage from "./screens/PosterGeneratorPage.jsx";
 
 import NotFound from "./screens/NotFound.jsx";
 
@@ -42,6 +43,7 @@ const router = createBrowserRouter([
       { path: ":id/register", element: <EventRegistration /> },
       { path: "login", element: <EventLogin /> },
       { path: "signup", element: <EventSignup /> },
+      {path: "poster/:registrationId", element: <PosterGeneratorPage />},
       {
         element: <UserPrivateRoute />,
         children: [
