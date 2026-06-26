@@ -39,19 +39,328 @@ const countryCodes = [
 
 // ========== RANDOM ARTICLES SLIDER COMPONENT ==========
 const ArticlesSlider = () => {
-  // ... (unchanged, keep as before) ...
-  // I'll omit the full code here for brevity, but you can copy it from your original.
-  // The important part is the main component below.
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [touchStart, setTouchStart] = useState(0);
+  const [touchEnd, setTouchEnd] = useState(0);
+  const intervalRef = useRef(null);
+
+  const { data: articlesData, isLoading } = useGetArticlesQuery({
+    status: 'published',
+    page: 1,
+    limit: 10,
+    sort: '-createdAt',
+  });
+
+  const articles = articlesData?.articles || [];
+  const [randomizedArticles, setRandomizedArticles] = useState([]);
+
+  useEffect(() => {
+    if (articles.length > 0) {
+      const shuffled = [...articles];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      setRandomizedArticles(shuffled.slice(0, 5));
+    }
+  }, [articles]);
+
+  useEffect(() => {
+    if (randomizedArticles.length > 1) {
+      intervalRef.current = setInterval(() => {
+        setCurrentIndex((prev) => (prev + 1) % randomizedArticles.length);
+      }, 8000);
+    }
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [randomizedArticles.length]);
+
+  const resetTimer = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = setInterval(() => {
+        setCurrentIndex((prev) => (prev + 1) % randomizedArticles.length);
+      }, 8000);
+    }
+  }, [randomizedArticles.length]);
+
+  const handlePrev = () => {
+    setCurrentIndex((prev) => (prev === 0 ? randomizedArticles.length - 1 : prev - 1));
+    resetTimer();
+  };
+
+  const handleNext = () => {
+    setCurrentIndex((prev) => (prev + 1) % randomizedArticles.length);
+    resetTimer();
+  };
+
+  const handleTouchStart = (e) => {
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const diff = touchStart - touchEnd;
+    if (Math.abs(diff) > 50) {
+      if (diff > 0) handleNext();
+      else handlePrev();
+    }
+    setTouchStart(0);
+    setTouchEnd(0);
+  };
+
+  if (isLoading || randomizedArticles.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full">
+        <FaSpinner className="text-4xl text-white/50 animate-spin mb-4" />
+        <p className="text-white/60 text-sm">Loading inspiring stories...</p>
+      </div>
+    );
+  }
+
+  const currentArticle = randomizedArticles[currentIndex];
+  const fallbackImage = 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=800&auto=format';
+
+  return (
+    <div
+      className="relative h-full w-full overflow-hidden"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      <div
+        key={currentArticle._id}
+        className="absolute inset-0 transition-opacity duration-700 ease-in-out animate-fadeIn"
+      >
+        <div className="absolute inset-0">
+          <img
+            src={currentArticle.featuredImage || fallbackImage}
+            alt={currentArticle.title}
+            className="w-full h-full object-cover"
+            onError={(e) => { e.target.src = fallbackImage; }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/30" />
+        </div>
+
+        <div className="absolute inset-0 flex flex-col justify-end p-6 pb-12">
+          <div className="mb-3">
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white/20 backdrop-blur-sm rounded-full text-white text-xs font-medium">
+              <FaNewspaper className="text-[10px]" />
+              Article
+            </span>
+          </div>
+
+          <h2 className="text-2xl sm:text-3xl font-bold text-white leading-tight mb-2 line-clamp-3">
+            {currentArticle.title}
+          </h2>
+
+          {currentArticle.excerpt && (
+            <p className="text-white/80 text-sm mb-4 line-clamp-2">
+              {currentArticle.excerpt}
+            </p>
+          )}
+
+          <div className="flex items-center gap-2 text-white/70 text-xs mb-4">
+            <span>By {currentArticle.author || 'Biizzed Creator'}</span>
+            <span>•</span>
+            <span>{Math.ceil((currentArticle.content?.length || 1000) / 1000)} min read</span>
+          </div>
+
+          <div className="flex items-center gap-4 text-white/60 text-xs">
+            <span className="flex items-center gap-1">
+              <FaRegComment /> {(currentArticle.comments?.length || 0).toLocaleString()}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {randomizedArticles.length > 1 && (
+        <>
+          <button
+            onClick={handlePrev}
+            className="hidden lg:flex absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/30 hover:bg-black/50 rounded-full items-center justify-center text-white transition-colors z-10"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <button
+            onClick={handleNext}
+            className="hidden lg:flex absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/30 hover:bg-black/50 rounded-full items-center justify-center text-white transition-colors z-10"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </>
+      )}
+
+      {randomizedArticles.length > 1 && (
+        <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-10">
+          {randomizedArticles.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => { setCurrentIndex(idx); resetTimer(); }}
+              className={`transition-all duration-300 ${
+                idx === currentIndex
+                  ? 'w-6 h-1.5 bg-white rounded-full'
+                  : 'w-1.5 h-1.5 bg-white/50 rounded-full hover:bg-white/80'
+              }`}
+            />
+          ))}
+        </div>
+      )}
+
+      <div className="absolute top-8 left-6 right-6">
+        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20">
+          <FaQuoteLeft className="text-white/40 text-xl mb-2" />
+          <p className="text-white/80 text-sm italic">
+            Join Biizzed — share your stories, build your community.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 // ========== GOOGLE SIGNUP BUTTON COMPONENT ==========
 const GoogleSignupButton = ({ onSuccess, onError, isLoading }) => {
-  // ... (unchanged) ...
+  const isNative = Capacitor.isNativePlatform();
+
+  if (!isNative) {
+    return (
+      <div className="flex justify-center">
+        <GoogleLogin
+          onSuccess={onSuccess}
+          onError={onError}
+          theme="outline"
+          size="large"
+          text="signup_with"
+          shape="pill"
+          width="300"
+        />
+      </div>
+    );
+  }
+
+  const handleNativeGoogleSignup = async () => {
+    try {
+      const clientId = '423161329900-6rifobklf0pl8l6hfjnct8ek8qbo4gou.apps.googleusercontent.com';
+      const redirectUri = 'https://biizzed.lovohcreate.com/auth/google/callback';
+      const scope = 'email profile';
+      const responseType = 'token id_token';
+      const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=${responseType}&scope=${encodeURIComponent(scope)}&nonce=${Math.random().toString(36)}`;
+
+      await Browser.open({
+        url: googleAuthUrl,
+        presentationStyle: 'popover',
+        toolbarColor: '#1B3766',
+      });
+      toast.info('Please complete sign-up in the browser window');
+    } catch (error) {
+      console.error('Native Google Sign-Up Error:', error);
+      toast.error('Failed to open Google Sign-Up. Please try again.');
+    }
+  };
+
+  return (
+    <button
+      onClick={handleNativeGoogleSignup}
+      disabled={isLoading}
+      className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-all duration-200 shadow-sm"
+    >
+      {isLoading ? (
+        <FaSpinner className="animate-spin text-[#1B3766]" />
+      ) : (
+        <FaGoogle className="text-[#4285F4] text-lg" />
+      )}
+      <span className="text-gray-700 font-medium">
+        {isLoading ? 'Signing up...' : 'Continue with Google'}
+      </span>
+    </button>
+  );
 };
 
 // ========== TERMS & PRIVACY MODAL ==========
 const LegalModal = ({ isOpen, onClose, type }) => {
-  // ... (unchanged) ...
+  if (!isOpen) return null;
+
+  const content = type === 'terms' ? {
+    title: 'Terms of Service',
+    body: `
+      <p><strong>Effective Date:</strong> ${new Date().toLocaleDateString()}</p>
+      <p>Welcome to Biizzed, a platform owned and operated by Lovoh Create. By using our services, you agree to the following terms.</p>
+      <h4>1. Acceptance of Terms</h4>
+      <p>By creating an account, you agree to comply with these Terms of Service. If you do not agree, please do not use the platform.</p>
+      <h4>2. User Accounts</h4>
+      <p>You are responsible for maintaining the confidentiality of your account credentials. You agree to provide accurate and complete information during registration.</p>
+      <h4>3. Content Ownership</h4>
+      <p>You retain all rights to the content you publish. By posting, you grant Lovoh Create a non-exclusive license to display and distribute your content through the platform.</p>
+      <h4>4. Prohibited Conduct</h4>
+      <p>You may not post illegal, harmful, or abusive content. Harassment, spam, and impersonation are strictly forbidden.</p>
+      <h4>5. Termination</h4>
+      <p>We reserve the right to suspend or terminate accounts that violate these terms or for any other reason at our discretion.</p>
+      <h4>6. Disclaimer of Warranties</h4>
+      <p>The platform is provided "as is" without warranties of any kind. We do not guarantee uninterrupted or error-free service.</p>
+      <h4>7. Limitation of Liability</h4>
+      <p>Lovoh Create shall not be liable for any indirect, incidental, or consequential damages arising from the use of the platform.</p>
+      <h4>8. Changes to Terms</h4>
+      <p>We may update these terms periodically. Continued use constitutes acceptance of the updated terms.</p>
+      <p><strong>Contact:</strong> For any questions, contact us at support@lovohcreate.com.</p>
+    `
+  } : {
+    title: 'Privacy Policy',
+    body: `
+      <p><strong>Effective Date:</strong> ${new Date().toLocaleDateString()}</p>
+      <p>Lovoh Create ("we") values your privacy. This policy explains how we collect, use, and protect your personal information.</p>
+      <h4>1. Information We Collect</h4>
+      <p>We collect information you provide during registration, such as your name, email address, phone number, and username. We also collect usage data to improve our services.</p>
+      <h4>2. How We Use Your Information</h4>
+      <p>We use your data to create your account, provide services, send notifications, and improve the platform. We do not sell your data to third parties.</p>
+      <h4>3. Data Sharing</h4>
+      <p>We may share your information with trusted third-party service providers (e.g., email delivery, analytics) only to operate our services. We ensure they adhere to strict confidentiality.</p>
+      <h4>4. Data Security</h4>
+      <p>We implement industry-standard security measures to protect your data. However, no method of transmission over the internet is completely secure.</p>
+      <h4>5. Cookies and Tracking</h4>
+      <p>We use cookies to enhance user experience and analyze traffic. You can control cookie preferences in your browser settings.</p>
+      <h4>6. Your Rights</h4>
+      <p>You may access, modify, or delete your personal data at any time. Contact us to exercise your rights.</p>
+      <h4>7. Children's Privacy</h4>
+      <p>Our platform is not intended for children under 13. We do not knowingly collect data from minors.</p>
+      <h4>8. Changes to Policy</h4>
+      <p>We may update this policy. We will notify you of significant changes.</p>
+      <p><strong>Contact:</strong> For privacy inquiries, email privacy@lovohcreate.com.</p>
+    `
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-xl animate-fadeInUp">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
+          <h2 className="text-xl font-bold text-gray-900">{content.title}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <FaTimes />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-6 text-sm text-gray-700 space-y-4">
+          <div dangerouslySetInnerHTML={{ __html: content.body }} />
+        </div>
+        <div className="p-4 border-t border-gray-200 flex-shrink-0 flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-6 py-2 bg-[#1B3766] text-white rounded-xl hover:bg-[#142952] transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 // ========== MAIN SIGNUP COMPONENT ==========
@@ -85,12 +394,10 @@ const BiizzedSignup = () => {
   const [countdown, setCountdown] = useState(0);
   const [canResend, setCanResend] = useState(false);
 
-  // --- Inline error/success states ---
   const [signupError, setSignupError] = useState('');
   const [otpError, setOtpError] = useState('');
   const [otpSuccess, setOtpSuccess] = useState('');
 
-  // Legal modal state
   const [legalModalOpen, setLegalModalOpen] = useState(false);
   const [legalModalType, setLegalModalType] = useState('terms');
 
@@ -112,7 +419,6 @@ const BiizzedSignup = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    // Clear errors when user types
     if (signupError) setSignupError('');
   };
 
@@ -499,12 +805,45 @@ const BiizzedSignup = () => {
                 </div>
               )}
 
-              {/* Lovoh Create ecosystem note */}
-              <div className="mt-4 text-center text-[11px] text-gray-400 border-t border-gray-100 pt-4">
-                Your Lovoh Create account works across{' '}
-                <span className="font-medium text-gray-500">Biizzed</span>,{' '}
-                <span className="font-medium text-gray-500">Uduua</span>, and{' '}
-                <span className="font-medium text-gray-500">Eventroom</span>.
+              {/* 🆕 Lovoh Create ecosystem with brand logos */}
+              <div className="mt-5 pt-4 border-t border-gray-100">
+                <p className="text-center text-[11px] text-gray-400 mb-3">
+                  Your Lovoh Create account works across these platforms:
+                </p>
+                <div className="flex items-center justify-center gap-4">
+                  {/* Biizzed */}
+                  <div className="flex flex-col items-center gap-1">
+                    <img
+                      src="/biizzed.png"
+                      alt="Biizzed"
+                      className="h-7 w-auto object-contain"
+                    />
+                    <span className="text-[10px] font-medium text-gray-600">Biizzed</span>
+                  </div>
+                  {/* Úduua */}
+                  <div className="flex flex-col items-center gap-1">
+                    <img
+                      src="/uduua.png"
+                      alt="Úduua"
+                      className="h-7 w-auto object-contain"
+                    />
+                    <span className="text-[10px] font-medium text-gray-600">Úduua</span>
+                  </div>
+                  {/* EventRoom */}
+                  <div className="flex flex-col items-center gap-1">
+                    <img
+                      src="/eventroom.png"
+                      alt="EventRoom"
+                      className="h-7 w-auto object-contain"
+                    />
+                    <span className="text-[10px] font-medium text-gray-600">EventRoom</span>
+                  </div>
+                </div>
+                <div className="flex justify-center mt-3">
+                  <span className="text-[9px] text-gray-300 bg-gray-50 px-2 py-0.5 rounded-full">
+                    <span className="font-medium text-gray-400">Lovoh Create</span> — one account, all brands
+                  </span>
+                </div>
               </div>
             </div>
 

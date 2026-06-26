@@ -665,12 +665,45 @@ const EventSignup = () => {
                 </div>
               )}
 
-              {/* Lovoh Create ecosystem note */}
-              <div className="mt-4 text-center text-[11px] text-gray-400 border-t border-gray-100 pt-4">
-                Your Lovoh Create account works across{' '}
-                <span className="font-medium text-gray-500">Biizzed</span>,{' '}
-                <span className="font-medium text-gray-500">Úduua</span>, and{' '}
-                <span className="font-medium text-gray-500">Eventroom</span>.
+              {/* 🆕 Lovoh Create ecosystem with brand logos */}
+              <div className="mt-5 pt-4 border-t border-gray-100">
+                <p className="text-center text-[11px] text-gray-400 mb-3">
+                  Your Lovoh Create account works across these platforms:
+                </p>
+                <div className="flex items-center justify-center gap-4">
+                  {/* Biizzed */}
+                  <div className="flex flex-col items-center gap-1">
+                    <img
+                      src="/biizzed.png"
+                      alt="Biizzed"
+                      className="h-7 w-auto object-contain"
+                    />
+                    <span className="text-[10px] font-medium text-gray-600">Biizzed</span>
+                  </div>
+                  {/* Úduua */}
+                  <div className="flex flex-col items-center gap-1">
+                    <img
+                      src="/uduua.png"
+                      alt="Úduua"
+                      className="h-7 w-auto object-contain"
+                    />
+                    <span className="text-[10px] font-medium text-gray-600">Úduua</span>
+                  </div>
+                  {/* Eventroom */}
+                  <div className="flex flex-col items-center gap-1">
+                    <img
+                      src="/eventroom.png"
+                      alt="Eventroom"
+                      className="h-7 w-auto object-contain"
+                    />
+                    <span className="text-[10px] font-medium text-gray-600">Eventroom</span>
+                  </div>
+                </div>
+                <div className="flex justify-center mt-3">
+                  <span className="text-[9px] text-gray-300 bg-gray-50 px-2 py-0.5 rounded-full">
+                    <span className="font-medium text-gray-400">Lovoh Create</span> — one account, all brands
+                  </span>
+                </div>
               </div>
             </div>
 

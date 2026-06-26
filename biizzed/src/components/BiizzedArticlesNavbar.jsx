@@ -1,5 +1,5 @@
-// components/BiizzedArticlesNavbar.jsx – Contributor-gated create button with proper status handling
-import React, { useState, useEffect } from "react";
+// components/BiizzedArticlesNavbar.jsx – Added brands grid dropdown
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import {
@@ -26,6 +26,67 @@ import { useGetContributorStatusQuery } from "../slices/contributorApiSlice";
 import { useLazyQuickSearchQuery } from "../slices/searchApiSlice";
 import { debounce } from "lodash";
 
+// --- Domain constants (cross‑domain navigation) ---
+const MAIN_DOMAIN = "https://lovohcreate.com";
+const SUBDOMAINS = {
+  biizzed: "https://biizzed.lovohcreate.com",
+  uduua: "https://uduua.lovohcreate.com",
+  events: "https://eventroom.lovohcreate.com",
+};
+
+// Sub‑brands data (including main brand for quick access)
+const BRANDS = [
+  { id: "biizzed", name: "Biizzed", path: "/", icon: "/biizzed.png" },
+  { id: "uduua", name: "Uduua", path: "/uduua", icon: "/uduua.png" },
+  { id: "events", name: "EventRoom", path: "/events", icon: "/eventroom.png" },
+  { id: "lovoh", name: "Lovoh Create", path: "/", icon: "/logo.png", isMain: true },
+];
+
+// Detect current subdomain
+const getCurrentSubdomain = () => {
+  const hostname = window.location.hostname;
+  if (hostname.includes("biizzed")) return "biizzed";
+  if (hostname.includes("uduua")) return "uduua";
+  if (hostname.includes("eventroom")) return "events";
+  return null; // main domain or localhost
+};
+const currentSub = getCurrentSubdomain();
+
+// Helper: get URL for a main‑domain path (always absolute to MAIN_DOMAIN when on subdomain)
+const getMainDomainUrl = (path) => `${MAIN_DOMAIN}${path}`;
+const getSubdomainUrl = (brand) => SUBDOMAINS[brand] || MAIN_DOMAIN;
+
+// Decide link href for cross‑domain navigation
+const getLinkHref = (to, brandId) => {
+  // If it's a sub‑brand, use its subdomain
+  if (brandId && SUBDOMAINS[brandId]) {
+    return getSubdomainUrl(brandId);
+  }
+  // For main domain pages, use absolute URL if on subdomain
+  const mainPages = ["/", "/about", "/work", "/services", "/contact"];
+  if (mainPages.includes(to)) {
+    if (currentSub !== null) return getMainDomainUrl(to);
+    return to;
+  }
+  // Fallback
+  return to;
+};
+
+// Grid icon (3x3 dots)
+const GridIcon = () => (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+    <circle cx="4" cy="4" r="2" />
+    <circle cx="12" cy="4" r="2" />
+    <circle cx="20" cy="4" r="2" />
+    <circle cx="4" cy="12" r="2" />
+    <circle cx="12" cy="12" r="2" />
+    <circle cx="20" cy="12" r="2" />
+    <circle cx="4" cy="20" r="2" />
+    <circle cx="12" cy="20" r="2" />
+    <circle cx="20" cy="20" r="2" />
+  </svg>
+);
+
 const BiizzedArticlesNavbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -38,6 +99,9 @@ const BiizzedArticlesNavbar = () => {
   const [searchSuggestions, setSearchSuggestions] = useState([]);
   const [isSearchingSuggestions, setIsSearchingSuggestions] = useState(false);
   const [activeTab, setActiveTab] = useState("feed");
+  const [isBrandsOpen, setIsBrandsOpen] = useState(false);
+
+  const brandsRef = useRef(null);
 
   // Fetch unread notification count (only if logged in)
   const { data: notifData } = useGetNotificationsQuery(
@@ -110,6 +174,22 @@ const BiizzedArticlesNavbar = () => {
     };
   }, [searchTerm, showSearch, debouncedSearch]);
 
+  // Close brands dropdown on outside click (desktop)
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (brandsRef.current && !brandsRef.current.contains(event.target)) {
+        setIsBrandsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Close brands dropdown on route change
+  useEffect(() => {
+    setIsBrandsOpen(false);
+  }, [location.pathname]);
+
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchTerm.trim()) {
@@ -147,6 +227,17 @@ const BiizzedArticlesNavbar = () => {
     }
   };
 
+  // Brand navigation (cross‑domain)
+  const handleBrandClick = (brandId, path) => {
+    setIsBrandsOpen(false);
+    const href = getLinkHref(path, brandId);
+    if (href.startsWith("http")) {
+      window.location.href = href;
+    } else {
+      navigate(href);
+    }
+  };
+
   // Open create modal based on contributor status
   const handleCreateButtonClick = () => {
     if (!userInfo) {
@@ -154,25 +245,16 @@ const BiizzedArticlesNavbar = () => {
       return;
     }
 
-    // If still loading contributor status, show loading
     if (contribLoading) {
-      toast.info("Checking contributor status...");
+      // Optionally show toast
       return;
     }
 
-    // If approved, show create modal
     if (isApproved) {
       setShowCreateModal(true);
       return;
     }
 
-    // If pending, show pending message
-    if (isPending) {
-      setShowContributorPrompt(true);
-      return;
-    }
-
-    // If not applied or rejected, show apply prompt
     setShowContributorPrompt(true);
   };
 
@@ -215,7 +297,6 @@ const BiizzedArticlesNavbar = () => {
     }
   };
 
-  // Get contributor status message and icon
   const getContributorStatusDisplay = () => {
     if (isApproved) {
       return {
@@ -277,6 +358,43 @@ const BiizzedArticlesNavbar = () => {
                   <span className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full animate-pulse" />
                 )}
               </button>
+
+              {/* Brands Grid Button */}
+              <div className="relative" ref={brandsRef}>
+                <button
+                  onClick={() => setIsBrandsOpen((prev) => !prev)}
+                  className="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-600 transition-colors"
+                  aria-label="All brands"
+                >
+                  <GridIcon />
+                </button>
+                {isBrandsOpen && (
+                  <div className="absolute top-full right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 p-3 z-50">
+                    <div className="grid grid-cols-3 gap-3">
+                      {BRANDS.map((brand) => (
+                        <button
+                          key={brand.id}
+                          onClick={() => handleBrandClick(brand.id === "lovoh" ? null : brand.id, brand.path)}
+                          className="flex flex-col items-center justify-center p-3 rounded-xl hover:bg-[#1B3766]/5 transition-all duration-200"
+                        >
+                          <img
+                            src={brand.icon}
+                            alt={brand.name}
+                            className="w-10 h-10 object-contain mb-1"
+                            onError={(e) => { e.target.src = "/logo.png"; }}
+                          />
+                          <span className="text-xs font-medium text-gray-700">{brand.name}</span>
+                          {brand.isMain && (
+                            <span className="text-[8px] text-gray-400 uppercase tracking-wider">Main</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Search Button */}
               <button
                 onClick={() => setShowSearch(true)}
                 className="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-600 transition-colors"

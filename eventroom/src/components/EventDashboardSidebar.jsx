@@ -1,5 +1,5 @@
-// components/EventDashboardSidebar.jsx
-import React, { useState } from "react";
+// components/EventDashboardSidebar.jsx – Added brands grid dropdown
+import React, { useState, useRef, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { useLogoutMutation } from "../slices/userApiSlice";
@@ -15,12 +15,72 @@ import {
   FaSignOutAlt,
   FaHome,
   FaChartBar,
-  FaUsers, // <-- NEW import
+  FaUsers,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 
+// --- Domain constants (cross‑domain navigation) ---
+const MAIN_DOMAIN = "https://lovohcreate.com";
+const SUBDOMAINS = {
+  biizzed: "https://biizzed.lovohcreate.com",
+  uduua: "https://uduua.lovohcreate.com",
+  events: "https://eventroom.lovohcreate.com",
+};
+
+// Sub‑brands data (including main brand for quick access)
+const BRANDS = [
+  { id: "biizzed", name: "Biizzed", path: "/", icon: "/biizzed.png" },
+  { id: "uduua", name: "Uduua", path: "/uduua", icon: "/uduua.png" },
+  { id: "events", name: "EventRoom", path: "/", icon: "/eventroom.png" },
+  { id: "lovoh", name: "Lovoh Create", path: "/", icon: "/logo.png", isMain: true },
+];
+
+// Detect current subdomain
+const getCurrentSubdomain = () => {
+  const hostname = window.location.hostname;
+  if (hostname.includes("biizzed")) return "biizzed";
+  if (hostname.includes("uduua")) return "uduua";
+  if (hostname.includes("eventroom")) return "events";
+  return null;
+};
+const currentSub = getCurrentSubdomain();
+
+// Helper: get URL for a main‑domain path (absolute when on subdomain)
+const getMainDomainUrl = (path) => `${MAIN_DOMAIN}${path}`;
+const getSubdomainUrl = (brand) => SUBDOMAINS[brand] || MAIN_DOMAIN;
+
+// Decide link href for cross‑domain navigation
+const getLinkHref = (to, brandId) => {
+  if (brandId && SUBDOMAINS[brandId]) {
+    return getSubdomainUrl(brandId);
+  }
+  const mainPages = ["/", "/about", "/work", "/services", "/contact"];
+  if (mainPages.includes(to)) {
+    if (currentSub !== null) return getMainDomainUrl(to);
+    return to;
+  }
+  return to;
+};
+
+// Grid icon (3x3 dots)
+const GridIcon = () => (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+    <circle cx="4" cy="4" r="2" />
+    <circle cx="12" cy="4" r="2" />
+    <circle cx="20" cy="4" r="2" />
+    <circle cx="4" cy="12" r="2" />
+    <circle cx="12" cy="12" r="2" />
+    <circle cx="20" cy="12" r="2" />
+    <circle cx="4" cy="20" r="2" />
+    <circle cx="12" cy="20" r="2" />
+    <circle cx="20" cy="20" r="2" />
+  </svg>
+);
+
 const EventDashboardSidebar = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isBrandsOpen, setIsBrandsOpen] = useState(false);
+  const brandsRef = useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -54,7 +114,6 @@ const EventDashboardSidebar = ({ children }) => {
       icon: FaWallet,
       path: "/dashboard/wallet",
     },
-    // NEW TEAM MENU ITEM
     {
       title: "Team",
       icon: FaUsers,
@@ -73,6 +132,33 @@ const EventDashboardSidebar = ({ children }) => {
     }
     return location.pathname.startsWith(path);
   };
+
+  // Brand navigation (cross‑domain)
+  const handleBrandClick = (brandId, path) => {
+    setIsBrandsOpen(false);
+    const href = getLinkHref(path, brandId);
+    if (href.startsWith("http")) {
+      window.location.href = href;
+    } else {
+      navigate(href);
+    }
+  };
+
+  // Close brands dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (brandsRef.current && !brandsRef.current.contains(event.target)) {
+        setIsBrandsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Close brands dropdown on route change
+  useEffect(() => {
+    setIsBrandsOpen(false);
+  }, [location.pathname]);
 
   const handleLogout = async () => {
     try {
@@ -114,8 +200,44 @@ const EventDashboardSidebar = ({ children }) => {
             )}
           </button>
           <span className="font-bold text-[#1B3766]">Event Dashboard</span>
-          <div className="w-8 h-8 rounded-full bg-[#1B3766] text-white flex items-center justify-center text-sm font-bold">
-            {userInfo?.name?.charAt(0)?.toUpperCase() || "U"}
+          <div className="flex items-center gap-2">
+            {/* Brands Grid Button (mobile) */}
+            <div className="relative" ref={brandsRef}>
+              <button
+                onClick={() => setIsBrandsOpen((prev) => !prev)}
+                className="p-2 text-gray-500 hover:text-[#1B3766] hover:bg-gray-100 rounded-lg transition-colors"
+                aria-label="All brands"
+              >
+                <GridIcon />
+              </button>
+              {isBrandsOpen && (
+                <div className="absolute top-full right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 p-3 z-50">
+                  <div className="grid grid-cols-3 gap-3">
+                    {BRANDS.map((brand) => (
+                      <button
+                        key={brand.id}
+                        onClick={() => handleBrandClick(brand.id === "lovoh" ? null : brand.id, brand.path)}
+                        className="flex flex-col items-center justify-center p-3 rounded-xl hover:bg-[#1B3766]/5 transition-all duration-200"
+                      >
+                        <img
+                          src={brand.icon}
+                          alt={brand.name}
+                          className="w-10 h-10 object-contain mb-1"
+                          onError={(e) => { e.target.src = "/logo.png"; }}
+                        />
+                        <span className="text-xs font-medium text-gray-700">{brand.name}</span>
+                        {brand.isMain && (
+                          <span className="text-[8px] text-gray-400 uppercase tracking-wider">Main</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="w-8 h-8 rounded-full bg-[#1B3766] text-white flex items-center justify-center text-sm font-bold">
+              {userInfo?.name?.charAt(0)?.toUpperCase() || "U"}
+            </div>
           </div>
         </div>
       </div>
@@ -130,7 +252,9 @@ const EventDashboardSidebar = ({ children }) => {
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-40 h-full w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+        className={`fixed top-0 left-0 z-40 h-full w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 lg:translate-x-0 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
       >
         {/* Logo */}
         <div className="p-6 border-b border-gray-100">
@@ -163,7 +287,9 @@ const EventDashboardSidebar = ({ children }) => {
               }`}
             >
               <item.icon
-                className={`text-sm ${isActive(item.path) ? "text-white" : "text-gray-400"}`}
+                className={`text-sm ${
+                  isActive(item.path) ? "text-white" : "text-gray-400"
+                }`}
               />
               {item.title}
             </Link>
@@ -197,6 +323,54 @@ const EventDashboardSidebar = ({ children }) => {
 
       {/* Main Content */}
       <main className="lg:ml-64 pt-16 lg:pt-0">
+        {/* Desktop Header (visible on large screens) */}
+        <div className="hidden lg:flex items-center justify-between h-16 px-6 border-b border-gray-200 bg-white/95 backdrop-blur-sm sticky top-0 z-30">
+          <h1 className="text-lg font-semibold text-gray-800">
+            Dashboard
+          </h1>
+          <div className="flex items-center gap-3">
+            {/* Brands Grid Button (desktop) */}
+            <div className="relative" ref={brandsRef}>
+              <button
+                onClick={() => setIsBrandsOpen((prev) => !prev)}
+                className="p-2 text-gray-500 hover:text-[#1B3766] hover:bg-gray-100 rounded-lg transition-colors"
+                aria-label="All brands"
+              >
+                <GridIcon />
+              </button>
+              {isBrandsOpen && (
+                <div className="absolute top-full right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 p-3 z-50">
+                  <div className="grid grid-cols-3 gap-3">
+                    {BRANDS.map((brand) => (
+                      <button
+                        key={brand.id}
+                        onClick={() => handleBrandClick(brand.id === "lovoh" ? null : brand.id, brand.path)}
+                        className="flex flex-col items-center justify-center p-3 rounded-xl hover:bg-[#1B3766]/5 transition-all duration-200"
+                      >
+                        <img
+                          src={brand.icon}
+                          alt={brand.name}
+                          className="w-10 h-10 object-contain mb-1"
+                          onError={(e) => { e.target.src = "/logo.png"; }}
+                        />
+                        <span className="text-xs font-medium text-gray-700">{brand.name}</span>
+                        {brand.isMain && (
+                          <span className="text-[8px] text-gray-400 uppercase tracking-wider">Main</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            {/* User avatar (desktop) */}
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#1B3766] to-blue-700 text-white flex items-center justify-center text-sm font-bold">
+                {userInfo?.name?.charAt(0)?.toUpperCase() || "U"}
+              </div>
+            </div>
+          </div>
+        </div>
         <div className="p-4 md:p-6 lg:p-8">{children}</div>
       </main>
     </div>
