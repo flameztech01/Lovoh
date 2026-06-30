@@ -1,167 +1,72 @@
-// components/Header.jsx – Cross‑domain + Logo animation + Sub‑brand grid dropdown
+// components/Header.jsx – Biizzed header (Home, Articles, Magazine, Contact)
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
 
-// --- Domain constants ---
-const MAIN_DOMAIN = "https://lovohcreate.com";
-const SUBDOMAINS = {
-  biizzed: "https://biizzed.lovohcreate.com",
-  uduua: "https://uduua.lovohcreate.com",
-  events: "https://eventroom.lovohcreate.com",
-};
-
-// Sub‑brands data
-const SUB_BRANDS = [
-  { id: "biizzed", name: "Biizzed", path: "/biizzed", icon: "/biizzed.png" },
-  { id: "uduua", name: "Uduua", path: "/uduua", icon: "/uduua.png" },
+const OTHER_BRANDS = [
+  { id: "lovohcreate", name: "Lovoh Create", path: "/", icon: "/logo.png" },
   { id: "events", name: "EventRoom", path: "/events", icon: "/eventroom.png" },
+  { id: "uduua", name: "Uduua", path: "/uduua", icon: "/uduua.png" },
 ];
 
-// Detect current subdomain
-const getCurrentSubdomain = () => {
-  const hostname = window.location.hostname;
-  if (hostname.includes("biizzed")) return "biizzed";
-  if (hostname.includes("uduua")) return "uduua";
-  if (hostname.includes("eventroom")) return "events";
-  return null;
-};
-const currentSub = getCurrentSubdomain();
-
-// Helper: get URL for a main‑domain path (always absolute to MAIN_DOMAIN when on subdomain)
-const getMainDomainUrl = (path) => `${MAIN_DOMAIN}${path}`;
-const getSubdomainUrl = (brand) => SUBDOMAINS[brand] || MAIN_DOMAIN;
-
-// Decide link href (for cross‑domain navigation)
-const getLinkHref = (to) => {
-  const mainPages = ["/", "/about", "/work", "/services", "/contact"];
-  if (mainPages.includes(to)) {
-    if (currentSub !== null) return getMainDomainUrl(to);
-    return to;
-  }
-  if (to === "/biizzed") return getSubdomainUrl("biizzed");
-  if (to === "/uduua") return getSubdomainUrl("uduua");
-  if (to === "/events") return getSubdomainUrl("events");
-  return to;
-};
-
-// Map subdomain to logo (used when on that subdomain)
-const subdomainLogoMap = {
-  events: "/eventroom.png",
-  biizzed: "/biizzed.png",
-  uduua: "/uduua.png",
-};
-
-// Get target logo based on subdomain and path (main domain)
-const getTargetLogo = (pathname, sub) => {
-  if (sub !== null) {
-    return subdomainLogoMap[sub] || "/logo.png";
-  }
-  if (pathname.startsWith("/uduua")) return "/uduua.png";
-  if (pathname.startsWith("/thefruiit")) return "/thefruiit-logo.png";
-  if (pathname.startsWith("/biizzed")) return "/biizzed.png";
-  if (pathname.startsWith("/events")) return "/eventroom.png";
-  return "/logo.png";
-};
+const NAV_ITEMS = [
+  { label: "Home", id: "home" },
+  { label: "Articles", id: "articles" },
+  { label: "Magazine", id: "magazine" },
+  { label: "Contact", id: "contact" },
+];
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isWhatWeDoOpen, setIsWhatWeDoOpen] = useState(false);
   const [isSubBrandsOpen, setIsSubBrandsOpen] = useState(false);
-  const [currentLogo, setCurrentLogo] = useState("/logo.png");
-  const [isTransitioning, setIsTransitioning] = useState(false);
 
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  const whatWeDoRef = useRef(null);
   const subBrandsRef = useRef(null);
   const mobileMenuRef = useRef(null);
   const mobileMenuButtonRef = useRef(null);
   const navContainerRef = useRef(null);
 
-  const whatWeDoLinks = [
-    { name: "Our Works", path: "/work" },
-    { name: "Services", path: "/services" },
-  ];
-
-  // Animate logo change based on path/subdomain
-  useEffect(() => {
-    const targetLogo = getTargetLogo(location.pathname, currentSub);
-    if (targetLogo === currentLogo) return;
-
-    setIsTransitioning(true);
-    const timer = setTimeout(() => {
-      setCurrentLogo(targetLogo);
-      setIsTransitioning(false);
-    }, 150);
-    return () => clearTimeout(timer);
-  }, [location.pathname, currentLogo]);
-
   const closeAllMenus = useCallback(() => {
     setIsMenuOpen(false);
-    setIsWhatWeDoOpen(false);
     setIsSubBrandsOpen(false);
   }, []);
 
-  const scrollToTop = useCallback(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, []);
-
-  const handleNavigation = useCallback(
-    (to) => {
-      closeAllMenus();
-      const href = getLinkHref(to);
-      if (href.startsWith("http")) {
-        window.location.href = href;
-      } else {
-        navigate(to);
-        scrollToTop();
-      }
-    },
-    [closeAllMenus, navigate, scrollToTop]
-  );
-
-  // Close menus on route change
-  useEffect(() => {
+  const scrollToSection = useCallback((id) => {
     closeAllMenus();
-  }, [location.pathname, closeAllMenus]);
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [closeAllMenus]);
 
-  // Desktop: click outside closes dropdowns
+  const toggleSubBrands = () => setIsSubBrandsOpen((prev) => !prev);
+  const toggleMobileMenu = () => setIsMenuOpen((prev) => !prev);
+
+  // Click outside for desktop
   useEffect(() => {
-    const handleClickOutside = (event) => {
+    const handleClickOutside = (e) => {
       if (window.innerWidth < 768) return;
-      if (whatWeDoRef.current && !whatWeDoRef.current.contains(event.target)) {
-        setIsWhatWeDoOpen(false);
-      }
-      if (subBrandsRef.current && !subBrandsRef.current.contains(event.target)) {
+      if (subBrandsRef.current && !subBrandsRef.current.contains(e.target))
         setIsSubBrandsOpen(false);
-      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Mobile: click outside closes everything
+  // Click outside for mobile
   useEffect(() => {
     if (!isMenuOpen) return;
-    const handleClickOutside = (event) => {
-      if (navContainerRef.current && !navContainerRef.current.contains(event.target)) {
+    const handleClickOutside = (e) => {
+      if (navContainerRef.current && !navContainerRef.current.contains(e.target))
         closeAllMenus();
-      }
     };
     document.addEventListener("mousedown", handleClickOutside, true);
     return () => document.removeEventListener("mousedown", handleClickOutside, true);
   }, [isMenuOpen, closeAllMenus]);
 
-  // Prevent body scroll when mobile menu open
+  // Prevent body scroll
   useEffect(() => {
     document.body.style.overflow = isMenuOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [isMenuOpen]);
 
-  // ESC key closes everything
+  // ESC key
   useEffect(() => {
-    if (!isMenuOpen) return;
     const handleKeyDown = (e) => {
       if (e.key === "Escape") {
         closeAllMenus();
@@ -172,15 +77,6 @@ const Header = () => {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isMenuOpen, closeAllMenus]);
 
-  const toggleWhatWeDo = () => setIsWhatWeDoOpen((prev) => !prev);
-  const toggleSubBrands = () => setIsSubBrandsOpen((prev) => !prev);
-  const toggleMobileMenu = () => setIsMenuOpen((prev) => !prev);
-  const toggleMobileWhatWeDo = (e) => {
-    e.stopPropagation();
-    setIsWhatWeDoOpen((prev) => !prev);
-  };
-
-  // Grid icon (3x3 dots)
   const GridIcon = () => (
     <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
       <circle cx="4" cy="4" r="2" />
@@ -200,15 +96,13 @@ const Header = () => {
       <nav className="max-w-7xl mx-auto" ref={navContainerRef}>
         <div className="relative rounded-full bg-white/95 backdrop-blur-md border border-blue-100 shadow-[0_10px_35px_rgba(37,72,153,0.10)] px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            {/* Logo – NO LONGER A LINK */}
+            {/* Logo */}
             <div className="flex-shrink-0">
-              <div className="flex items-center relative w-32 h-8 cursor-default">
+              <div className="relative w-32 h-8">
                 <img
-                  src={currentLogo}
-                  alt="Lovoh Create"
-                  className={`absolute inset-0 h-8 w-auto object-contain transition-opacity duration-300 ${
-                    isTransitioning ? "opacity-0" : "opacity-100"
-                  }`}
+                  src="/biizzed.png"
+                  alt="Biizzed"
+                  className="h-8 w-auto object-contain"
                   onError={(e) => { e.target.src = "/logo.png"; }}
                 />
               </div>
@@ -216,67 +110,35 @@ const Header = () => {
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-2 lg:gap-3">
-              <button
-                onClick={() => handleNavigation("/")}
-                className="text-gray-700 hover:text-blue-700 px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 hover:bg-blue-50"
-              >
-                Welcome
-              </button>
-              <button
-                onClick={() => handleNavigation("/about")}
-                className="text-gray-700 hover:text-blue-700 px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 hover:bg-blue-50"
-              >
-                About
-              </button>
-
-              <div className="relative" ref={whatWeDoRef}>
+              {NAV_ITEMS.map((item) => (
                 <button
-                  onClick={toggleWhatWeDo}
-                  className="flex items-center text-gray-700 hover:text-blue-700 px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 hover:bg-blue-50"
+                  key={item.id}
+                  onClick={() => scrollToSection(item.id)}
+                  className="text-gray-700 hover:text-blue-700 px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 hover:bg-blue-50"
                 >
-                  What we do
-                  <svg
-                    className={`ml-1 w-4 h-4 transition-transform duration-200 ${
-                      isWhatWeDoOpen ? "rotate-180" : ""
-                    }`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
+                  {item.label}
                 </button>
-                {isWhatWeDoOpen && (
-                  <div className="absolute top-full left-0 mt-3 w-56 bg-white rounded-3xl shadow-[0_20px_45px_rgba(0,0,0,0.10)] border border-blue-100 py-3 z-50">
-                    {whatWeDoLinks.map((item) => (
-                      <button
-                        key={item.name}
-                        onClick={() => handleNavigation(item.path)}
-                        className="block w-full text-left mx-2 px-4 py-3 rounded-2xl hover:bg-blue-50 transition-all duration-200 font-medium text-gray-900"
-                      >
-                        {item.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              ))}
 
-              {/* Sub‑brands grid button */}
+              {/* Sub‑brands grid */}
               <div className="relative" ref={subBrandsRef}>
                 <button
                   onClick={toggleSubBrands}
                   className="flex items-center justify-center text-gray-700 hover:text-blue-700 p-2 rounded-full transition-all duration-200 hover:bg-blue-50"
-                  aria-label="Sub-brands"
+                  aria-label="Other Brands"
                 >
                   <GridIcon />
                 </button>
                 {isSubBrandsOpen && (
                   <div className="absolute top-full right-0 mt-3 w-64 bg-white rounded-3xl shadow-[0_20px_45px_rgba(0,0,0,0.10)] border border-blue-100 p-3 z-50">
+                    <p className="text-xs uppercase tracking-wider text-gray-400 font-semibold mb-2 px-1">
+                      Other Brands
+                    </p>
                     <div className="grid grid-cols-3 gap-3">
-                      {SUB_BRANDS.map((brand) => (
-                        <button
+                      {OTHER_BRANDS.map((brand) => (
+                        <a
                           key={brand.id}
-                          onClick={() => handleNavigation(brand.path)}
+                          href={brand.path}
                           className="flex flex-col items-center justify-center p-3 rounded-2xl hover:bg-blue-50 transition-all duration-200"
                         >
                           <img
@@ -286,19 +148,12 @@ const Header = () => {
                             onError={(e) => { e.target.src = "/logo.png"; }}
                           />
                           <span className="text-xs font-medium text-gray-700">{brand.name}</span>
-                        </button>
+                        </a>
                       ))}
                     </div>
                   </div>
                 )}
               </div>
-
-              <button
-                onClick={() => handleNavigation("/contact")}
-                className="ml-2 bg-gradient-to-r from-blue-600 via-blue-700 to-blue-500 text-white px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg hover:scale-[1.02]"
-              >
-                Contact
-              </button>
             </div>
 
             {/* Mobile menu button */}
@@ -332,61 +187,26 @@ const Header = () => {
               >
                 <div className="bg-white rounded-2xl border border-blue-100 shadow-xl p-4 max-h-[70vh] overflow-y-auto">
                   <div className="space-y-1">
-                    <button
-                      onClick={() => handleNavigation("/")}
-                      className="w-full text-left text-gray-700 hover:text-blue-700 hover:bg-blue-50 px-4 py-3 rounded-xl text-base font-medium transition-all duration-200"
-                    >
-                      Welcome
-                    </button>
-                    <button
-                      onClick={() => handleNavigation("/about")}
-                      className="w-full text-left text-gray-700 hover:text-blue-700 hover:bg-blue-50 px-4 py-3 rounded-xl text-base font-medium transition-all duration-200"
-                    >
-                      About
-                    </button>
-
-                    <div className="rounded-xl overflow-hidden">
+                    {NAV_ITEMS.map((item) => (
                       <button
-                        onClick={toggleMobileWhatWeDo}
-                        className="flex items-center justify-between w-full text-gray-700 hover:text-blue-700 hover:bg-blue-50 px-4 py-3 rounded-xl text-base font-medium transition-all duration-200"
+                        key={item.id}
+                        onClick={() => scrollToSection(item.id)}
+                        className="w-full text-left text-gray-700 hover:text-blue-700 hover:bg-blue-50 px-4 py-3 rounded-xl text-base font-medium transition-all duration-200"
                       >
-                        <span>What we do</span>
-                        <svg
-                          className={`w-4 h-4 transition-transform duration-200 ${
-                            isWhatWeDoOpen ? "rotate-180" : ""
-                          }`}
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
+                        {item.label}
                       </button>
-                      {isWhatWeDoOpen && (
-                        <div className="mt-1 space-y-1 pl-4">
-                          {whatWeDoLinks.map((item) => (
-                            <button
-                              key={item.name}
-                              onClick={() => handleNavigation(item.path)}
-                              className="w-full text-left bg-gray-50 hover:bg-blue-50 px-4 py-3 rounded-xl text-sm text-gray-700 hover:text-blue-700 transition-all duration-200 border border-gray-100"
-                            >
-                              <div className="font-medium">{item.name}</div>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                    ))}
 
-                    {/* Mobile sub‑brands – shown as a grid inside the menu */}
+                    {/* Mobile sub‑brands */}
                     <div className="pt-2 pb-1">
                       <p className="text-xs uppercase tracking-wider text-gray-400 font-semibold px-4 mb-2">
-                        Our Brands
+                        Other Brands
                       </p>
                       <div className="grid grid-cols-3 gap-2">
-                        {SUB_BRANDS.map((brand) => (
-                          <button
+                        {OTHER_BRANDS.map((brand) => (
+                          <a
                             key={brand.id}
-                            onClick={() => handleNavigation(brand.path)}
+                            href={brand.path}
                             className="flex flex-col items-center justify-center p-3 rounded-xl bg-gray-50 hover:bg-blue-50 transition-all duration-200"
                           >
                             <img
@@ -396,17 +216,10 @@ const Header = () => {
                               onError={(e) => { e.target.src = "/logo.png"; }}
                             />
                             <span className="text-xs font-medium text-gray-700">{brand.name}</span>
-                          </button>
+                          </a>
                         ))}
                       </div>
                     </div>
-
-                    <button
-                      onClick={() => handleNavigation("/contact")}
-                      className="w-full bg-gradient-to-r from-blue-600 via-blue-700 to-blue-500 text-white px-4 py-3 rounded-xl text-base font-semibold text-center transition-all duration-200 mt-2 shadow-md hover:shadow-lg"
-                    >
-                      Contact
-                    </button>
                   </div>
                 </div>
               </div>

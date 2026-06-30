@@ -1,4 +1,4 @@
-// screens/EventDashboardCreateEvent.jsx
+// screens/EventDashboardCreateEvent.jsx – Redesigned, emoji‑free, with Poster Builder
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -9,7 +9,9 @@ import {
   FaVideo, FaTicketAlt, FaTimes, FaUsers, FaUser, FaCamera,
   FaClipboardList, FaCheckSquare, FaDotCircle, FaFont, FaHashtag,
   FaCalendar, FaEnvelope, FaPhone, FaChevronDown, FaChevronUp,
-  FaInfoCircle, FaUserCircle, FaPaintBrush, FaArrowsAlt, FaExpandArrowsAlt,
+  FaInfoCircle, FaUserCircle, FaPaintBrush, FaArrowsAlt, 
+  FaCrown, FaPalette, FaMagic, FaExclamationCircle, FaPen,
+  FaExpand, FaCompress,
 } from "react-icons/fa";
 import { useCreateEventMutation } from "../slices/eventApiSlice";
 import { toast } from "react-toastify";
@@ -17,7 +19,7 @@ import EventDashboardSidebar from "../components/EventDashboardSidebar";
 
 const ToolbarButton = ({ onClick, active, icon: Icon, title }) => (
   <button type="button" onClick={onClick} title={title}
-    className={`p-2 rounded hover:bg-gray-200 transition-colors ${active ? "bg-gray-200 text-[#1B3766]" : "text-gray-600"}`}>
+    className={`p-2 rounded hover:bg-blue-100 transition-colors ${active ? "bg-blue-200 text-[#1B3766]" : "text-gray-600"}`}>
     <Icon className="text-sm" />
   </button>
 );
@@ -32,6 +34,14 @@ const FIELD_TYPES = [
   { value: 'dropdown', label: 'Dropdown', icon: FaChevronDown },
   { value: 'checkbox', label: 'Checkbox', icon: FaCheckSquare },
   { value: 'radio', label: 'Radio', icon: FaDotCircle },
+];
+
+// ---- SAMPLE POSTER TEMPLATES ----
+const SAMPLE_BACKGROUNDS = [
+  { label: 'Modern Gradient', url: 'https://images.unsplash.com/photo-1540575861501-7cf05a4b125a?auto=format&fit=crop&w=600&q=80' },
+  { label: 'City Night', url: 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=600&q=80' },
+  { label: 'Abstract Art', url: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80' },
+  { label: 'Minimal White', url: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=600&q=80' },
 ];
 
 const EventDashboardCreateEvent = () => {
@@ -85,7 +95,10 @@ const EventDashboardCreateEvent = () => {
     namePlaceholder: { x: 100, y: 400, fontSize: 48, color: '#FFFFFF', fontFamily: 'Arial' },
   });
   const [posterImageFile, setPosterImageFile] = useState(null);
-  const [posterImagePreview, setPosterImagePreview] = useState('');
+  const [posterImagePreview, setPosterImagePreview] = useState(
+    'https://images.unsplash.com/photo-1540575861501-7cf05a4b125a?auto=format&fit=crop&w=600&q=80' // default sample
+  );
+  const [selectedSample, setSelectedSample] = useState(0);
 
   // ===== Drag & drop refs =====
   const containerRef = useRef(null);
@@ -93,7 +106,7 @@ const EventDashboardCreateEvent = () => {
   const [imageNaturalSize, setImageNaturalSize] = useState({ width: 1, height: 1 });
   const dragState = useRef({
     active: false,
-    type: null, // 'photo' or 'name'
+    type: null,
     startX: 0,
     startY: 0,
     startElX: 0,
@@ -121,6 +134,18 @@ const EventDashboardCreateEvent = () => {
     };
     reader.readAsDataURL(file);
   };
+
+  const applySampleBackground = (index) => {
+    setSelectedSample(index);
+    setPosterImagePreview(SAMPLE_BACKGROUNDS[index].url);
+    setPosterImageFile(null);
+    const img = new Image();
+    img.onload = () => {
+      setImageNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+    };
+    img.src = SAMPLE_BACKGROUNDS[index].url;
+  };
+
   const removePosterImage = () => {
     setPosterImageFile(null);
     setPosterImagePreview('');
@@ -193,7 +218,6 @@ const EventDashboardCreateEvent = () => {
     const { type, isResize, startX, startY, startElX, startElY, startW, startH } = dragState.current;
     const dx = clientX - startX;
     const dy = clientY - startY;
-    // Convert to image pixel space using the scale
     const imgRect = imageRef.current?.getBoundingClientRect();
     if (!imgRect) return;
     const scaleX = imageNaturalSize.width / imgRect.width;
@@ -204,7 +228,6 @@ const EventDashboardCreateEvent = () => {
     if (isResize) {
       let newW = Math.max(30, startW + pixelDx);
       let newH = Math.max(30, startH + pixelDy);
-      // Clamp to image bounds
       newW = Math.min(newW, imageNaturalSize.width - posterTemplate.photoPlaceholder.x);
       newH = Math.min(newH, imageNaturalSize.height - posterTemplate.photoPlaceholder.y);
       setPosterTemplate(prev => ({
@@ -214,7 +237,6 @@ const EventDashboardCreateEvent = () => {
     } else {
       let newX = startElX + pixelDx;
       let newY = startElY + pixelDy;
-      // Clamp
       if (type === 'photo') {
         newX = Math.max(0, Math.min(newX, imageNaturalSize.width - posterTemplate.photoPlaceholder.width));
         newY = Math.max(0, Math.min(newY, imageNaturalSize.height - posterTemplate.photoPlaceholder.height));
@@ -241,7 +263,6 @@ const EventDashboardCreateEvent = () => {
     document.removeEventListener('touchend', onDragEnd);
   };
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       document.removeEventListener('mousemove', onDragMove);
@@ -509,6 +530,12 @@ const EventDashboardCreateEvent = () => {
         photoPlaceholder: posterTemplate.photoPlaceholder,
         namePlaceholder: posterTemplate.namePlaceholder,
       }));
+    } else if (posterImagePreview) {
+      submitData.append("posterTemplate", JSON.stringify({
+        image: posterImagePreview,
+        photoPlaceholder: posterTemplate.photoPlaceholder,
+        namePlaceholder: posterTemplate.namePlaceholder,
+      }));
     }
 
     images.forEach(img => submitData.append("images", img));
@@ -522,44 +549,54 @@ const EventDashboardCreateEvent = () => {
     }
   };
 
+  // ---- RENDER ----
   return (
     <EventDashboardSidebar>
-      <div className="max-w-6xl mx-auto">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-          <div>
-            <button onClick={() => navigate("/dashboard/events")} className="flex items-center gap-2 text-gray-600 hover:text-[#1B3766] mb-2 transition-colors text-sm">
-              <FaArrowLeft className="text-xs" /> Back to My Events
-            </button>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Create New Event</h1>
-            <p className="text-gray-500 mt-1 text-sm">Fill in the details below to publish your event</p>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Header with gradient */}
+        <div className="relative bg-gradient-to-r from-blue-900 via-indigo-900 to-purple-900 rounded-2xl p-6 sm:p-8 mb-8 text-white shadow-xl overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+          <div className="relative z-10">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <button onClick={() => navigate("/dashboard/events")} className="inline-flex items-center gap-2 text-white/70 hover:text-white mb-2 transition-colors text-sm">
+                  <FaArrowLeft className="text-xs" /> Back to Events
+                </button>
+                <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
+                  <FaMagic className="text-amber-300" /> Create New Event
+                </h1>
+                <p className="text-white/60 mt-1 text-sm">Fill in the details below and bring your event to life</p>
+              </div>
+              <button onClick={handleSubmit} disabled={isCreating} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-400 to-amber-300 text-gray-900 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-50">
+                <FaSave /> {isCreating ? "Publishing..." : "Publish Event"}
+              </button>
+            </div>
           </div>
-          <button onClick={handleSubmit} disabled={isCreating} className="flex items-center gap-2 px-6 py-2.5 bg-[#1B3766] text-white rounded-lg font-medium hover:bg-[#142952] transition-all disabled:opacity-50">
-            <FaSave /> {isCreating ? "Publishing..." : "Publish Event"}
-          </button>
         </div>
 
         <form className="grid lg:grid-cols-5 gap-6" onSubmit={(e) => e.preventDefault()}>
-          {/* Left Column */}
+          {/* Left Column (main) */}
           <div className="lg:col-span-3 space-y-6">
-            {/* Title */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+            {/* Title Card */}
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6 transition-all hover:shadow-lg">
               <label className="block text-sm font-semibold text-gray-700 mb-2">Event Title <span className="text-red-500">*</span></label>
               <input type="text" name="title" value={formData.title} onChange={handleChange}
                 placeholder="Give your event a clear, compelling title..."
-                className="w-full px-4 py-3 text-lg font-medium border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766]" />
+                className="w-full px-4 py-3 text-lg font-medium border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
+              <p className="text-xs text-gray-400 mt-1">Make it catchy and descriptive – this is the first thing attendees see.</p>
             </div>
 
-            {/* Description */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-              <div className="flex items-center justify-between mb-3">
+            {/* Description Card */}
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
+              <div className="flex items-center justify-between mb-4">
                 <label className="text-sm font-semibold text-gray-700">Event Description <span className="text-red-500">*</span></label>
                 <button type="button" onClick={() => setPreviewMode(!previewMode)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${previewMode ? "bg-[#1B3766] text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${previewMode ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
                   <FaEye className="text-xs" /> {previewMode ? "Editing" : "Preview"}
                 </button>
               </div>
               {!previewMode && (
-                <div className="flex flex-wrap items-center gap-1 p-2 bg-gray-50 rounded-t-lg border border-gray-200 border-b-0">
+                <div className="flex flex-wrap items-center gap-1 p-2 bg-gray-50 rounded-t-xl border border-gray-200 border-b-0">
                   <ToolbarButton onClick={() => execCommand("bold")} active={activeFormats.bold} icon={FaBold} title="Bold" />
                   <ToolbarButton onClick={() => execCommand("italic")} active={activeFormats.italic} icon={FaItalic} title="Italic" />
                   <ToolbarButton onClick={() => execCommand("underline")} active={activeFormats.underline} icon={FaUnderline} title="Underline" />
@@ -577,50 +614,50 @@ const EventDashboardCreateEvent = () => {
                 </div>
               )}
               {previewMode ? (
-                <div className="min-h-[300px] p-4 border border-gray-200 rounded-b-lg bg-white prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: description }} />
+                <div className="min-h-[200px] p-4 border border-gray-200 rounded-b-xl bg-white prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: description }} />
               ) : (
                 <div ref={editorRef} contentEditable suppressContentEditableWarning
-                  className="min-h-[300px] p-4 border border-gray-200 rounded-b-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-gray-700 leading-relaxed"
+                  className="min-h-[200px] p-4 border border-gray-200 rounded-b-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 leading-relaxed"
                   onInput={(e) => setDescription(e.currentTarget.innerHTML)}
                   onKeyUp={updateActiveFormats} onMouseUp={updateActiveFormats} />
               )}
             </div>
 
-            {/* Date & Time */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-              <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2"><FaCalendarAlt className="text-[#1B3766]" /> Date & Time <span className="text-red-500">*</span></h3>
+            {/* Date & Time Card */}
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
+              <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2"><FaCalendarAlt className="text-blue-600" /> Date & Time <span className="text-red-500">*</span></h3>
               <div className="grid sm:grid-cols-3 gap-4">
-                <div><label className="block text-xs font-medium text-gray-600 mb-1">Date</label><input type="date" name="date" value={formData.date} onChange={handleChange} required className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-sm" /></div>
-                <div><label className="block text-xs font-medium text-gray-600 mb-1">Time</label><input type="time" name="time" value={formData.time} onChange={handleChange} required className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-sm" /></div>
-                <div><label className="block text-xs font-medium text-gray-600 mb-1">Duration</label><input type="text" name="duration" value={formData.duration} onChange={handleChange} placeholder="e.g., 2 hours" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-sm" /></div>
+                <div><label className="block text-xs font-medium text-gray-600 mb-1">Date</label><input type="date" name="date" value={formData.date} onChange={handleChange} required className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" /></div>
+                <div><label className="block text-xs font-medium text-gray-600 mb-1">Time</label><input type="time" name="time" value={formData.time} onChange={handleChange} required className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" /></div>
+                <div><label className="block text-xs font-medium text-gray-600 mb-1">Duration</label><input type="text" name="duration" value={formData.duration} onChange={handleChange} placeholder="e.g., 2 hours" className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" /></div>
               </div>
             </div>
 
-            {/* Location */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-              <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2"><FaMapMarkerAlt className="text-[#1B3766]" /> Location <span className={`${!formData.isVirtual ? 'text-red-500' : 'text-gray-400'} text-xs`}> {formData.isVirtual ? '(optional)' : '*'}</span></h3>
+            {/* Location Card */}
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
+              <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2"><FaMapMarkerAlt className="text-blue-600" /> Location <span className={`${!formData.isVirtual ? 'text-red-500' : 'text-gray-400'} text-xs`}> {formData.isVirtual ? '(optional)' : '*'}</span></h3>
               <div className="space-y-4">
                 <div className="grid sm:grid-cols-2 gap-4">
-                  <div><label className="block text-xs font-medium text-gray-600 mb-1">Venue</label><input type="text" name="venue" value={formData.venue} onChange={handleChange} placeholder="e.g., Eko Convention Centre" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-sm" /></div>
-                  <div><label className="block text-xs font-medium text-gray-600 mb-1">City / Address</label><input type="text" name="location" value={formData.location} onChange={handleChange} placeholder="e.g., Victoria Island, Lagos" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-sm" /></div>
+                  <div><label className="block text-xs font-medium text-gray-600 mb-1">Venue</label><input type="text" name="venue" value={formData.venue} onChange={handleChange} placeholder="e.g., Eko Convention Centre" className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" /></div>
+                  <div><label className="block text-xs font-medium text-gray-600 mb-1">City / Address</label><input type="text" name="location" value={formData.location} onChange={handleChange} placeholder="e.g., Victoria Island, Lagos" className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" /></div>
                 </div>
-                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="isVirtual" checked={formData.isVirtual} onChange={handleChange} className="text-[#1B3766] rounded" /><span className="text-sm text-gray-700"><FaVideo className="inline text-blue-500 mr-1" />Virtual / Online Event</span></label>
-                {formData.isVirtual && <div><label className="block text-xs font-medium text-gray-600 mb-1">Meeting Link</label><input type="url" name="meetingLink" value={formData.meetingLink} onChange={handleChange} placeholder="https://meet.google.com/xxx" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-sm" /></div>}
+                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="isVirtual" checked={formData.isVirtual} onChange={handleChange} className="text-blue-600 rounded" /><span className="text-sm text-gray-700"><FaVideo className="inline text-blue-500 mr-1" />Virtual / Online Event</span></label>
+                {formData.isVirtual && <div><label className="block text-xs font-medium text-gray-600 mb-1">Meeting Link</label><input type="url" name="meetingLink" value={formData.meetingLink} onChange={handleChange} placeholder="https://meet.google.com/xxx" className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" /></div>}
               </div>
             </div>
 
-            {/* Speakers */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+            {/* Speakers Card */}
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2"><FaUser className="text-[#1B3766]" /> Speakers</h3>
-                <button type="button" onClick={addSpeaker} className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-[#1B3766] text-white rounded-lg hover:bg-[#142952] transition-colors"><FaPlus /> Add Speaker</button>
+                <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2"><FaUser className="text-blue-600" /> Speakers & Hosts</h3>
+                <button type="button" onClick={addSpeaker} className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"><FaPlus /> Add Speaker</button>
               </div>
               {speakers.length === 0 ? (
-                <p className="text-sm text-gray-400 text-center py-4">No speakers added yet</p>
+                <p className="text-sm text-gray-400 text-center py-4">No speakers added yet – add hosts, panelists, or performers</p>
               ) : (
                 <div className="space-y-4">
                   {speakers.map((speaker, idx) => (
-                    <div key={idx} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <div key={idx} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
                       <div className="flex items-center justify-between mb-3">
                         <h4 className="text-sm font-medium text-gray-700">Speaker {idx + 1}</h4>
                         <button type="button" onClick={() => removeSpeaker(idx)} className="p-1 text-red-500 hover:bg-red-50 rounded"><FaTrashAlt className="text-xs" /></button>
@@ -630,11 +667,11 @@ const EventDashboardCreateEvent = () => {
                         <div className="flex items-center gap-4">
                           {speaker.imagePreview ? (
                             <div className="relative group">
-                              <img src={speaker.imagePreview} alt="" className="w-20 h-20 rounded-full object-cover border-2 border-gray-200" />
+                              <img src={speaker.imagePreview} alt="" className="w-16 h-16 rounded-full object-cover border-2 border-blue-200" />
                               <button type="button" onClick={() => removeSpeakerImage(idx)} className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100"><FaTimes className="text-[10px]" /></button>
                             </div>
                           ) : (
-                            <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center border-2 border-dashed border-gray-300"><FaUser className="text-2xl text-gray-400" /></div>
+                            <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center border-2 border-dashed border-gray-300"><FaUser className="text-2xl text-gray-400" /></div>
                           )}
                           <label className="cursor-pointer">
                             <div className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50"><FaCamera className="text-xs" />{speaker.imagePreview ? 'Change' : 'Upload'}</div>
@@ -643,28 +680,28 @@ const EventDashboardCreateEvent = () => {
                         </div>
                       </div>
                       <div className="grid sm:grid-cols-2 gap-3">
-                        <div><label className="block text-xs text-gray-500 mb-1">Name</label><input type="text" value={speaker.name} onChange={(e) => updateSpeaker(idx, 'name', e.target.value)} placeholder="Full name" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]" /></div>
-                        <div><label className="block text-xs text-gray-500 mb-1">Title/Role</label><input type="text" value={speaker.title} onChange={(e) => updateSpeaker(idx, 'title', e.target.value)} placeholder="e.g., CEO" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]" /></div>
-                        <div><label className="block text-xs text-gray-500 mb-1">Company</label><input type="text" value={speaker.company} onChange={(e) => updateSpeaker(idx, 'company', e.target.value)} placeholder="Company name" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]" /></div>
+                        <div><label className="block text-xs text-gray-500 mb-1">Name</label><input type="text" value={speaker.name} onChange={(e) => updateSpeaker(idx, 'name', e.target.value)} placeholder="Full name" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" /></div>
+                        <div><label className="block text-xs text-gray-500 mb-1">Title/Role</label><input type="text" value={speaker.title} onChange={(e) => updateSpeaker(idx, 'title', e.target.value)} placeholder="e.g., CEO" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" /></div>
+                        <div><label className="block text-xs text-gray-500 mb-1">Company</label><input type="text" value={speaker.company} onChange={(e) => updateSpeaker(idx, 'company', e.target.value)} placeholder="Company name" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" /></div>
                       </div>
-                      <div className="mt-3"><label className="block text-xs text-gray-500 mb-1">Bio</label><textarea value={speaker.bio} onChange={(e) => updateSpeaker(idx, 'bio', e.target.value)} placeholder="Brief bio..." rows={2} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]" /></div>
+                      <div className="mt-3"><label className="block text-xs text-gray-500 mb-1">Bio</label><textarea value={speaker.bio} onChange={(e) => updateSpeaker(idx, 'bio', e.target.value)} placeholder="Brief bio..." rows={2} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" /></div>
                     </div>
                   ))}
                 </div>
               )}
             </div>
 
-            {/* Registration Deadline */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+            {/* Registration Deadline Card */}
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
               <label className="block text-sm font-semibold text-gray-700 mb-2">Registration Deadline</label>
-              <input type="date" name="registrationDeadline" value={formData.registrationDeadline} onChange={handleChange} className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-sm" />
+              <input type="date" name="registrationDeadline" value={formData.registrationDeadline} onChange={handleChange} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
               <p className="text-xs text-gray-400 mt-1">If not set, registration closes on event date</p>
             </div>
 
             {/* Custom Registration Form Builder */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2"><FaClipboardList className="text-[#1B3766]" /> Custom Registration Form</h3>
+                <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2"><FaClipboardList className="text-blue-600" /> Custom Registration Form</h3>
               </div>
 
               <div className="mb-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded-md flex items-start gap-2 text-sm">
@@ -674,7 +711,7 @@ const EventDashboardCreateEvent = () => {
                   <p className="text-blue-700 text-xs">
                     The main registration form already collects <strong>Name, Email, and Phone number</strong>. 
                     Use the custom form only for <strong>additional</strong> information (e.g., dietary preferences, T‑shirt size, session choices). 
-                    <span className="block mt-1 text-yellow-800">⚠️ Avoid asking for password, PIN, or financial details.</span>
+                    <span className="block mt-1 text-yellow-800 flex items-center gap-1"><FaExclamationCircle className="text-yellow-600" /> Avoid asking for password, PIN, or financial details.</span>
                   </p>
                 </div>
               </div>
@@ -725,7 +762,7 @@ const EventDashboardCreateEvent = () => {
                         </div>
                         <div className="flex items-end mb-1">
                           <label className="flex items-center gap-1 cursor-pointer">
-                            <input type="checkbox" checked={field.required || false} onChange={(e) => updateFormField(idx, 'required', e.target.checked)} className="text-[#1B3766] rounded w-3.5 h-3.5" />
+                            <input type="checkbox" checked={field.required || false} onChange={(e) => updateFormField(idx, 'required', e.target.checked)} className="text-blue-600 rounded w-3.5 h-3.5" />
                             <span className="text-xs text-gray-600">Required</span>
                           </label>
                         </div>
@@ -738,7 +775,7 @@ const EventDashboardCreateEvent = () => {
                                 <button type="button" onClick={() => removeOption(idx, optIdx)} className="text-red-500"><FaTimes className="text-xs" /></button>
                               </div>
                             ))}
-                            <button type="button" onClick={() => addOption(idx)} className="text-xs text-[#1B3766] underline">+ Add option</button>
+                            <button type="button" onClick={() => addOption(idx)} className="text-xs text-blue-600 underline">+ Add option</button>
                           </div>
                         )}
                         {!['dropdown', 'checkbox', 'radio'].includes(field.type) && (
@@ -752,118 +789,120 @@ const EventDashboardCreateEvent = () => {
                   ))
                 )}
 
-                <button type="button" onClick={addFormField} className="w-full py-2.5 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 text-sm hover:border-[#1B3766] hover:text-[#1B3766] transition-colors">
+                <button type="button" onClick={addFormField} className="w-full py-2.5 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 text-sm hover:border-blue-500 hover:text-blue-500 transition-colors">
                   <FaPlus className="inline mr-1 text-xs" /> Add Field
                 </button>
               </div>
             </div>
 
-            {/* ===== Poster Template Section with Drag-and-Drop ===== */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <FaPaintBrush className="text-[#1B3766]" />
-                <h3 className="text-sm font-semibold text-gray-900">"I'm Attending" Poster</h3>
-                <span className="ml-2 text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">Optional</span>
+            {/* Poster Builder – redesigned with icons */}
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl text-white">
+                  <FaPaintBrush className="text-lg" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900">"I'm Attending" Poster</h3>
+                  <p className="text-xs text-gray-500">Create a shareable poster for attendees to show they're coming</p>
+                </div>
+                <span className="ml-auto text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">Optional</span>
               </div>
-              <p className="text-xs text-gray-500 mb-4">
-                Enable attendees to generate a personalised "I'm attending" poster. 
-                Upload a background template and use the visual editor to position the photo and name placeholders.
-              </p>
 
-              {/* Background image upload */}
-              <div className="mb-4">
-                <label className="block text-xs font-medium text-gray-600 mb-1">Background Template</label>
-                <div className="flex items-center gap-4">
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* Left: Poster Preview */}
+                <div className="relative bg-gray-100 rounded-xl overflow-hidden border border-gray-200">
                   {posterImagePreview ? (
-                    <div className="relative group">
-                      <img src={posterImagePreview} alt="Poster template" className="w-32 h-32 object-cover rounded-lg border border-gray-200" />
-                      <button type="button" onClick={removePosterImage} className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <FaTimes className="text-[10px]" />
-                      </button>
+                    <div className="relative" style={{ userSelect: 'none' }}>
+                      <img
+                        ref={imageRef}
+                        src={posterImagePreview}
+                        alt="Poster template"
+                        className="w-full h-auto"
+                        draggable={false}
+                        onLoad={(e) => {
+                          const img = e.target;
+                          setImageNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+                        }}
+                      />
+                      {/* Photo placeholder */}
+                      <div
+                        className="absolute border-2 border-blue-500 bg-blue-500/20 cursor-move flex items-center justify-center text-blue-600 text-xs font-semibold"
+                        style={{
+                          left: `${(posterTemplate.photoPlaceholder.x / imageNaturalSize.width) * 100}%`,
+                          top: `${(posterTemplate.photoPlaceholder.y / imageNaturalSize.height) * 100}%`,
+                          width: `${(posterTemplate.photoPlaceholder.width / imageNaturalSize.width) * 100}%`,
+                          height: `${(posterTemplate.photoPlaceholder.height / imageNaturalSize.height) * 100}%`,
+                          borderRadius: `${posterTemplate.photoPlaceholder.borderRadius || 0}px`,
+                        }}
+                        onMouseDown={(e) => startDrag(e, 'photo', false)}
+                        onTouchStart={(e) => startDrag(e, 'photo', false)}
+                      >
+                        <FaCamera className="mr-1" /> Photo
+                        <div
+                          className="absolute bottom-0 right-0 w-4 h-4 bg-blue-500 cursor-se-resize rounded-bl-none rounded-tr-none"
+                          onMouseDown={(e) => { e.stopPropagation(); startDrag(e, 'photo', true); }}
+                          onTouchStart={(e) => { e.stopPropagation(); startDrag(e, 'photo', true); }}
+                        >
+                          <FaArrowsAlt className="text-white text-[10px] absolute bottom-0.5 right-0.5" />
+                        </div>
+                      </div>
+                      {/* Name placeholder */}
+                      <div
+                        className="absolute cursor-move font-bold"
+                        style={{
+                          left: `${(posterTemplate.namePlaceholder.x / imageNaturalSize.width) * 100}%`,
+                          top: `${(posterTemplate.namePlaceholder.y / imageNaturalSize.height) * 100}%`,
+                          color: posterTemplate.namePlaceholder.color,
+                          fontSize: `${(posterTemplate.namePlaceholder.fontSize / imageNaturalSize.height) * 100}vh`,
+                          fontFamily: posterTemplate.namePlaceholder.fontFamily,
+                          whiteSpace: 'nowrap',
+                        }}
+                        onMouseDown={(e) => startDrag(e, 'name', false)}
+                        onTouchStart={(e) => startDrag(e, 'name', false)}
+                      >
+                        <FaPen className="mr-1 inline" /> Your Name
+                        <div className="absolute top-0 left-0 w-full h-full border-2 border-green-500 bg-green-500/10 -z-10" />
+                      </div>
                     </div>
                   ) : (
-                    <label className="cursor-pointer">
-                      <div className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
-                        <FaImage className="text-xs" /> Upload Template
-                      </div>
-                      <input type="file" accept="image/*" onChange={handlePosterImageSelect} className="hidden" />
-                    </label>
+                    <div className="aspect-video flex items-center justify-center text-gray-400 flex-col p-8">
+                      <FaImage className="text-4xl mb-2" />
+                      <p>Select a background</p>
+                    </div>
                   )}
-                  <span className="text-xs text-gray-400">JPG, PNG, WEBP (max 10MB)</span>
+                  <div className="absolute bottom-2 left-2 bg-black/50 text-white text-[10px] px-2 py-1 rounded flex items-center gap-1">
+                    <FaArrowsAlt className="text-[10px]" /> Drag to position
+                  </div>
                 </div>
-              </div>
 
-              {posterImagePreview && (
+                {/* Right: Controls */}
                 <div>
-                  <p className="text-xs text-gray-500 mb-2 flex items-center gap-2">
-                    <FaArrowsAlt className="text-xs" /> Drag the blue (photo) and green (name) boxes to reposition. Resize photo by dragging the bottom-right corner.
-                  </p>
-                  <div 
-                    ref={containerRef}
-                    className="relative border-2 border-gray-200 rounded-lg overflow-hidden mb-4"
-                    style={{ maxWidth: '100%', userSelect: 'none' }}
-                  >
-                    <img 
-                      ref={imageRef}
-                      src={posterImagePreview} 
-                      alt="Template" 
-                      className="w-full h-auto"
-                      draggable={false}
-                      onLoad={(e) => {
-                        const img = e.target;
-                        setImageNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
-                      }}
-                    />
-                    
-                    {/* Photo placeholder - draggable and resizable */}
-                    <div
-                      className="absolute border-2 border-blue-500 bg-blue-500/20 cursor-move"
-                      style={{
-                        left: `${(posterTemplate.photoPlaceholder.x / imageNaturalSize.width) * 100}%`,
-                        top: `${(posterTemplate.photoPlaceholder.y / imageNaturalSize.height) * 100}%`,
-                        width: `${(posterTemplate.photoPlaceholder.width / imageNaturalSize.width) * 100}%`,
-                        height: `${(posterTemplate.photoPlaceholder.height / imageNaturalSize.height) * 100}%`,
-                        borderRadius: `${posterTemplate.photoPlaceholder.borderRadius || 0}px`,
-                      }}
-                      onMouseDown={(e) => startDrag(e, 'photo', false)}
-                      onTouchStart={(e) => startDrag(e, 'photo', false)}
-                    >
-                      <div className="w-full h-full flex items-center justify-center text-blue-600 text-xs font-semibold">
-                        📷 Photo
-                      </div>
-                      {/* Resize handle */}
-                      <div 
-                        className="absolute bottom-0 right-0 w-4 h-4 bg-blue-500 cursor-se-resize rounded-bl-none rounded-tr-none"
-                        onMouseDown={(e) => { e.stopPropagation(); startDrag(e, 'photo', true); }}
-                        onTouchStart={(e) => { e.stopPropagation(); startDrag(e, 'photo', true); }}
-                      >
-                        <FaExpandArrowsAlt className="text-white text-[10px] absolute bottom-0.5 right-0.5" />
-                      </div>
+                  <div className="mb-4">
+                    <label className="block text-xs font-medium text-gray-600 mb-2">Background</label>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {SAMPLE_BACKGROUNDS.map((sample, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => applySampleBackground(idx)}
+                          className={`w-12 h-12 rounded-lg border-2 overflow-hidden ${selectedSample === idx ? 'border-blue-500 shadow-md' : 'border-gray-200'}`}
+                        >
+                          <img src={sample.url} alt={sample.label} className="w-full h-full object-cover" />
+                        </button>
+                      ))}
+                      <label className="cursor-pointer">
+                        <div className="w-12 h-12 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center hover:border-blue-500 transition-colors">
+                          <FaPlus className="text-gray-400" />
+                        </div>
+                        <input type="file" accept="image/*" onChange={handlePosterImageSelect} className="hidden" />
+                      </label>
                     </div>
-
-                    {/* Name placeholder - draggable */}
-                    <div
-                      className="absolute cursor-move font-bold"
-                      style={{
-                        left: `${(posterTemplate.namePlaceholder.x / imageNaturalSize.width) * 100}%`,
-                        top: `${(posterTemplate.namePlaceholder.y / imageNaturalSize.height) * 100}%`,
-                        color: posterTemplate.namePlaceholder.color,
-                        fontSize: `${(posterTemplate.namePlaceholder.fontSize / imageNaturalSize.height) * 100}vh`, // relative to image height
-                        fontFamily: posterTemplate.namePlaceholder.fontFamily,
-                        whiteSpace: 'nowrap',
-                      }}
-                      onMouseDown={(e) => startDrag(e, 'name', false)}
-                      onTouchStart={(e) => startDrag(e, 'name', false)}
-                    >
-                      Your Name
-                      <div className="absolute top-0 left-0 w-full h-full border-2 border-green-500 bg-green-500/10 -z-10" />
-                    </div>
+                    <p className="text-[10px] text-gray-400">Choose a sample or upload your own background</p>
                   </div>
 
-                  {/* Controls for name styling and border radius */}
-                  <div className="grid grid-cols-2 gap-2 mt-3">
+                  <div className="space-y-3">
                     <div>
-                      <label className="block text-[10px] text-gray-500 mb-0.5">Font Size</label>
+                      <label className="block text-[10px] text-gray-500 mb-0.5">Name Font Size</label>
                       <input
                         type="number"
                         value={posterTemplate.namePlaceholder.fontSize}
@@ -872,7 +911,7 @@ const EventDashboardCreateEvent = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] text-gray-500 mb-0.5">Color</label>
+                      <label className="block text-[10px] text-gray-500 mb-0.5">Name Color</label>
                       <input
                         type="color"
                         value={posterTemplate.namePlaceholder.color}
@@ -880,7 +919,7 @@ const EventDashboardCreateEvent = () => {
                         className="w-full h-8 p-0 border border-gray-200 rounded"
                       />
                     </div>
-                    <div className="col-span-2">
+                    <div>
                       <label className="block text-[10px] text-gray-500 mb-0.5">Font Family</label>
                       <select
                         value={posterTemplate.namePlaceholder.fontFamily}
@@ -895,7 +934,7 @@ const EventDashboardCreateEvent = () => {
                         <option value="Verdana">Verdana</option>
                       </select>
                     </div>
-                    <div className="col-span-2">
+                    <div>
                       <label className="block text-[10px] text-gray-500 mb-0.5">Photo Border Radius (px)</label>
                       <input
                         type="number"
@@ -908,21 +947,18 @@ const EventDashboardCreateEvent = () => {
                     </div>
                   </div>
                 </div>
-              )}
-              {!posterImagePreview && (
-                <p className="text-sm text-gray-400 text-center py-2">Upload a template to configure placeholders</p>
-              )}
+              </div>
             </div>
           </div>
 
-          {/* Right Column (unchanged) */}
+          {/* Right Column (Sidebar) - redesigned */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Images */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2"><FaImage className="text-[#1B3766]" /> Event Images <span className="text-red-500">*</span> <span className="text-xs text-gray-400 font-normal">({images.length}/10)</span></h3>
+            {/* Images Card */}
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2"><FaImage className="text-blue-600" /> Event Images <span className="text-red-500">*</span> <span className="text-xs text-gray-400 font-normal">({images.length}/10)</span></h3>
               {images.length < 10 && (
                 <label className="block w-full cursor-pointer mb-4">
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-[#1B3766] transition-colors">
+                  <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-blue-500 transition-colors">
                     <FaPlus className="text-2xl text-gray-400 mx-auto mb-2" />
                     <p className="text-sm text-gray-600 font-medium">Click to upload images</p>
                     <p className="text-xs text-gray-400 mt-1">JPG, PNG, WEBP (Max 10MB each)</p>
@@ -936,7 +972,7 @@ const EventDashboardCreateEvent = () => {
                     <div key={index} className="relative group">
                       <img src={preview} alt="" className="w-full h-28 object-cover rounded-lg border border-gray-200" />
                       <button type="button" onClick={() => removeImage(index)} className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100"><FaTrashAlt className="text-[10px]" /></button>
-                      {index === 0 && <span className="absolute bottom-1 left-1 bg-[#1B3766] text-white text-[10px] px-1.5 py-0.5 rounded">Cover</span>}
+                      {index === 0 && <span className="absolute bottom-1 left-1 bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded">Cover</span>}
                     </div>
                   ))}
                 </div>
@@ -944,41 +980,41 @@ const EventDashboardCreateEvent = () => {
             </div>
 
             {/* Category & Type */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-              <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2"><FaTag className="text-[#1B3766]" /> Category & Type</h3>
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
+              <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2"><FaTag className="text-blue-600" /> Category & Type</h3>
               <div className="space-y-4">
-                <div><label className="block text-xs font-medium text-gray-600 mb-1">Category <span className="text-red-500">*</span></label><select name="category" value={formData.category} onChange={handleChange} className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-sm"><option value="">Select category</option>{categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}</select></div>
-                <div><label className="block text-xs font-medium text-gray-600 mb-1">Event Type <span className="text-red-500">*</span></label><select name="eventType" value={formData.eventType} onChange={handleChange} className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-sm"><option value="">Select type</option>{eventTypes.map(type => <option key={type} value={type}>{type}</option>)}</select></div>
+                <div><label className="block text-xs font-medium text-gray-600 mb-1">Category <span className="text-red-500">*</span></label><select name="category" value={formData.category} onChange={handleChange} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"><option value="">Select category</option>{categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}</select></div>
+                <div><label className="block text-xs font-medium text-gray-600 mb-1">Event Type <span className="text-red-500">*</span></label><select name="eventType" value={formData.eventType} onChange={handleChange} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"><option value="">Select type</option>{eventTypes.map(type => <option key={type} value={type}>{type}</option>)}</select></div>
               </div>
             </div>
 
             {/* Tags */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
               <label className="block text-sm font-semibold text-gray-700 mb-2">Tags</label>
-              <input type="text" name="tags" value={formData.tags} onChange={handleChange} placeholder="e.g., tech, startup, AI (comma separated)" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-sm" />
+              <input type="text" name="tags" value={formData.tags} onChange={handleChange} placeholder="e.g., tech, startup, AI (comma separated)" className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
             </div>
 
             {/* Tickets & Pricing */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-              <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2"><FaTicketAlt className="text-[#1B3766]" /> Tickets & Pricing</h3>
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
+              <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2"><FaTicketAlt className="text-blue-600" /> Tickets & Pricing</h3>
               <div className="space-y-4">
-                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="isPaid" checked={formData.isPaid} onChange={handleChange} className="text-[#1B3766] rounded" /><span className="text-sm text-gray-700 font-medium">This is a paid event</span></label>
+                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="isPaid" checked={formData.isPaid} onChange={handleChange} className="text-blue-600 rounded" /><span className="text-sm text-gray-700 font-medium">This is a paid event</span></label>
 
                 {formData.isPaid && (
-                  <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={hasTicketTypes} onChange={(e) => setHasTicketTypes(e.target.checked)} className="text-[#1B3766] rounded" /><span className="text-sm text-gray-700">Enable multiple ticket types</span></label>
+                  <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={hasTicketTypes} onChange={(e) => setHasTicketTypes(e.target.checked)} className="text-blue-600 rounded" /><span className="text-sm text-gray-700">Enable multiple ticket types</span></label>
                 )}
 
                 {formData.isPaid && !hasTicketTypes && (
-                  <div><label className="block text-xs font-medium text-gray-600 mb-1">Ticket Price (₦) <span className="text-red-500">*</span></label><input type="number" name="price" value={formData.price} onChange={handleChange} placeholder="e.g., 5000" min="100" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-sm" /></div>
+                  <div><label className="block text-xs font-medium text-gray-600 mb-1">Ticket Price (₦) <span className="text-red-500">*</span></label><input type="number" name="price" value={formData.price} onChange={handleChange} placeholder="e.g., 5000" min="100" className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" /></div>
                 )}
 
                 {hasTicketTypes && (
                   <div className="space-y-3">
                     {ticketTypes.map((tt, index) => (
-                      <div key={index} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                      <div key={index} className="bg-gray-50 rounded-xl p-3 border border-gray-200">
                         <div className="flex items-center justify-between mb-2"><span className="text-xs font-semibold text-gray-700">Type #{index + 1}</span><button type="button" onClick={() => removeTicketType(index)} className="text-red-500"><FaTimes className="text-xs" /></button></div>
                         <div className="grid grid-cols-2 gap-2">
-                          <div className="col-span-2"><label className="text-[10px] text-gray-500">Name *</label><input type="text" value={tt.name} onChange={(e) => updateTicketType(index, 'name', e.target.value)} placeholder="VIP" className="w-full px-2.5 py-1.5 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#1B3766]" /></div>
+                          <div className="col-span-2"><label className="text-[10px] text-gray-500">Name *</label><input type="text" value={tt.name} onChange={(e) => updateTicketType(index, 'name', e.target.value)} placeholder="VIP" className="w-full px-2.5 py-1.5 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
                           <div><label className="text-[10px] text-gray-500">Price (₦) *</label><input type="number" value={tt.price} onChange={(e) => updateTicketType(index, 'price', e.target.value)} placeholder="5000" className="w-full px-2.5 py-1.5 border border-gray-200 rounded text-xs" /></div>
                           <div><label className="text-[10px] text-gray-500">Capacity</label><input type="number" value={tt.capacity} onChange={(e) => updateTicketType(index, 'capacity', e.target.value)} placeholder="0=unlimited" className="w-full px-2.5 py-1.5 border border-gray-200 rounded text-xs" /></div>
                           <div><label className="text-[10px] text-gray-500">Seats/Ticket</label><input type="number" value={tt.seatsPerTicket} onChange={(e) => updateTicketType(index, 'seatsPerTicket', e.target.value)} min="1" placeholder="1" className="w-full px-2.5 py-1.5 border border-gray-200 rounded text-xs" /></div>
@@ -986,27 +1022,27 @@ const EventDashboardCreateEvent = () => {
                         </div>
                       </div>
                     ))}
-                    <button type="button" onClick={addTicketType} className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 text-sm hover:border-[#1B3766] hover:text-[#1B3766]"><FaPlus className="inline mr-1 text-xs" /> Add Ticket Type</button>
+                    <button type="button" onClick={addTicketType} className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 text-sm hover:border-blue-500 hover:text-blue-500"><FaPlus className="inline mr-1 text-xs" /> Add Ticket Type</button>
                   </div>
                 )}
               </div>
             </div>
 
             {/* Multiple Tickets */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
               <h3 className="text-sm font-semibold text-gray-900 mb-3">Ticket Purchase Options</h3>
-              <label className="flex items-center gap-2 cursor-pointer mb-3"><input type="checkbox" checked={enableMultipleTickets} onChange={(e) => setEnableMultipleTickets(e.target.checked)} className="text-[#1B3766] rounded" /><span className="text-sm text-gray-700">Allow buying multiple tickets per order</span></label>
-              {enableMultipleTickets && <div><label className="block text-xs font-medium text-gray-600 mb-1">Max Tickets Per Order</label><input type="number" name="maxTicketsPerOrder" value={formData.maxTicketsPerOrder} onChange={handleChange} min="1" max="100" placeholder="10" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-sm" /></div>}
+              <label className="flex items-center gap-2 cursor-pointer mb-3"><input type="checkbox" checked={enableMultipleTickets} onChange={(e) => setEnableMultipleTickets(e.target.checked)} className="text-blue-600 rounded" /><span className="text-sm text-gray-700">Allow buying multiple tickets per order</span></label>
+              {enableMultipleTickets && <div><label className="block text-xs font-medium text-gray-600 mb-1">Max Tickets Per Order</label><input type="number" name="maxTicketsPerOrder" value={formData.maxTicketsPerOrder} onChange={handleChange} min="1" max="100" placeholder="10" className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" /></div>}
             </div>
 
             {/* Capacity */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2"><FaUsers className="text-[#1B3766]" /> Capacity</h3>
-              <input type="number" name="maxAttendees" value={formData.maxAttendees} onChange={handleChange} placeholder="Leave empty for unlimited" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-sm" />
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2"><FaUsers className="text-blue-600" /> Capacity</h3>
+              <input type="number" name="maxAttendees" value={formData.maxAttendees} onChange={handleChange} placeholder="Leave empty for unlimited" className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
               <p className="text-xs text-gray-400 mt-1">0 means unlimited</p>
             </div>
 
-            <button type="button" onClick={handleSubmit} disabled={isCreating} className="w-full py-3 bg-[#1B3766] text-white rounded-lg font-medium hover:bg-[#142952] transition-all disabled:opacity-50 lg:hidden">
+            <button type="button" onClick={handleSubmit} disabled={isCreating} className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-bold hover:shadow-lg transition-all disabled:opacity-50 lg:hidden">
               {isCreating ? "Publishing..." : "Publish Event"}
             </button>
           </div>

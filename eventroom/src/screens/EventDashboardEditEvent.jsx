@@ -1,4 +1,4 @@
-// screens/EventDashboardEditEvent.jsx
+// screens/EventDashboardEditEvent.jsx – Redesigned with poster builder & modern UI
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -11,7 +11,7 @@ import {
   FaClipboardList, FaCheckSquare, FaDotCircle, FaFont, FaHashtag,
   FaCalendar, FaEnvelope, FaPhone, FaChevronDown, FaChevronUp,
   FaSyncAlt, FaExclamationCircle, FaPaintBrush, FaUserCircle,
-  FaArrowsAlt, FaExpandArrowsAlt, FaInfoCircle,
+  FaArrowsAlt, FaInfoCircle, FaMagic, FaPen,
 } from 'react-icons/fa';
 import {
   useGetEventByIdQuery,
@@ -22,9 +22,17 @@ import {
 import { toast } from 'react-toastify';
 import EventDashboardSidebar from '../components/EventDashboardSidebar';
 
+// ---- SAMPLE POSTER TEMPLATES (same as Create) ----
+const SAMPLE_BACKGROUNDS = [
+  { label: 'Modern Gradient', url: 'https://images.unsplash.com/photo-1540575861501-7cf05a4b125a?auto=format&fit=crop&w=600&q=80' },
+  { label: 'City Night', url: 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=600&q=80' },
+  { label: 'Abstract Art', url: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80' },
+  { label: 'Minimal White', url: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=600&q=80' },
+];
+
 const ToolbarButton = ({ onClick, active, icon: Icon, title }) => (
   <button type="button" onClick={onClick} title={title}
-    className={`p-2 rounded hover:bg-gray-200 transition-colors ${active ? "bg-gray-200 text-[#1B3766]" : "text-gray-600"}`}>
+    className={`p-2 rounded hover:bg-blue-100 transition-colors ${active ? "bg-blue-200 text-[#1B3766]" : "text-gray-600"}`}>
     <Icon className="text-sm" />
   </button>
 );
@@ -74,6 +82,7 @@ const EventDashboardEditEvent = () => {
   const [posterImagePreview, setPosterImagePreview] = useState('');
   const [posterChanged, setPosterChanged] = useState(false);
   const [removePoster, setRemovePoster] = useState(false);
+  const [selectedSample, setSelectedSample] = useState(0);
 
   // Drag & drop refs
   const containerRef = useRef(null);
@@ -339,6 +348,17 @@ const EventDashboardEditEvent = () => {
       img.src = reader.result;
     };
     reader.readAsDataURL(file);
+  };
+
+  const applySampleBackground = (index) => {
+    setSelectedSample(index);
+    setPosterImagePreview(SAMPLE_BACKGROUNDS[index].url);
+    setPosterImageFile(null);
+    setRemovePoster(false);
+    setPosterChanged(true);
+    const img = new Image();
+    img.onload = () => setImageNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+    img.src = SAMPLE_BACKGROUNDS[index].url;
   };
 
   const removePosterImage = () => {
@@ -630,100 +650,112 @@ const EventDashboardEditEvent = () => {
 
   return (
     <EventDashboardSidebar>
-      <div className="max-w-6xl mx-auto">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-          <div>
-            <button onClick={() => navigate(`/dashboard/events/${id}`)} className="flex items-center gap-2 text-gray-600 hover:text-[#1B3766] mb-2 transition-colors text-sm"><FaArrowLeft className="text-xs" /> Back to Event</button>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Edit Event</h1>
-            <p className="text-gray-500 mt-1 text-sm">Update your event details</p>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Header with gradient */}
+        <div className="relative bg-gradient-to-r from-blue-900 via-indigo-900 to-purple-900 rounded-2xl p-6 sm:p-8 mb-8 text-white shadow-xl overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+          <div className="relative z-10">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <button onClick={() => navigate(`/dashboard/events/${id}`)} className="inline-flex items-center gap-2 text-white/70 hover:text-white mb-2 transition-colors text-sm">
+                  <FaArrowLeft className="text-xs" /> Back to Event
+                </button>
+                <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
+                  <FaMagic className="text-amber-300" /> Edit Event
+                </h1>
+                <p className="text-white/60 mt-1 text-sm">Update your event details</p>
+              </div>
+              <button onClick={handleSubmit} disabled={isUpdating || isUpdatingForm} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-400 to-amber-300 text-gray-900 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-50">
+                <FaSave /> {(isUpdating || isUpdatingForm) ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
           </div>
-          <button onClick={handleSubmit} disabled={isUpdating || isUpdatingForm} className="flex items-center gap-2 px-6 py-2.5 bg-[#1B3766] text-white rounded-lg font-medium hover:bg-[#142952] transition-all disabled:opacity-50"><FaSave /> {(isUpdating || isUpdatingForm) ? "Saving..." : "Save Changes"}</button>
         </div>
 
         <form className="grid lg:grid-cols-5 gap-6" onSubmit={(e) => e.preventDefault()}>
+          {/* Left Column */}
           <div className="lg:col-span-3 space-y-6">
-            {/* Event Title */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+            {/* Title */}
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6 transition-all hover:shadow-lg">
               <label className="block text-sm font-semibold text-gray-700 mb-2">Event Title <span className="text-red-500">*</span></label>
-              <input type="text" name="title" value={formData.title} onChange={handleChange} placeholder="Give your event a clear, compelling title..." className="w-full px-4 py-3 text-lg font-medium border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766]" />
+              <input type="text" name="title" value={formData.title} onChange={handleChange} placeholder="Give your event a clear, compelling title..." className="w-full px-4 py-3 text-lg font-medium border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
             </div>
 
             {/* Description */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-              <div className="flex items-center justify-between mb-3">
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
+              <div className="flex items-center justify-between mb-4">
                 <label className="text-sm font-semibold text-gray-700">Event Description <span className="text-red-500">*</span></label>
-                <button type="button" onClick={() => setPreviewMode(!previewMode)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${previewMode ? "bg-[#1B3766] text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}><FaEye className="text-xs" /> {previewMode ? "Editing" : "Preview"}</button>
+                <button type="button" onClick={() => setPreviewMode(!previewMode)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${previewMode ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}><FaEye className="text-xs" /> {previewMode ? "Editing" : "Preview"}</button>
               </div>
               {!previewMode && (
-                <div className="flex flex-wrap items-center gap-1 p-2 bg-gray-50 rounded-t-lg border border-gray-200 border-b-0">
+                <div className="flex flex-wrap items-center gap-1 p-2 bg-gray-50 rounded-t-xl border border-gray-200 border-b-0">
                   <ToolbarButton onClick={() => execCommand("bold")} active={activeFormats.bold} icon={FaBold} title="Bold" />
                   <ToolbarButton onClick={() => execCommand("italic")} active={activeFormats.italic} icon={FaItalic} title="Italic" />
                   <ToolbarButton onClick={() => execCommand("underline")} active={activeFormats.underline} icon={FaUnderline} title="Underline" />
                   <div className="w-px h-6 bg-gray-300 mx-1" />
-                  <ToolbarButton onClick={() => execCommand("justifyLeft")} icon={FaAlignLeft} title="Align Left" />
-                  <ToolbarButton onClick={() => execCommand("justifyCenter")} icon={FaAlignCenter} title="Align Center" />
-                  <ToolbarButton onClick={() => execCommand("justifyRight")} icon={FaAlignRight} title="Align Right" />
+                  <ToolbarButton onClick={() => execCommand("justifyLeft")} icon={FaAlignLeft} title="Left" />
+                  <ToolbarButton onClick={() => execCommand("justifyCenter")} icon={FaAlignCenter} title="Center" />
+                  <ToolbarButton onClick={() => execCommand("justifyRight")} icon={FaAlignRight} title="Right" />
                   <div className="w-px h-6 bg-gray-300 mx-1" />
-                  <ToolbarButton onClick={() => execCommand("insertUnorderedList")} icon={FaListUl} title="Bullet List" />
-                  <ToolbarButton onClick={() => execCommand("insertOrderedList")} icon={FaListOl} title="Numbered List" />
+                  <ToolbarButton onClick={() => execCommand("insertUnorderedList")} icon={FaListUl} title="Bullets" />
+                  <ToolbarButton onClick={() => execCommand("insertOrderedList")} icon={FaListOl} title="Numbers" />
                   <div className="w-px h-6 bg-gray-300 mx-1" />
                   <ToolbarButton onClick={() => insertHeading(2)} icon={FaHeading} title="Heading" />
                   <ToolbarButton onClick={insertQuote} icon={FaQuoteRight} title="Quote" />
-                  <ToolbarButton onClick={insertLink} icon={FaLink} title="Insert Link" />
+                  <ToolbarButton onClick={insertLink} icon={FaLink} title="Link" />
                 </div>
               )}
               {previewMode ? (
-                <div className="min-h-[300px] p-4 border border-gray-200 rounded-b-lg bg-white prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: description }} />
+                <div className="min-h-[200px] p-4 border border-gray-200 rounded-b-xl bg-white prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: description }} />
               ) : (
                 <div ref={editorRef} contentEditable suppressContentEditableWarning
-                  className="min-h-[300px] p-4 border border-gray-200 rounded-b-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-gray-700 leading-relaxed"
+                  className="min-h-[200px] p-4 border border-gray-200 rounded-b-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 leading-relaxed"
                   onInput={(e) => setDescription(e.currentTarget.innerHTML)}
                   onKeyUp={updateActiveFormats} onMouseUp={updateActiveFormats} />
               )}
               {showReloadInstruction && (
                 <div className="mt-3 flex items-center gap-2 text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                   <FaExclamationCircle className="text-yellow-500" />
-                  <span>Description didn't load? <button type="button" onClick={() => window.location.reload()} className="underline text-[#1B3766] font-medium inline-flex items-center gap-1"><FaSyncAlt className="text-xs" /> Reload the page</button></span>
+                  <span>Description didn't load? <button type="button" onClick={() => window.location.reload()} className="underline text-blue-600 font-medium inline-flex items-center gap-1"><FaSyncAlt className="text-xs" /> Reload the page</button></span>
                 </div>
               )}
-              <p className="text-xs text-gray-500 mt-2">{previewMode ? "Switch back to edit mode." : "Use the toolbar to format your text."}</p>
             </div>
 
             {/* Date & Time */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-              <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2"><FaCalendarAlt className="text-[#1B3766]" /> Date & Time <span className="text-red-500">*</span></h3>
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
+              <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2"><FaCalendarAlt className="text-blue-600" /> Date & Time <span className="text-red-500">*</span></h3>
               <div className="grid sm:grid-cols-3 gap-4">
-                <div><label className="block text-xs font-medium text-gray-600 mb-1">Date</label><input type="date" name="date" value={formData.date} onChange={handleChange} required className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-sm" /></div>
-                <div><label className="block text-xs font-medium text-gray-600 mb-1">Time</label><input type="time" name="time" value={formData.time} onChange={handleChange} required className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-sm" /></div>
-                <div><label className="block text-xs font-medium text-gray-600 mb-1">Duration</label><input type="text" name="duration" value={formData.duration} onChange={handleChange} placeholder="e.g., 2 hours" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-sm" /></div>
+                <div><label className="block text-xs font-medium text-gray-600 mb-1">Date</label><input type="date" name="date" value={formData.date} onChange={handleChange} required className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" /></div>
+                <div><label className="block text-xs font-medium text-gray-600 mb-1">Time</label><input type="time" name="time" value={formData.time} onChange={handleChange} required className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" /></div>
+                <div><label className="block text-xs font-medium text-gray-600 mb-1">Duration</label><input type="text" name="duration" value={formData.duration} onChange={handleChange} placeholder="e.g., 2 hours" className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" /></div>
               </div>
             </div>
 
             {/* Location */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-              <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2"><FaMapMarkerAlt className="text-[#1B3766]" /> Location <span className="text-red-500">*</span></h3>
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
+              <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2"><FaMapMarkerAlt className="text-blue-600" /> Location <span className="text-red-500">*</span></h3>
               <div className="space-y-4">
                 <div className="grid sm:grid-cols-2 gap-4">
-                  <div><label className="block text-xs font-medium text-gray-600 mb-1">Venue</label><input type="text" name="venue" value={formData.venue} onChange={handleChange} placeholder="e.g., Eko Convention Centre" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-sm" /></div>
-                  <div><label className="block text-xs font-medium text-gray-600 mb-1">City / Address</label><input type="text" name="location" value={formData.location} onChange={handleChange} placeholder="e.g., Victoria Island, Lagos" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-sm" /></div>
+                  <div><label className="block text-xs font-medium text-gray-600 mb-1">Venue</label><input type="text" name="venue" value={formData.venue} onChange={handleChange} placeholder="e.g., Eko Convention Centre" className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" /></div>
+                  <div><label className="block text-xs font-medium text-gray-600 mb-1">City / Address</label><input type="text" name="location" value={formData.location} onChange={handleChange} placeholder="e.g., Victoria Island, Lagos" className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" /></div>
                 </div>
-                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="isVirtual" checked={formData.isVirtual} onChange={handleChange} className="text-[#1B3766] rounded" /><span className="text-sm text-gray-700"><FaVideo className="inline text-blue-500 mr-1" />Virtual / Online Event</span></label>
-                {formData.isVirtual && <div><label className="block text-xs font-medium text-gray-600 mb-1">Meeting Link</label><input type="url" name="meetingLink" value={formData.meetingLink} onChange={handleChange} placeholder="https://meet.google.com/xxx" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-sm" /></div>}
+                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="isVirtual" checked={formData.isVirtual} onChange={handleChange} className="text-blue-600 rounded" /><span className="text-sm text-gray-700"><FaVideo className="inline text-blue-500 mr-1" />Virtual / Online Event</span></label>
+                {formData.isVirtual && <div><label className="block text-xs font-medium text-gray-600 mb-1">Meeting Link</label><input type="url" name="meetingLink" value={formData.meetingLink} onChange={handleChange} placeholder="https://meet.google.com/xxx" className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" /></div>}
               </div>
             </div>
 
             {/* Speakers */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2"><FaUser className="text-[#1B3766]" /> Speakers</h3>
-                <button type="button" onClick={addSpeaker} className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-[#1B3766] text-white rounded-lg hover:bg-[#142952] transition-colors"><FaPlus /> Add Speaker</button>
+                <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2"><FaUser className="text-blue-600" /> Speakers & Hosts</h3>
+                <button type="button" onClick={addSpeaker} className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"><FaPlus /> Add Speaker</button>
               </div>
               {speakers.length === 0 ? (
                 <p className="text-sm text-gray-400 text-center py-4">No speakers added yet</p>
               ) : (
                 <div className="space-y-4">
                   {speakers.map((speaker, idx) => (
-                    <div key={idx} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <div key={idx} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
                       <div className="flex items-center justify-between mb-3">
                         <h4 className="text-sm font-medium text-gray-700">Speaker {idx + 1}</h4>
                         <button type="button" onClick={() => removeSpeaker(idx)} className="p-1 text-red-500 hover:bg-red-50 rounded"><FaTrashAlt className="text-xs" /></button>
@@ -733,11 +765,11 @@ const EventDashboardEditEvent = () => {
                         <div className="flex items-center gap-4">
                           {speaker.imagePreview ? (
                             <div className="relative group">
-                              <img src={speaker.imagePreview} alt="" className="w-20 h-20 rounded-full object-cover border-2 border-gray-200" />
+                              <img src={speaker.imagePreview} alt="" className="w-16 h-16 rounded-full object-cover border-2 border-blue-200" />
                               <button type="button" onClick={() => removeSpeakerImage(idx)} className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100"><FaTimes className="text-[10px]" /></button>
                             </div>
                           ) : (
-                            <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center border-2 border-dashed border-gray-300"><FaUser className="text-2xl text-gray-400" /></div>
+                            <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center border-2 border-dashed border-gray-300"><FaUser className="text-2xl text-gray-400" /></div>
                           )}
                           <label className="cursor-pointer">
                             <div className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50"><FaCamera className="text-xs" />{speaker.imagePreview ? 'Change' : 'Upload'}</div>
@@ -746,11 +778,11 @@ const EventDashboardEditEvent = () => {
                         </div>
                       </div>
                       <div className="grid sm:grid-cols-2 gap-3">
-                        <div><label className="block text-xs text-gray-500 mb-1">Name</label><input type="text" value={speaker.name} onChange={(e) => updateSpeaker(idx, 'name', e.target.value)} placeholder="Full name" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]" /></div>
-                        <div><label className="block text-xs text-gray-500 mb-1">Title/Role</label><input type="text" value={speaker.title} onChange={(e) => updateSpeaker(idx, 'title', e.target.value)} placeholder="e.g., CEO" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]" /></div>
-                        <div><label className="block text-xs text-gray-500 mb-1">Company</label><input type="text" value={speaker.company} onChange={(e) => updateSpeaker(idx, 'company', e.target.value)} placeholder="Company name" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]" /></div>
+                        <div><label className="block text-xs text-gray-500 mb-1">Name</label><input type="text" value={speaker.name} onChange={(e) => updateSpeaker(idx, 'name', e.target.value)} placeholder="Full name" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" /></div>
+                        <div><label className="block text-xs text-gray-500 mb-1">Title/Role</label><input type="text" value={speaker.title} onChange={(e) => updateSpeaker(idx, 'title', e.target.value)} placeholder="e.g., CEO" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" /></div>
+                        <div><label className="block text-xs text-gray-500 mb-1">Company</label><input type="text" value={speaker.company} onChange={(e) => updateSpeaker(idx, 'company', e.target.value)} placeholder="Company name" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" /></div>
                       </div>
-                      <div className="mt-3"><label className="block text-xs text-gray-500 mb-1">Bio</label><textarea value={speaker.bio} onChange={(e) => updateSpeaker(idx, 'bio', e.target.value)} placeholder="Brief bio..." rows={2} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3766]" /></div>
+                      <div className="mt-3"><label className="block text-xs text-gray-500 mb-1">Bio</label><textarea value={speaker.bio} onChange={(e) => updateSpeaker(idx, 'bio', e.target.value)} placeholder="Brief bio..." rows={2} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" /></div>
                     </div>
                   ))}
                 </div>
@@ -758,19 +790,24 @@ const EventDashboardEditEvent = () => {
             </div>
 
             {/* Registration Deadline */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
               <label className="block text-sm font-semibold text-gray-700 mb-2">Registration Deadline</label>
-              <input type="date" name="registrationDeadline" value={formData.registrationDeadline} onChange={handleChange} className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-sm" />
+              <input type="date" name="registrationDeadline" value={formData.registrationDeadline} onChange={handleChange} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
               <p className="text-xs text-gray-400 mt-1">If not set, registration closes on event date</p>
             </div>
 
-            {/* Custom Registration Form Builder */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+            {/* Custom Form Builder */}
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2"><FaClipboardList className="text-[#1B3766]" /> Custom Registration Form</h3>
+                <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2"><FaClipboardList className="text-blue-600" /> Custom Registration Form</h3>
               </div>
-              <p className="text-xs text-gray-500 mb-4">Collect extra info from attendees (e.g., "What do you hope to learn?"). These questions will appear during registration.</p>
-
+              <div className="mb-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded-md flex items-start gap-2 text-sm">
+                <FaInfoCircle className="text-blue-500 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="font-medium text-blue-800">Default fields already included</p>
+                  <p className="text-blue-700 text-xs">Collect extra info from attendees (e.g., dietary preferences).</p>
+                </div>
+              </div>
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs text-gray-600 mb-1">Form Title</label>
@@ -789,194 +826,155 @@ const EventDashboardEditEvent = () => {
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs font-semibold text-gray-700">Field {idx + 1}</span>
                         <div className="flex items-center gap-1">
-                          <button type="button" onClick={() => moveFieldUp(idx)} disabled={idx === 0}
-                            className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30" title="Move up">
-                            <FaChevronUp className="text-xs" />
-                          </button>
-                          <button type="button" onClick={() => moveFieldDown(idx)} disabled={idx === formFields.length - 1}
-                            className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30" title="Move down">
-                            <FaChevronDown className="text-xs" />
-                          </button>
+                          <button type="button" onClick={() => moveFieldUp(idx)} disabled={idx === 0} className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30"><FaChevronUp className="text-xs" /></button>
+                          <button type="button" onClick={() => moveFieldDown(idx)} disabled={idx === formFields.length - 1} className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30"><FaChevronDown className="text-xs" /></button>
                           <button type="button" onClick={() => removeFormField(idx)} className="p-1 text-red-500 hover:bg-red-50 rounded"><FaTrashAlt className="text-xs" /></button>
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-2 mb-2">
-                        <div className="col-span-2">
-                          <label className="block text-[10px] text-gray-500 mb-0.5">Label *</label>
-                          <input type="text" value={field.label} onChange={(e) => updateFormField(idx, 'label', e.target.value)} placeholder="e.g., How did you hear about us?" className="w-full px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs" />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] text-gray-500 mb-0.5">Type</label>
-                          <select value={field.type} onChange={(e) => updateFormField(idx, 'type', e.target.value)} className="w-full px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs">
-                            {FIELD_TYPES.map(ft => (
-                              <option key={ft.value} value={ft.value}>{ft.label}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="flex items-end mb-1">
-                          <label className="flex items-center gap-1 cursor-pointer">
-                            <input type="checkbox" checked={field.required || false} onChange={(e) => updateFormField(idx, 'required', e.target.checked)} className="text-[#1B3766] rounded w-3.5 h-3.5" />
-                            <span className="text-xs text-gray-600">Required</span>
-                          </label>
-                        </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="col-span-2"><label className="block text-[10px] text-gray-500 mb-0.5">Label *</label><input type="text" value={field.label} onChange={(e) => updateFormField(idx, 'label', e.target.value)} placeholder="e.g., How did you hear?" className="w-full px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs" /></div>
+                        <div><label className="block text-[10px] text-gray-500 mb-0.5">Type</label><select value={field.type} onChange={(e) => updateFormField(idx, 'type', e.target.value)} className="w-full px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs">{FIELD_TYPES.map(ft => <option key={ft.value} value={ft.value}>{ft.label}</option>)}</select></div>
+                        <div className="flex items-end"><label className="flex items-center gap-1 cursor-pointer"><input type="checkbox" checked={field.required || false} onChange={(e) => updateFormField(idx, 'required', e.target.checked)} className="text-blue-600 rounded w-3.5 h-3.5" /><span className="text-xs text-gray-600">Required</span></label></div>
                         {['dropdown', 'checkbox', 'radio'].includes(field.type) && (
                           <div className="col-span-2">
                             <label className="block text-[10px] text-gray-500 mb-1">Options</label>
-                            {field.options?.map((opt, optIdx) => (
-                              <div key={optIdx} className="flex items-center gap-1 mb-1">
-                                <input type="text" value={opt} onChange={(e) => updateOption(idx, optIdx, e.target.value)} placeholder={`Option ${optIdx + 1}`} className="flex-1 px-2 py-1 border border-gray-200 rounded text-xs" />
-                                <button type="button" onClick={() => removeOption(idx, optIdx)} className="text-red-500"><FaTimes className="text-xs" /></button>
+                            {field.options?.map((opt, oi) => (
+                              <div key={oi} className="flex items-center gap-1 mb-1">
+                                <input type="text" value={opt} onChange={(e) => updateOption(idx, oi, e.target.value)} placeholder={`Option ${oi+1}`} className="flex-1 px-2 py-1 border border-gray-200 rounded text-xs" />
+                                <button type="button" onClick={() => removeOption(idx, oi)} className="text-red-500"><FaTimes className="text-xs" /></button>
                               </div>
                             ))}
-                            <button type="button" onClick={() => addOption(idx)} className="text-xs text-[#1B3766] underline">+ Add option</button>
+                            <button type="button" onClick={() => addOption(idx)} className="text-xs text-blue-600 underline">+ Add option</button>
                           </div>
                         )}
                         {!['dropdown', 'checkbox', 'radio'].includes(field.type) && (
-                          <div className="col-span-2">
-                            <label className="block text-[10px] text-gray-500 mb-0.5">Placeholder</label>
-                            <input type="text" value={field.placeholder || ''} onChange={(e) => updateFormField(idx, 'placeholder', e.target.value)} className="w-full px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs" />
-                          </div>
+                          <div className="col-span-2"><label className="block text-[10px] text-gray-500 mb-0.5">Placeholder</label><input type="text" value={field.placeholder || ''} onChange={(e) => updateFormField(idx, 'placeholder', e.target.value)} className="w-full px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs" /></div>
                         )}
                       </div>
                     </div>
                   ))
                 )}
-
-                <button type="button" onClick={addFormField} className="w-full py-2.5 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 text-sm hover:border-[#1B3766] hover:text-[#1B3766] transition-colors">
-                  <FaPlus className="inline mr-1 text-xs" /> Add Field
-                </button>
+                <button type="button" onClick={addFormField} className="w-full py-2.5 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 text-sm hover:border-blue-500 hover:text-blue-500 transition-colors"><FaPlus className="inline mr-1 text-xs" /> Add Field</button>
               </div>
             </div>
 
-            {/* ===== Poster Template Section with Drag-and-Drop ===== */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <FaPaintBrush className="text-[#1B3766]" />
-                <h3 className="text-sm font-semibold text-gray-900">"I'm Attending" Poster</h3>
-                <span className="ml-2 text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">Optional</span>
+            {/* ===== POSTER DESIGNER – redesigned with samples & preview ===== */}
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl text-white">
+                  <FaPaintBrush className="text-lg" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900">"I'm Attending" Poster</h3>
+                  <p className="text-xs text-gray-500">Create a shareable poster for attendees to show they're coming</p>
+                </div>
+                <span className="ml-auto text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">Optional</span>
               </div>
-              <p className="text-xs text-gray-500 mb-4">
-                Enable attendees to generate a personalised "I'm attending" poster.
-                Upload a background template and use the visual editor to position the photo and name placeholders.
-              </p>
 
-              {/* Background image upload */}
-              <div className="mb-4">
-                <label className="block text-xs font-medium text-gray-600 mb-1">Background Template</label>
-                <div className="flex items-center gap-4">
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* Preview */}
+                <div className="relative bg-gray-100 rounded-xl overflow-hidden border border-gray-200">
                   {posterImagePreview && !removePoster ? (
-                    <div className="relative group">
-                      <img src={posterImagePreview} alt="Poster template" className="w-32 h-32 object-cover rounded-lg border border-gray-200" />
-                      <button type="button" onClick={removePosterImage} className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <FaTimes className="text-[10px]" />
-                      </button>
+                    <div className="relative" style={{ userSelect: 'none' }}>
+                      <img
+                        ref={imageRef}
+                        src={posterImagePreview}
+                        alt="Poster template"
+                        className="w-full h-auto"
+                        draggable={false}
+                        onLoad={(e) => {
+                          const img = e.target;
+                          setImageNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+                        }}
+                      />
+                      {/* Photo placeholder */}
+                      <div
+                        className="absolute border-2 border-blue-500 bg-blue-500/20 cursor-move flex items-center justify-center text-blue-600 text-xs font-semibold"
+                        style={{
+                          left: `${(posterTemplate.photoPlaceholder.x / imageNaturalSize.width) * 100}%`,
+                          top: `${(posterTemplate.photoPlaceholder.y / imageNaturalSize.height) * 100}%`,
+                          width: `${(posterTemplate.photoPlaceholder.width / imageNaturalSize.width) * 100}%`,
+                          height: `${(posterTemplate.photoPlaceholder.height / imageNaturalSize.height) * 100}%`,
+                          borderRadius: `${posterTemplate.photoPlaceholder.borderRadius || 0}px`,
+                        }}
+                        onMouseDown={(e) => startDrag(e, 'photo', false)}
+                        onTouchStart={(e) => startDrag(e, 'photo', false)}
+                      >
+                        <FaCamera className="mr-1" /> Photo
+                        <div
+                          className="absolute bottom-0 right-0 w-4 h-4 bg-blue-500 cursor-se-resize rounded-bl-none rounded-tr-none"
+                          onMouseDown={(e) => { e.stopPropagation(); startDrag(e, 'photo', true); }}
+                          onTouchStart={(e) => { e.stopPropagation(); startDrag(e, 'photo', true); }}
+                        >
+                          <FaArrowsAlt className="text-white text-[10px] absolute bottom-0.5 right-0.5" />
+                        </div>
+                      </div>
+                      {/* Name placeholder */}
+                      <div
+                        className="absolute cursor-move font-bold"
+                        style={{
+                          left: `${(posterTemplate.namePlaceholder.x / imageNaturalSize.width) * 100}%`,
+                          top: `${(posterTemplate.namePlaceholder.y / imageNaturalSize.height) * 100}%`,
+                          color: posterTemplate.namePlaceholder.color,
+                          fontSize: `${(posterTemplate.namePlaceholder.fontSize / imageNaturalSize.height) * 100}vh`,
+                          fontFamily: posterTemplate.namePlaceholder.fontFamily,
+                          whiteSpace: 'nowrap',
+                        }}
+                        onMouseDown={(e) => startDrag(e, 'name', false)}
+                        onTouchStart={(e) => startDrag(e, 'name', false)}
+                      >
+                        <FaPen className="mr-1 inline" /> Your Name
+                        <div className="absolute top-0 left-0 w-full h-full border-2 border-green-500 bg-green-500/10 -z-10" />
+                      </div>
                     </div>
                   ) : (
-                    <label className="cursor-pointer">
-                      <div className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
-                        <FaImage className="text-xs" /> {posterImagePreview ? 'Change' : 'Upload Template'}
-                      </div>
-                      <input type="file" accept="image/*" onChange={handlePosterImageSelect} className="hidden" />
-                    </label>
+                    <div className="aspect-video flex items-center justify-center text-gray-400 flex-col p-8">
+                      <FaImage className="text-4xl mb-2" />
+                      <p>Select a background</p>
+                    </div>
                   )}
-                  <span className="text-xs text-gray-400">JPG, PNG, WEBP (max 10MB)</span>
+                  <div className="absolute bottom-2 left-2 bg-black/50 text-white text-[10px] px-2 py-1 rounded flex items-center gap-1">
+                    <FaArrowsAlt className="text-[10px]" /> Drag to position
+                  </div>
                 </div>
-              </div>
 
-              {posterImagePreview && !removePoster && (
+                {/* Controls */}
                 <div>
-                  <p className="text-xs text-gray-500 mb-2 flex items-center gap-2">
-                    <FaArrowsAlt className="text-xs" /> Drag the blue (photo) and green (name) boxes to reposition. Resize photo by dragging the bottom-right corner.
-                  </p>
-                  <div
-                    ref={containerRef}
-                    className="relative border-2 border-gray-200 rounded-lg overflow-hidden mb-4"
-                    style={{ maxWidth: '100%', userSelect: 'none' }}
-                  >
-                    <img
-                      ref={imageRef}
-                      src={posterImagePreview}
-                      alt="Template"
-                      className="w-full h-auto"
-                      draggable={false}
-                      onLoad={(e) => {
-                        const img = e.target;
-                        setImageNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
-                      }}
-                    />
-
-                    {/* Photo placeholder - draggable and resizable */}
-                    <div
-                      className="absolute border-2 border-blue-500 bg-blue-500/20 cursor-move"
-                      style={{
-                        left: `${(posterTemplate.photoPlaceholder.x / imageNaturalSize.width) * 100}%`,
-                        top: `${(posterTemplate.photoPlaceholder.y / imageNaturalSize.height) * 100}%`,
-                        width: `${(posterTemplate.photoPlaceholder.width / imageNaturalSize.width) * 100}%`,
-                        height: `${(posterTemplate.photoPlaceholder.height / imageNaturalSize.height) * 100}%`,
-                        borderRadius: `${posterTemplate.photoPlaceholder.borderRadius || 0}px`,
-                      }}
-                      onMouseDown={(e) => startDrag(e, 'photo', false)}
-                      onTouchStart={(e) => startDrag(e, 'photo', false)}
-                    >
-                      <div className="w-full h-full flex items-center justify-center text-blue-600 text-xs font-semibold">
-                        📷 Photo
-                      </div>
-                      {/* Resize handle */}
-                      <div
-                        className="absolute bottom-0 right-0 w-4 h-4 bg-blue-500 cursor-se-resize rounded-bl-none rounded-tr-none"
-                        onMouseDown={(e) => { e.stopPropagation(); startDrag(e, 'photo', true); }}
-                        onTouchStart={(e) => { e.stopPropagation(); startDrag(e, 'photo', true); }}
-                      >
-                        <FaExpandArrowsAlt className="text-white text-[10px] absolute bottom-0.5 right-0.5" />
-                      </div>
+                  <div className="mb-4">
+                    <label className="block text-xs font-medium text-gray-600 mb-2">Background</label>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {SAMPLE_BACKGROUNDS.map((sample, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => applySampleBackground(idx)}
+                          className={`w-12 h-12 rounded-lg border-2 overflow-hidden ${selectedSample === idx ? 'border-blue-500 shadow-md' : 'border-gray-200'}`}
+                        >
+                          <img src={sample.url} alt={sample.label} className="w-full h-full object-cover" />
+                        </button>
+                      ))}
+                      <label className="cursor-pointer">
+                        <div className="w-12 h-12 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center hover:border-blue-500 transition-colors">
+                          <FaPlus className="text-gray-400" />
+                        </div>
+                        <input type="file" accept="image/*" onChange={handlePosterImageSelect} className="hidden" />
+                      </label>
                     </div>
-
-                    {/* Name placeholder - draggable */}
-                    <div
-                      className="absolute cursor-move font-bold"
-                      style={{
-                        left: `${(posterTemplate.namePlaceholder.x / imageNaturalSize.width) * 100}%`,
-                        top: `${(posterTemplate.namePlaceholder.y / imageNaturalSize.height) * 100}%`,
-                        color: posterTemplate.namePlaceholder.color,
-                        fontSize: `${(posterTemplate.namePlaceholder.fontSize / imageNaturalSize.height) * 100}vh`,
-                        fontFamily: posterTemplate.namePlaceholder.fontFamily,
-                        whiteSpace: 'nowrap',
-                      }}
-                      onMouseDown={(e) => startDrag(e, 'name', false)}
-                      onTouchStart={(e) => startDrag(e, 'name', false)}
-                    >
-                      Your Name
-                      <div className="absolute top-0 left-0 w-full h-full border-2 border-green-500 bg-green-500/10 -z-10" />
-                    </div>
+                    <p className="text-[10px] text-gray-400">Choose a sample or upload your own background</p>
                   </div>
 
-                  {/* Controls for name styling and border radius */}
-                  <div className="grid grid-cols-2 gap-2 mt-3">
+                  <div className="space-y-3">
                     <div>
-                      <label className="block text-[10px] text-gray-500 mb-0.5">Font Size</label>
-                      <input
-                        type="number"
-                        value={posterTemplate.namePlaceholder.fontSize}
-                        onChange={(e) => updatePosterNamePlaceholder('fontSize', e.target.value)}
-                        className="w-full px-2 py-1 border border-gray-200 rounded text-xs"
-                      />
+                      <label className="block text-[10px] text-gray-500 mb-0.5">Name Font Size</label>
+                      <input type="number" value={posterTemplate.namePlaceholder.fontSize} onChange={(e) => updatePosterNamePlaceholder('fontSize', e.target.value)} className="w-full px-2 py-1 border border-gray-200 rounded text-xs" />
                     </div>
                     <div>
-                      <label className="block text-[10px] text-gray-500 mb-0.5">Color</label>
-                      <input
-                        type="color"
-                        value={posterTemplate.namePlaceholder.color}
-                        onChange={(e) => updatePosterNamePlaceholder('color', e.target.value)}
-                        className="w-full h-8 p-0 border border-gray-200 rounded"
-                      />
+                      <label className="block text-[10px] text-gray-500 mb-0.5">Name Color</label>
+                      <input type="color" value={posterTemplate.namePlaceholder.color} onChange={(e) => updatePosterNamePlaceholder('color', e.target.value)} className="w-full h-8 p-0 border border-gray-200 rounded" />
                     </div>
-                    <div className="col-span-2">
+                    <div>
                       <label className="block text-[10px] text-gray-500 mb-0.5">Font Family</label>
-                      <select
-                        value={posterTemplate.namePlaceholder.fontFamily}
-                        onChange={(e) => updatePosterNamePlaceholder('fontFamily', e.target.value)}
-                        className="w-full px-2 py-1 border border-gray-200 rounded text-xs"
-                      >
+                      <select value={posterTemplate.namePlaceholder.fontFamily} onChange={(e) => updatePosterNamePlaceholder('fontFamily', e.target.value)} className="w-full px-2 py-1 border border-gray-200 rounded text-xs">
                         <option value="Arial">Arial</option>
                         <option value="Helvetica">Helvetica</option>
                         <option value="Georgia">Georgia</option>
@@ -985,97 +983,107 @@ const EventDashboardEditEvent = () => {
                         <option value="Verdana">Verdana</option>
                       </select>
                     </div>
-                    <div className="col-span-2">
+                    <div>
                       <label className="block text-[10px] text-gray-500 mb-0.5">Photo Border Radius (px)</label>
-                      <input
-                        type="number"
-                        value={posterTemplate.photoPlaceholder.borderRadius || 0}
-                        onChange={(e) => updatePhotoBorderRadius(e.target.value)}
-                        min="0"
-                        max="200"
-                        className="w-full px-2 py-1 border border-gray-200 rounded text-xs"
-                      />
+                      <input type="number" value={posterTemplate.photoPlaceholder.borderRadius || 0} onChange={(e) => updatePhotoBorderRadius(e.target.value)} min="0" max="200" className="w-full px-2 py-1 border border-gray-200 rounded text-xs" />
                     </div>
                   </div>
                 </div>
-              )}
-              {(!posterImagePreview || removePoster) && (
-                <p className="text-sm text-gray-400 text-center py-2">
-                  {removePoster && posterImagePreview ? 'Template removed. Upload a new one to enable poster generation.' : 'Upload a template to configure placeholders.'}
-                </p>
-              )}
+              </div>
             </div>
           </div>
 
+          {/* Right Column (Sidebar) */}
           <div className="lg:col-span-2 space-y-6">
             {/* Images */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2"><FaImage className="text-[#1B3766]" /> Images <span className="text-xs text-gray-400 font-normal">({existingImages.length + newImages.length}/10)</span></h3>
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2"><FaImage className="text-blue-600" /> Event Images <span className="text-red-500">*</span> <span className="text-xs text-gray-400 font-normal">({existingImages.length + newImages.length}/10)</span></h3>
               {(existingImages.length + newImages.length) < 10 && (
-                <label className="block w-full cursor-pointer mb-4"><div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-[#1B3766]"><FaPlus className="text-xl text-gray-400 mx-auto mb-1" /><p className="text-xs text-gray-600">Add Images</p><input type="file" accept="image/*" multiple onChange={handleImageSelect} className="hidden" /></div></label>
+                <label className="block w-full cursor-pointer mb-4">
+                  <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-blue-500 transition-colors">
+                    <FaPlus className="text-2xl text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-gray-600 font-medium">Click to upload images</p>
+                    <p className="text-xs text-gray-400 mt-1">JPG, PNG, WEBP (Max 10MB each)</p>
+                    <input type="file" accept="image/*" multiple onChange={handleImageSelect} className="hidden" />
+                  </div>
+                </label>
               )}
               {(existingImages.length > 0 || newImagePreviews.length > 0) && (
                 <div className="grid grid-cols-2 gap-2">
-                  {existingImages.map((img, idx) => (<div key={`e-${idx}`} className="relative group"><img src={img} alt="" className="w-full h-28 object-cover rounded-lg border border-gray-200" /><button onClick={() => removeExistingImage(idx)} className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100"><FaTrashAlt className="text-[10px]" /></button>{idx===0&&<span className="absolute bottom-1 left-1 bg-[#1B3766] text-white text-[10px] px-1.5 py-0.5 rounded">Cover</span>}</div>))}
-                  {newImagePreviews.map((p, idx) => (<div key={`n-${idx}`} className="relative group"><img src={p} alt="" className="w-full h-28 object-cover rounded-lg border border-gray-200" /><button onClick={() => removeNewImage(idx)} className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100"><FaTrashAlt className="text-[10px]" /></button></div>))}
+                  {existingImages.map((img, idx) => (
+                    <div key={`e-${idx}`} className="relative group">
+                      <img src={img} alt="" className="w-full h-28 object-cover rounded-lg border border-gray-200" />
+                      <button onClick={() => removeExistingImage(idx)} className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100"><FaTrashAlt className="text-[10px]" /></button>
+                      {idx === 0 && <span className="absolute bottom-1 left-1 bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded">Cover</span>}
+                    </div>
+                  ))}
+                  {newImagePreviews.map((p, idx) => (
+                    <div key={`n-${idx}`} className="relative group">
+                      <img src={p} alt="" className="w-full h-28 object-cover rounded-lg border border-gray-200" />
+                      <button onClick={() => removeNewImage(idx)} className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100"><FaTrashAlt className="text-[10px]" /></button>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
 
             {/* Category & Type */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-              <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2"><FaTag className="text-[#1B3766]" /> Category & Type</h3>
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
+              <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2"><FaTag className="text-blue-600" /> Category & Type</h3>
               <div className="space-y-4">
-                <div><label className="block text-xs font-medium text-gray-600 mb-1">Category <span className="text-red-500">*</span></label><select name="category" value={formData.category} onChange={handleChange} className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-sm"><option value="">Select category</option>{categories.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
-                <div><label className="block text-xs font-medium text-gray-600 mb-1">Event Type <span className="text-red-500">*</span></label><select name="eventType" value={formData.eventType} onChange={handleChange} className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-sm"><option value="">Select type</option>{eventTypes.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
+                <div><label className="block text-xs font-medium text-gray-600 mb-1">Category <span className="text-red-500">*</span></label><select name="category" value={formData.category} onChange={handleChange} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"><option value="">Select category</option>{categories.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
+                <div><label className="block text-xs font-medium text-gray-600 mb-1">Event Type <span className="text-red-500">*</span></label><select name="eventType" value={formData.eventType} onChange={handleChange} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"><option value="">Select type</option>{eventTypes.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
               </div>
             </div>
 
             {/* Tags */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5"><label className="block text-sm font-semibold text-gray-700 mb-2">Tags</label><input type="text" name="tags" value={formData.tags} onChange={handleChange} placeholder="e.g., tech, startup, AI" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-sm" /></div>
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Tags</label>
+              <input type="text" name="tags" value={formData.tags} onChange={handleChange} placeholder="e.g., tech, startup, AI (comma separated)" className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
+            </div>
 
             {/* Tickets & Pricing */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-              <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2"><FaTicketAlt className="text-[#1B3766]" /> Tickets & Pricing</h3>
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
+              <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2"><FaTicketAlt className="text-blue-600" /> Tickets & Pricing</h3>
               <div className="space-y-4">
-                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="isPaid" checked={formData.isPaid} onChange={handleChange} className="text-[#1B3766] rounded" /><span className="text-sm text-gray-700 font-medium">This is a paid event</span></label>
-                {formData.isPaid && <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={hasTicketTypes} onChange={(e) => setHasTicketTypes(e.target.checked)} className="text-[#1B3766] rounded" /><span className="text-sm text-gray-700">Multiple ticket types</span></label>}
-                {formData.isPaid && !hasTicketTypes && <div><label className="block text-xs font-medium text-gray-600 mb-1">Ticket Price (₦)</label><input type="number" name="price" value={formData.price} onChange={handleChange} placeholder="5000" min="100" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-sm" /></div>}
+                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="isPaid" checked={formData.isPaid} onChange={handleChange} className="text-blue-600 rounded" /><span className="text-sm text-gray-700 font-medium">This is a paid event</span></label>
+                {formData.isPaid && <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={hasTicketTypes} onChange={(e) => setHasTicketTypes(e.target.checked)} className="text-blue-600 rounded" /><span className="text-sm text-gray-700">Enable multiple ticket types</span></label>}
+                {formData.isPaid && !hasTicketTypes && <div><label className="block text-xs font-medium text-gray-600 mb-1">Ticket Price (₦)</label><input type="number" name="price" value={formData.price} onChange={handleChange} placeholder="5000" min="100" className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" /></div>}
                 {hasTicketTypes && (
                   <div className="space-y-3">
                     {ticketTypes.map((tt, i) => (
-                      <div key={i} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                        <div className="flex items-center justify-between mb-2"><span className="text-xs font-semibold text-gray-700">Ticket #{i+1}</span><button onClick={() => removeTicketType(i)} className="text-red-500"><FaTimes className="text-xs" /></button></div>
+                      <div key={i} className="bg-gray-50 rounded-xl p-3 border border-gray-200">
+                        <div className="flex items-center justify-between mb-2"><span className="text-xs font-semibold text-gray-700">Type #{i+1}</span><button onClick={() => removeTicketType(i)} className="text-red-500"><FaTimes className="text-xs" /></button></div>
                         <div className="grid grid-cols-2 gap-2">
-                          <div className="col-span-2"><label className="block text-[10px] text-gray-500 mb-0.5">Name *</label><input type="text" value={tt.name} onChange={(e) => updateTicketType(i, 'name', e.target.value)} placeholder="e.g., VIP" className="w-full px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs" /></div>
-                          <div><label className="block text-[10px] text-gray-500 mb-0.5">Price (₦) *</label><input type="number" value={tt.price} onChange={(e) => updateTicketType(i, 'price', e.target.value)} placeholder="5000" className="w-full px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs" /></div>
-                          <div><label className="block text-[10px] text-gray-500 mb-0.5">Capacity</label><input type="number" value={tt.capacity} onChange={(e) => updateTicketType(i, 'capacity', e.target.value)} placeholder="0" className="w-full px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs" /></div>
-                          <div><label className="block text-[10px] text-gray-500 mb-0.5">Seats/Ticket</label><input type="number" value={tt.seatsPerTicket} onChange={(e) => updateTicketType(i, 'seatsPerTicket', e.target.value)} min="1" className="w-full px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs" /></div>
-                          <div className="col-span-2"><label className="block text-[10px] text-gray-500 mb-0.5">Description</label><input type="text" value={tt.description} onChange={(e) => updateTicketType(i, 'description', e.target.value)} className="w-full px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs" /></div>
+                          <div className="col-span-2"><label className="block text-[10px] text-gray-500">Name *</label><input type="text" value={tt.name} onChange={(e) => updateTicketType(i, 'name', e.target.value)} placeholder="VIP" className="w-full px-2.5 py-1.5 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
+                          <div><label className="block text-[10px] text-gray-500">Price (₦) *</label><input type="number" value={tt.price} onChange={(e) => updateTicketType(i, 'price', e.target.value)} placeholder="5000" className="w-full px-2.5 py-1.5 border border-gray-200 rounded text-xs" /></div>
+                          <div><label className="block text-[10px] text-gray-500">Capacity</label><input type="number" value={tt.capacity} onChange={(e) => updateTicketType(i, 'capacity', e.target.value)} placeholder="0" className="w-full px-2.5 py-1.5 border border-gray-200 rounded text-xs" /></div>
+                          <div><label className="block text-[10px] text-gray-500">Seats/Ticket</label><input type="number" value={tt.seatsPerTicket} onChange={(e) => updateTicketType(i, 'seatsPerTicket', e.target.value)} min="1" className="w-full px-2.5 py-1.5 border border-gray-200 rounded text-xs" /></div>
+                          <div className="col-span-2"><label className="block text-[10px] text-gray-500">Description</label><input type="text" value={tt.description} onChange={(e) => updateTicketType(i, 'description', e.target.value)} className="w-full px-2.5 py-1.5 border border-gray-200 rounded text-xs" /></div>
                         </div>
                       </div>
                     ))}
-                    <button type="button" onClick={addTicketType} className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 text-sm hover:border-[#1B3766]"><FaPlus className="inline mr-1 text-xs" /> Add Ticket Type</button>
+                    <button type="button" onClick={addTicketType} className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 text-sm hover:border-blue-500"><FaPlus className="inline mr-1 text-xs" /> Add Ticket Type</button>
                   </div>
                 )}
               </div>
             </div>
 
             {/* Ticket Purchase Options */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
               <h3 className="text-sm font-semibold text-gray-900 mb-3">Ticket Purchase Options</h3>
-              <label className="flex items-center gap-2 cursor-pointer mb-3"><input type="checkbox" checked={enableMultipleTickets} onChange={(e) => setEnableMultipleTickets(e.target.checked)} className="text-[#1B3766] rounded" /><span className="text-sm text-gray-700">Allow multiple tickets per order</span></label>
-              {enableMultipleTickets && <div><label className="block text-xs font-medium text-gray-600 mb-1">Max Per Order</label><input type="number" name="maxTicketsPerOrder" value={formData.maxTicketsPerOrder} onChange={handleChange} min="1" max="100" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-sm" /></div>}
+              <label className="flex items-center gap-2 cursor-pointer mb-3"><input type="checkbox" checked={enableMultipleTickets} onChange={(e) => setEnableMultipleTickets(e.target.checked)} className="text-blue-600 rounded" /><span className="text-sm text-gray-700">Allow multiple tickets per order</span></label>
+              {enableMultipleTickets && <div><label className="block text-xs font-medium text-gray-600 mb-1">Max Per Order</label><input type="number" name="maxTicketsPerOrder" value={formData.maxTicketsPerOrder} onChange={handleChange} min="1" max="100" className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" /></div>}
             </div>
 
             {/* Capacity */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2"><FaUsers className="text-[#1B3766]" /> Capacity</h3>
-              <input type="number" name="maxAttendees" value={formData.maxAttendees} onChange={handleChange} placeholder="Unlimited" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3766] text-sm" />
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2"><FaUsers className="text-blue-600" /> Capacity</h3>
+              <input type="number" name="maxAttendees" value={formData.maxAttendees} onChange={handleChange} placeholder="Unlimited" className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
             </div>
 
             {/* Featured */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
               <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="featured" checked={formData.featured} onChange={handleChange} className="text-yellow-500 rounded" /><span className="text-sm font-medium text-gray-700">{formData.featured ? <FaStar className="inline text-yellow-500 mr-1" /> : <FaRegStar className="inline text-gray-400 mr-1" />}Feature this event</span></label>
             </div>
           </div>

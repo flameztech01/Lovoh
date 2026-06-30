@@ -12,12 +12,32 @@ const BiizzedScreen = () => {
   return (
     <div className="min-h-screen bg-white">
       <Header />
-      <BiizzedHero />
+
+      {/* Home */}
+      <div id="home">
+        <BiizzedHero />
+      </div>
+
+      {/* Category bar – not linked, stays as is */}
       <BiizzedCategoryBar />
-      <BiizzedArticles />
-      <BiizzedArticlesGrid />
+
+      {/* Articles */}
+      <div id="articles">
+        <BiizzedArticles />
+      </div>
+
+      {/* Magazine */}
+      <div id="magazine">
+        <BiizzedArticlesGrid />
+      </div>
+
+      {/* Newsletter – not linked, stays as is */}
       <BiizzedNewsletter />
-      <Footer />
+
+      {/* Contact */}
+      <div id="contact">
+        <Footer />
+      </div>
     </div>
   );
 };
