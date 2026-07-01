@@ -2,9 +2,9 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 
 const OTHER_BRANDS = [
-  { id: "lovohcreate", name: "Lovoh Create", path: "/", icon: "/logo.png" },
-  { id: "biizzed", name: "Biizzed", path: "/biizzed", icon: "/biizzed.png" },
-  { id: "events", name: "EventRoom", path: "/events", icon: "/eventroom.png" },
+  { id: "lovohcreate", name: "Lovoh Create", path: "https://lovohcreate.com", icon: "/logo.png" },
+  { id: "biizzed", name: "Biizzed", path: "https://biizzed.lovohcreate.com", icon: "/biizzed.png" },
+  { id: "events", name: "EventRoom", path: "https://eventroom.lovohcreate.com", icon: "/eventroom.png" },
 ];
 
 const NAV_ITEMS = [

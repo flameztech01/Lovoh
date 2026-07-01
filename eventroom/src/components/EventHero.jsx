@@ -105,7 +105,7 @@ const EventHero = () => {
         <div className="absolute top-1/3 right-1/4 w-16 h-16 bg-white/5 rounded-full blur-xl animate-bounce-slow"></div>
       </div>
 
-      <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-8 md:py-8">
+      <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-8 md:py-8 mt-13">
         <div className="grid lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-16 items-center">
           {/* Left Column */}
           <div className="text-center lg:text-left">
