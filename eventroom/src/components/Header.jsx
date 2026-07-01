@@ -1,5 +1,6 @@
-// components/Header.jsx – EventRoom header (Home, Featured, Avatar, Contact)
+// components/Header.jsx – EventRoom header (Home, Featured, Avatar Login, Contact, Create Event)
 import React, { useEffect, useRef, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 
 const OTHER_BRANDS = [
   { id: "lovohcreate", name: "Lovoh Create", path: "https://lovohcreate.com", icon: "/logo.png" },
@@ -10,13 +11,15 @@ const OTHER_BRANDS = [
 const NAV_ITEMS = [
   { label: "Home", id: "home" },
   { label: "Featured", id: "featured" },
-  { label: "Avatar", id: "avatar" },
+  { label: "Avatar Login", id: "avatar" },
   { label: "Contact", id: "contact" },
+  { label: "Create Event", path: "/dashboard/events/new" },
 ];
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSubBrandsOpen, setIsSubBrandsOpen] = useState(false);
+  const navigate = useNavigate();
 
   const subBrandsRef = useRef(null);
   const mobileMenuRef = useRef(null);
@@ -33,6 +36,15 @@ const Header = () => {
     const el = document.getElementById(id);
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [closeAllMenus]);
+
+  const handleNavClick = useCallback((item) => {
+    if (item.path) {
+      closeAllMenus();
+      navigate(item.path);
+    } else if (item.id) {
+      scrollToSection(item.id);
+    }
+  }, [closeAllMenus, navigate, scrollToSection]);
 
   const toggleSubBrands = () => setIsSubBrandsOpen((prev) => !prev);
   const toggleMobileMenu = () => setIsMenuOpen((prev) => !prev);
@@ -112,9 +124,11 @@ const Header = () => {
             <div className="hidden md:flex items-center gap-2 lg:gap-3">
               {NAV_ITEMS.map((item) => (
                 <button
-                  key={item.id}
-                  onClick={() => scrollToSection(item.id)}
-                  className="text-gray-700 hover:text-blue-700 px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 hover:bg-blue-50"
+                  key={item.label}
+                  onClick={() => handleNavClick(item)}
+                  className={`text-gray-700 hover:text-blue-700 px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 hover:bg-blue-50 ${
+                    item.path ? "bg-blue-600 hover:bg-blue-700 text-white hover:text-white shadow-md" : ""
+                  }`}
                 >
                   {item.label}
                 </button>
@@ -189,9 +203,13 @@ const Header = () => {
                   <div className="space-y-1">
                     {NAV_ITEMS.map((item) => (
                       <button
-                        key={item.id}
-                        onClick={() => scrollToSection(item.id)}
-                        className="w-full text-left text-gray-700 hover:text-blue-700 hover:bg-blue-50 px-4 py-3 rounded-xl text-base font-medium transition-all duration-200"
+                        key={item.label}
+                        onClick={() => handleNavClick(item)}
+                        className={`w-full text-left px-4 py-3 rounded-xl text-base font-medium transition-all duration-200 ${
+                          item.path
+                            ? "bg-gradient-to-r from-blue-600 via-blue-700 to-blue-500 text-white shadow-md hover:shadow-lg text-center"
+                            : "text-gray-700 hover:text-blue-700 hover:bg-blue-50"
+                        }`}
                       >
                         {item.label}
                       </button>
