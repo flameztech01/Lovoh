@@ -172,7 +172,7 @@ const Footer = () => {
                   </svg>
                 </div>
                 <p className="text-white/70 leading-7 text-sm sm:text-base">
-                  +234 805 576 6461
+                  +2348055766461
                 </p>
               </div>
             </div>
