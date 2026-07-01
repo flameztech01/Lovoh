@@ -48,6 +48,7 @@ app.use(cors({
         'https://eventroom.lovohcreate.com',
         'https://localhost',
         'capacitor://localhost',
+        'https://test.eventroom.space',
     ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD'],
