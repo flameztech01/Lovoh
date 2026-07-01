@@ -124,7 +124,7 @@ const Footer = () => {
                   </svg>
                 </div>
                 <p className="text-white/70 leading-7 text-sm sm:text-base">
-                  3, Amode Close, Ikeja, Lagos, Nigeria
+                  1, Adedeji Close, Opebi, Ikeja, Lagos.
                 </p>
               </div>
 
@@ -172,7 +172,7 @@ const Footer = () => {
                   </svg>
                 </div>
                 <p className="text-white/70 leading-7 text-sm sm:text-base">
-                  +2347059585905
+                  +234 805 576 6461
                 </p>
               </div>
             </div>

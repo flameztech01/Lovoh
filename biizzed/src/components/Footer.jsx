@@ -23,12 +23,12 @@ const Footer = () => {
             <div className="inline-flex items-center gap-3 mb-5">
               <div className="w-3 h-3 rounded-full bg-[#254899]" />
               <h3 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                Lovoh Create
+                Lovoh Create Brand
               </h3>
             </div>
 
             <p className="text-white/70 leading-8 max-w-xl text-sm sm:text-base">
-              A dynamic Brand Marketing and Tech Agency using vision, strategy,
+              Lovoh Create is a dynamic Brand Marketing and Tech Agency using vision, strategy,
               creativity, and technology to build effective ideas and solutions
               for forward-thinking businesses.
             </p>
@@ -124,7 +124,7 @@ const Footer = () => {
                   </svg>
                 </div>
                 <p className="text-white/70 leading-7 text-sm sm:text-base">
-                  3, Amode Close, Ikeja, Lagos, Nigeria
+                  1, Adedeji Close, Opebi, Ikeja, Lagos.
                 </p>
               </div>
 
@@ -172,7 +172,7 @@ const Footer = () => {
                   </svg>
                 </div>
                 <p className="text-white/70 leading-7 text-sm sm:text-base">
-                  +2347059585905
+                  +234 805 576 6461
                 </p>
               </div>
             </div>
